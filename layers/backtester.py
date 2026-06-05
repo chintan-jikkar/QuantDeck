@@ -114,3 +114,30 @@ def compute_tearsheet(equity_curve: pd.Series, returns: pd.Series,
         "avg_loss": float(losses.mean()) if len(losses) else 0.0,
         "n_periods": int(len(r)),
     }
+
+
+def run_backtest(strategy_name: str, ticker: str, start: str, end: str,
+                 params: dict | None = None, initial_capital: float = 100_000,
+                 commission_bps: float = 10, slippage_pct: float = 0.001) -> dict:
+    """Fetch prices, generate signals from the named strategy, run the engine,
+    and attach a full tearsheet. Single-ticker (Pairs handled in the page layer).
+
+    Returns dict: equity_curve, returns, positions, trades, tearsheet, prices.
+    """
+    from data.prices import fetch_prices
+    from strategies import get_strategy
+    params = params or {}
+
+    prices_df = fetch_prices(ticker, period="5y")
+    prices_df = prices_df.loc[start:end] if start and end else prices_df
+    if prices_df.empty:
+        raise ValueError(f"No price data for {ticker!r} in {start}..{end}")
+
+    strat = get_strategy(strategy_name)
+    signals = strat.generate_signals(prices_df, **params)
+
+    result = run_engine(prices_df["Close"], signals, initial_capital,
+                        commission_bps, slippage_pct)
+    result["tearsheet"] = compute_tearsheet(result["equity_curve"], result["returns"])
+    result["prices"] = prices_df["Close"]
+    return result

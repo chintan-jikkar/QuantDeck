@@ -72,3 +72,10 @@ def test_strategy_describe_has_metadata():
     from strategies.signal.ma_crossover import MACrossover
     d = MACrossover().describe()
     assert d["name"] and d["asset_classes"] and d["tier"]
+
+
+def test_registry_has_six_strategies():
+    from strategies import STRATEGY_REGISTRY, get_strategy, list_strategies
+    assert len(STRATEGY_REGISTRY) == 6
+    assert get_strategy("MA Crossover").name == "MA Crossover"
+    assert len(list_strategies()) == 6
