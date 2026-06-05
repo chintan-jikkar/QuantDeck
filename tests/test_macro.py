@@ -81,3 +81,27 @@ def test_fetch_macro_regime_normal_yield_curve(mock_dr):
     from data.macro import fetch_macro_regime
     regime = fetch_macro_regime("US")
     assert regime["yield_curve_shape"] == "normal"
+
+
+@patch("data.macro.web.DataReader")
+def test_fetch_macro_regime_cpi_yoy_computed_over_12_months(mock_dr):
+    # 13 monthly CPI points: index -13 = 300.0, index -1 = 309.0 → YoY = +3.0%.
+    # The intermediate months are filled so iloc[-13] and iloc[-1] are the load-bearing values.
+    cpi_series = [300.0, 301.0, 302.0, 303.0, 304.0, 305.0, 306.0,
+                  306.5, 307.0, 307.5, 308.0, 308.5, 309.0]
+    assert len(cpi_series) == 13
+
+    def side_effect(series_id, *args, **kwargs):
+        values_map = {
+            "DTB3":       [4.2],
+            "DGS10":      [5.3],
+            "BAMLC0A0CM": [1.2],
+            "FEDFUNDS":   [5.25],
+            "CPIAUCSL":   cpi_series,
+        }
+        return _make_fred_df(series_id, values_map.get(series_id, [4.0]))
+    mock_dr.side_effect = side_effect
+    from data.macro import fetch_macro_regime
+    regime = fetch_macro_regime("US")
+    # (309.0 / 300.0 - 1) * 100 == 3.0
+    assert regime["inflation_yoy"] == pytest.approx(3.0, abs=1e-6)

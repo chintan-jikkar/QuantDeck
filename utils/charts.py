@@ -44,7 +44,7 @@ def candlestick(df: pd.DataFrame, title: str = "", volume: bool = True) -> go.Fi
 
 
 def line(
-    series: "pd.Series | pd.DataFrame",
+    series: pd.Series | pd.DataFrame,
     title: str = "",
     yaxis_label: str = "",
 ) -> go.Figure:
@@ -59,7 +59,7 @@ def line(
     return fig
 
 
-def bar(series: pd.Series, title: str = "", color: "str | None" = None) -> go.Figure:
+def bar(series: pd.Series, title: str = "", color: str | None = None) -> go.Figure:
     """Vertical bar chart from a pandas Series."""
     marker = {"color": color} if color else {}
     fig = go.Figure(

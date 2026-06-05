@@ -78,3 +78,19 @@ def test_fmt_large_number_with_currency():
 
 def test_fmt_large_number_negative():
     assert fmt_large_number(-500_000_000) == "-500.00M"
+
+
+def test_fmt_currency_none_returns_na():
+    assert fmt_currency(None) == "N/A"
+
+
+def test_fmt_currency_nan_returns_na():
+    assert fmt_currency(math.nan) == "N/A"
+
+
+def test_fmt_large_number_none_returns_na():
+    assert fmt_large_number(None) == "N/A"
+
+
+def test_fmt_large_number_nan_returns_na():
+    assert fmt_large_number(math.nan) == "N/A"

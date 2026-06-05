@@ -34,10 +34,15 @@ def compute_returns(prices: pd.DataFrame, col: str = "Close") -> pd.Series:
 
 
 def compute_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
-    """Relative Strength Index using exponential moving averages (Wilder smoothing).
+    """Relative Strength Index using exponential moving averages (Wilder-style smoothing).
 
     Values outside [0, 100] are not possible by construction.
-    First (period - 1) values are NaN because there is not enough history.
+    The first `period` values are NaN (the leading diff is NaN, then `min_periods`
+    requires `period` observations before a value is produced).
+
+    Note: this seeds the average via `ewm` from the first bar rather than the
+    textbook Wilder seed (an SMA at index `period`). Early values differ slightly
+    from strict Wilder RSI but converge within a few dozen bars.
     """
     delta = prices.diff()
     gain = delta.clip(lower=0)

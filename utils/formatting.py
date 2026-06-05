@@ -22,8 +22,18 @@ def fmt_number(value: float | None, decimals: int = 2) -> str:
     return f"{rounded:,.{decimals}f}"
 
 
-def fmt_currency(value: float, currency: str = "USD", decimals: int = 2) -> str:
-    """Format a value as currency. Unknown currencies use the ISO code as prefix."""
+def fmt_currency(value: float | None, currency: str = "USD", decimals: int = 2) -> str:
+    """Format a value as currency. Unknown currencies use the ISO code as prefix.
+
+    Returns 'N/A' for None or NaN (fundamentals data routinely has missing fields).
+    """
+    if value is None:
+        return "N/A"
+    try:
+        if math.isnan(value):
+            return "N/A"
+    except TypeError:
+        return "N/A"
     symbol = _CURRENCY_SYMBOLS.get(currency, f"{currency} ")
     return f"{symbol}{value:,.{decimals}f}"
 
@@ -38,11 +48,19 @@ def fmt_percent(value: float | None, decimals: int = 1) -> str:
     return f"{value * 100:.{decimals}f}%"
 
 
-def fmt_large_number(value: float, currency: str = "") -> str:
+def fmt_large_number(value: float | None, currency: str = "") -> str:
     """Format large numbers with T/B/M/K suffixes.
 
     Negative values are prefixed with '-'. Currency symbol is prepended when provided.
+    Returns 'N/A' for None or NaN (e.g. missing market cap).
     """
+    if value is None:
+        return "N/A"
+    try:
+        if math.isnan(value):
+            return "N/A"
+    except TypeError:
+        return "N/A"
     prefix = _CURRENCY_SYMBOLS.get(currency, f"{currency} ") if currency else ""
     sign = "-" if value < 0 else ""
     abs_val = abs(value)

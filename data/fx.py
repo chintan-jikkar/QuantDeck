@@ -11,6 +11,10 @@ def get_fx_rate(from_currency: str, to_currency: str = "USD") -> float:
     """
     if from_currency == to_currency:
         return 1.0
+    # NOTE: yfinance reliably quotes the conventional pair (e.g. USDINR=X) but the
+    # inverted form (INRUSD=X) is inconsistent for EM currencies and may hit the
+    # empty-data ValueError below. A future improvement is to fall back to the
+    # standard pair and invert (1 / rate). Phase 1 only converts from majors.
     ticker = f"{from_currency}{to_currency}=X"
     df = yf.download(ticker, period="5d", interval="1d", auto_adjust=True, progress=False)
     if isinstance(df.columns, pd.MultiIndex):

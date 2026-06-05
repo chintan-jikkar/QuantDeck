@@ -19,18 +19,17 @@ st.markdown(
 )
 st.divider()
 
-col1, col2, col3, col4, col5 = st.columns(5)
-for col, (label, desc) in zip(
-    [col1, col2, col3, col4, col5],
-    [
-        ("1 — Screener", "Rank and filter a universe"),
-        ("2 — Deep Dive", "Complete picture of one name"),
-        ("3 — Valuation", "DCF, comps, DDM"),
-        ("4 — Simulation", "Monte Carlo path simulation"),
-        ("5 — Backtester", "Full strategy tearsheet"),
-    ],
-):
-    col.metric(label, desc)
+cols = st.columns(5)
+layers = [
+    ("1 — Screener", "Rank and filter a universe"),
+    ("2 — Deep Dive", "Complete picture of one name"),
+    ("3 — Valuation", "DCF, comps, DDM"),
+    ("4 — Simulation", "Monte Carlo path simulation"),
+    ("5 — Backtester", "Full strategy tearsheet"),
+]
+for col, (label, desc) in zip(cols, layers):
+    col.subheader(label)
+    col.caption(desc)
 
 st.divider()
 st.caption(
