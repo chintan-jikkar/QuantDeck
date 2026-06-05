@@ -1,6 +1,8 @@
 # layers/simulation.py — no Streamlit imports
 import numpy as np
 import pandas as pd
+from data.prices import fetch_prices
+from config import SIMULATION_DEFAULTS
 
 
 def _log_returns(prices: pd.Series) -> np.ndarray:
@@ -128,14 +130,38 @@ def compute_percentile_bands(paths: np.ndarray,
     return pd.DataFrame(data)
 
 
-def run_simulation(
-    ticker: str,
-    model: str = "gbm",
-    n_paths: int = 5000,
-    horizon_days: int = 252,
-) -> dict:
-    """Run Monte Carlo simulation and return path matrix + risk metrics.
+def run_simulation(ticker: str, model: str = "gbm", n_paths: int | None = None,
+                   horizon: int | None = None, seed: int | None = None) -> dict:
+    """Fetch prices and run the chosen simulation model.
 
-    Implemented in Phase 3.
+    model: "gbm" | "garch" | "ou". Returns a dict with paths, percentile bands,
+    risk metrics, start_price, model, horizon. Raises ValueError with a clear
+    message if price history is insufficient.
     """
-    raise NotImplementedError("Simulation layer is implemented in Phase 3")
+    n_paths = n_paths or SIMULATION_DEFAULTS["n_paths"]
+    horizon = horizon or SIMULATION_DEFAULTS["horizon_days"]
+
+    prices = fetch_prices(ticker, period="5y")["Close"]
+    if len(prices.dropna()) < 60:
+        raise ValueError(f"Not enough price history for {ticker!r} to simulate")
+    start_price = float(prices.dropna().iloc[-1])
+
+    model = model.lower()
+    if model == "gbm":
+        paths = simulate_gbm(prices, n_paths, horizon, seed)
+    elif model == "garch":
+        paths = simulate_garch(prices, n_paths, horizon, seed)
+    elif model == "ou":
+        paths = simulate_ou(prices, n_paths, horizon, seed)
+    else:
+        raise ValueError(f"Unknown model {model!r} (expected gbm|garch|ou)")
+
+    return {
+        "paths": paths,
+        "bands": compute_percentile_bands(paths),
+        "risk_metrics": compute_risk_metrics(paths, start_price),
+        "start_price": start_price,
+        "model": model,
+        "horizon": horizon,
+        "n_paths": n_paths,
+    }
