@@ -1,6 +1,14 @@
 # layers/deep_dive.py — no Streamlit imports
 import pandas as pd
 import numpy as np
+from data.prices import fetch_prices, fetch_intraday, compute_returns, compute_rolling_beta
+from data.fundamentals import (
+    fetch_income_statement, fetch_balance_sheet,
+    fetch_cash_flow, fetch_key_metrics, fetch_peers,
+)
+from data.macro import fetch_yield_curve, fetch_macro_regime
+from data.news import fetch_headlines, group_by_theme
+from config import COUNTRY_RISK, EQUITY_UNIVERSES
 
 
 # ── Margins ───────────────────────────────────────────────────────────────────
@@ -155,9 +163,68 @@ def compute_capital_allocation(
 
 # ── Main entry point (data assembly in Task 3) ────────────────────────────────
 
-def run_deep_dive(ticker: str) -> dict:
-    """Assemble and compute all deep-dive data for one ticker.
+def run_deep_dive(ticker: str, country: str = "US") -> dict:
+    """Assemble all data for the Deep Dive page.
 
-    Implemented fully in Task 3 (data assembly step).
+    Returns a dict with keys:
+      prices, intraday, income, balance, cashflow, key_metrics, peers,
+      macro_regime, yield_curve, news_themes, margins, balance_ratios,
+      earnings_quality, beneish_mscore, capital_allocation, beta, country.
+
+    Every external fetch is defensive — missing data degrades to empty/NaN
+    rather than crashing (spec: never crash on missing data).
     """
-    raise NotImplementedError("Data assembly implemented in Task 3")
+    result: dict = {}
+
+    # ── Price data ─────────────────────────────────────────────────────────
+    result["prices"] = fetch_prices(ticker, period="5y")
+    try:
+        result["intraday"] = fetch_intraday(ticker)
+    except Exception:
+        result["intraday"] = None
+
+    # ── Fundamentals ────────────────────────────────────────────────────────
+    income      = fetch_income_statement(ticker, limit=5)
+    balance     = fetch_balance_sheet(ticker, limit=5)
+    cashflow    = fetch_cash_flow(ticker, limit=5)
+    key_metrics = fetch_key_metrics(ticker, limit=5)
+    result["income"]      = income
+    result["balance"]     = balance
+    result["cashflow"]    = cashflow
+    result["key_metrics"] = key_metrics
+    result["peers"]       = fetch_peers(ticker)
+
+    # ── Macro ────────────────────────────────────────────────────────────────
+    result["macro_regime"] = fetch_macro_regime(country)
+    result["yield_curve"]  = fetch_yield_curve(country)
+
+    # ── News themes ─────────────────────────────────────────────────────────
+    headlines = fetch_headlines(ticker=ticker)
+    result["news_themes"] = group_by_theme(headlines)
+
+    # ── Computed metrics ─────────────────────────────────────────────────────
+    if not income.empty and len(income) >= 2:
+        result["margins"]            = compute_margins(income)
+        result["balance_ratios"]     = compute_balance_sheet_ratios(balance, income)
+        result["earnings_quality"]   = compute_earnings_quality(income, cashflow, balance)
+        result["beneish_mscore"]     = compute_beneish_mscore(income, balance, cashflow)
+        result["capital_allocation"] = compute_capital_allocation(income, cashflow, balance)
+    else:
+        result["margins"] = result["balance_ratios"] = result["earnings_quality"] = pd.DataFrame()
+        result["beneish_mscore"] = float("nan")
+        result["capital_allocation"] = pd.DataFrame()
+
+    # ── Rolling beta vs S&P 500 ──────────────────────────────────────────────
+    try:
+        market = fetch_prices("^GSPC", period="5y")
+        stock_ret  = compute_returns(result["prices"])
+        market_ret = compute_returns(market)
+        idx = stock_ret.index.intersection(market_ret.index)
+        beta_series = compute_rolling_beta(stock_ret.loc[idx], market_ret.loc[idx], window=252)
+        valid = beta_series.dropna()
+        result["beta"] = float(valid.iloc[-1]) if not valid.empty else float("nan")
+    except Exception:
+        result["beta"] = float("nan")
+
+    result["country"] = country
+    return result
