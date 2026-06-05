@@ -212,16 +212,36 @@ def run_deep_dive(ticker: str, country: str = "US") -> dict:
     result["news_themes"] = group_by_theme(headlines)
 
     # ── Computed metrics ─────────────────────────────────────────────────────
+    # Defaults so a missing or malformed statement degrades to empty/NaN rather
+    # than crashing the page. Each compute_* is isolated in its own try/except so
+    # that one statement's row-count mismatch can't wipe out the other metrics.
+    result["margins"]            = pd.DataFrame()
+    result["balance_ratios"]     = pd.DataFrame()
+    result["earnings_quality"]   = pd.DataFrame()
+    result["beneish_mscore"]     = float("nan")
+    result["capital_allocation"] = pd.DataFrame()
+
     if not income.empty and len(income) >= 2:
-        result["margins"]            = compute_margins(income)
-        result["balance_ratios"]     = compute_balance_sheet_ratios(balance, income)
-        result["earnings_quality"]   = compute_earnings_quality(income, cashflow, balance)
-        result["beneish_mscore"]     = compute_beneish_mscore(income, balance, cashflow)
-        result["capital_allocation"] = compute_capital_allocation(income, cashflow, balance)
-    else:
-        result["margins"] = result["balance_ratios"] = result["earnings_quality"] = pd.DataFrame()
-        result["beneish_mscore"] = float("nan")
-        result["capital_allocation"] = pd.DataFrame()
+        try:
+            result["margins"] = compute_margins(income)
+        except Exception:
+            pass
+        try:
+            result["balance_ratios"] = compute_balance_sheet_ratios(balance, income)
+        except Exception:
+            pass
+        try:
+            result["earnings_quality"] = compute_earnings_quality(income, cashflow, balance)
+        except Exception:
+            pass
+        try:
+            result["beneish_mscore"] = compute_beneish_mscore(income, balance, cashflow)
+        except Exception:
+            pass
+        try:
+            result["capital_allocation"] = compute_capital_allocation(income, cashflow, balance)
+        except Exception:
+            pass
 
     # ── Rolling beta vs S&P 500 ──────────────────────────────────────────────
     try:

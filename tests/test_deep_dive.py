@@ -148,6 +148,18 @@ def test_beneish_clean_company_below_threshold():
     assert score < -2.22
 
 
+def test_beneish_clean_company_exact_score():
+    """Pin the EXACT M-score on the clean fixture, not just the threshold.
+
+    A regression in any of the 8 coefficients — or the DEPI orientation
+    (numerator/denominator swap) — would move this value while possibly
+    keeping it below -2.22, so the threshold test alone would miss it.
+    """
+    from layers.deep_dive import compute_beneish_mscore
+    score = compute_beneish_mscore(_income(), _balance(), _cashflow())
+    assert score == pytest.approx(-2.4103, abs=1e-4)
+
+
 def test_beneish_manipulator_above_threshold():
     from layers.deep_dive import compute_beneish_mscore
     income_bad = _income()
@@ -159,6 +171,50 @@ def test_beneish_manipulator_above_threshold():
     cashflow_bad.loc[0, "operatingCashFlow"] = 10_000_000
     score = compute_beneish_mscore(income_bad, balance_bad, cashflow_bad)
     assert score > -2.22
+
+
+def test_capital_allocation_exact_split():
+    """Pin the exact %FCF split for the clean fixture (2023 row).
+
+    CFO=72M; capex=25M, dividends=10M, buybacks=15M (all abs of negatives);
+    retained = (72−25−10−15).clip(lower=0) = 22M; total = 72M.
+    """
+    from layers.deep_dive import compute_capital_allocation
+    result = compute_capital_allocation(_income(), _cashflow(), _balance())
+    row = result.iloc[0]
+    assert row["capex_pct"]     == pytest.approx(25 / 72, rel=1e-6)
+    assert row["dividends_pct"] == pytest.approx(10 / 72, rel=1e-6)
+    assert row["buybacks_pct"]  == pytest.approx(15 / 72, rel=1e-6)
+    assert row["retained_pct"]  == pytest.approx(22 / 72, rel=1e-6)
+
+
+def test_capital_allocation_pct_columns_sum_to_one():
+    from layers.deep_dive import compute_capital_allocation
+    result = compute_capital_allocation(_income(), _cashflow(), _balance())
+    pct_cols = ["capex_pct", "dividends_pct", "buybacks_pct", "retained_pct"]
+    assert result[pct_cols].iloc[0].sum() == pytest.approx(1.0, abs=1e-9)
+
+
+def test_capital_allocation_fcf_abs_is_separate_notion():
+    """fcf_abs comes from cashflow['freeCashFlow'] (47M), a DIFFERENT notion of
+    free cash than the CFO-derived split total (72M) used for the percentages."""
+    from layers.deep_dive import compute_capital_allocation
+    result = compute_capital_allocation(_income(), _cashflow(), _balance())
+    assert result.loc[0, "fcf_abs"] == pytest.approx(47_000_000, rel=1e-9)
+
+
+def test_capital_allocation_retained_clips_at_zero():
+    """When capex+dividends+buybacks exceed CFO, retained clips to 0 (not negative),
+    and the remaining three percentages still sum to 1.0."""
+    from layers.deep_dive import compute_capital_allocation
+    cashflow = _cashflow()
+    # CFO=72M but capex alone 80M → cfo−capex−div−buyback < 0 → retained=0
+    cashflow.loc[0, "capitalExpenditure"] = -80_000_000
+    result = compute_capital_allocation(_income(), cashflow, _balance())
+    row = result.iloc[0]
+    assert row["retained_pct"] == pytest.approx(0.0, abs=1e-12)
+    pct_cols = ["capex_pct", "dividends_pct", "buybacks_pct", "retained_pct"]
+    assert result[pct_cols].iloc[0].sum() == pytest.approx(1.0, abs=1e-9)
 
 
 def test_balance_sheet_ratios_mismatched_row_counts():
