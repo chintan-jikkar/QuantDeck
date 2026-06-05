@@ -42,3 +42,75 @@ def run_engine(prices: pd.Series, signals: pd.Series, initial_capital: float = 1
         "positions": positions,
         "trades": trades,
     }
+
+
+def compute_cagr(equity_curve: pd.Series, periods_per_year: int = 252) -> float:
+    """Compound annual growth rate from an equity curve."""
+    eq = equity_curve.dropna()
+    if len(eq) < 2 or eq.iloc[0] <= 0:
+        return 0.0
+    total_return = eq.iloc[-1] / eq.iloc[0]
+    years = len(eq) / periods_per_year
+    if years <= 0:
+        return 0.0
+    return float(total_return ** (1 / years) - 1)
+
+
+def compute_sharpe(returns: pd.Series, rf: float = 0.0, periods_per_year: int = 252) -> float:
+    """Annualized Sharpe ratio. Returns 0.0 when volatility is zero."""
+    r = returns.dropna()
+    excess = r - rf / periods_per_year
+    std = excess.std(ddof=1)
+    if std == 0 or np.isnan(std):
+        return 0.0
+    return float(excess.mean() / std * np.sqrt(periods_per_year))
+
+
+def compute_sortino(returns: pd.Series, rf: float = 0.0, periods_per_year: int = 252) -> float:
+    """Annualized Sortino ratio (downside deviation only)."""
+    r = returns.dropna()
+    excess = r - rf / periods_per_year
+    downside = excess[excess < 0]
+    dd = downside.std(ddof=1)
+    if dd == 0 or np.isnan(dd):
+        return 0.0
+    return float(excess.mean() / dd * np.sqrt(periods_per_year))
+
+
+def compute_max_drawdown(equity_curve: pd.Series) -> float:
+    """Maximum peak-to-trough drawdown as a negative fraction (e.g. -0.25)."""
+    eq = equity_curve.dropna()
+    if eq.empty:
+        return 0.0
+    running_max = eq.cummax()
+    drawdown = eq / running_max - 1.0
+    return float(drawdown.min())
+
+
+def compute_tearsheet(equity_curve: pd.Series, returns: pd.Series,
+                      periods_per_year: int = 252) -> dict:
+    """Full performance summary used by the Backtester tearsheet panel."""
+    eq = equity_curve.dropna()
+    r = returns.dropna()
+    cagr = compute_cagr(eq, periods_per_year)
+    max_dd = compute_max_drawdown(eq)
+    wins = r[r > 0]
+    losses = r[r < 0]
+    win_rate = float(len(wins) / len(r)) if len(r) else 0.0
+    gross_profit = float(wins.sum())
+    gross_loss = float(-losses.sum())
+    profit_factor = float(gross_profit / gross_loss) if gross_loss > 0 else float("inf")
+    calmar = float(cagr / abs(max_dd)) if max_dd != 0 else float("inf")
+    return {
+        "cagr": cagr,
+        "sharpe": compute_sharpe(r, periods_per_year=periods_per_year),
+        "sortino": compute_sortino(r, periods_per_year=periods_per_year),
+        "max_drawdown": max_dd,
+        "win_rate": win_rate,
+        "profit_factor": profit_factor,
+        "calmar": calmar,
+        "total_return": float(eq.iloc[-1] / eq.iloc[0] - 1) if len(eq) >= 2 else 0.0,
+        "avg_win": float(wins.mean()) if len(wins) else 0.0,
+        "avg_loss": float(losses.mean()) if len(losses) else 0.0,
+        "n_periods": int(len(r)),
+    }

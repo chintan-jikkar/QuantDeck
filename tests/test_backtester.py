@@ -63,3 +63,55 @@ def test_run_engine_returns_trades_dataframe(trend_prices):
     result = run_engine(trend_prices, signals, initial_capital=10_000)
     assert "trades" in result
     assert isinstance(result["trades"], pd.DataFrame)
+
+
+def test_cagr_simple():
+    from layers.backtester import compute_cagr
+    eq = pd.Series(np.linspace(100, 200, 253))
+    cagr = compute_cagr(eq, periods_per_year=252)
+    assert cagr == pytest.approx(1.0, rel=0.05)
+
+
+def test_sharpe_zero_for_constant_returns():
+    from layers.backtester import compute_sharpe
+    rets = pd.Series([0.0] * 100)
+    assert compute_sharpe(rets) == 0.0
+
+
+def test_sharpe_positive_for_positive_drift():
+    from layers.backtester import compute_sharpe
+    rng = np.random.default_rng(0)
+    rets = pd.Series(rng.standard_normal(1000) * 0.01 + 0.001)
+    assert compute_sharpe(rets) > 0
+
+
+def test_max_drawdown_simple():
+    from layers.backtester import compute_max_drawdown
+    eq = pd.Series([100, 120, 90, 110])
+    assert compute_max_drawdown(eq) == pytest.approx(-0.25, rel=1e-4)
+
+
+def test_max_drawdown_monotonic_is_zero():
+    from layers.backtester import compute_max_drawdown
+    eq = pd.Series([100, 110, 120, 130])
+    assert compute_max_drawdown(eq) == pytest.approx(0.0, abs=1e-9)
+
+
+def test_compute_tearsheet_keys():
+    from layers.backtester import compute_tearsheet
+    rng = np.random.default_rng(1)
+    rets = pd.Series(rng.standard_normal(500) * 0.01 + 0.0005)
+    eq = (1 + rets).cumprod() * 10_000
+    ts = compute_tearsheet(eq, rets)
+    for k in ["cagr", "sharpe", "sortino", "max_drawdown", "win_rate",
+              "profit_factor", "calmar", "total_return"]:
+        assert k in ts
+
+
+def test_win_rate_bounds():
+    from layers.backtester import compute_tearsheet
+    rng = np.random.default_rng(3)
+    rets = pd.Series(rng.standard_normal(300) * 0.01)
+    eq = (1 + rets).cumprod() * 10_000
+    ts = compute_tearsheet(eq, rets)
+    assert 0.0 <= ts["win_rate"] <= 1.0
