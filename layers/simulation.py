@@ -64,6 +64,70 @@ def simulate_ou(prices: pd.Series, n_paths: int = 5000, horizon: int = 252,
     return paths
 
 
+def simulate_garch(prices: pd.Series, n_paths: int = 5000, horizon: int = 252,
+                   seed: int | None = None) -> np.ndarray:
+    """GARCH(1,1) with Student-t innovations — volatility clustering + fat tails.
+
+    Fits a GARCH(1,1)-t to historical % returns via the `arch` package, then
+    simulates forward. Returns (horizon+1, n_paths); row 0 = current price.
+    Falls back to GBM bootstrap if the GARCH fit fails to converge.
+    """
+    from arch import arch_model
+    rng = np.random.default_rng(seed)
+    rets_pct = prices.dropna().pct_change().dropna().to_numpy(dtype=float) * 100.0
+    start = float(prices.dropna().iloc[-1])
+
+    try:
+        am = arch_model(rets_pct, vol="GARCH", p=1, q=1, dist="t")
+        res = am.fit(disp="off")
+        params = res.params
+        omega = params["omega"]
+        alpha = params["alpha[1]"]
+        beta  = params["beta[1]"]
+        nu    = params["nu"]
+        mu    = params["mu"]
+        last_resid = res.resid[-1]
+        last_var   = res.conditional_volatility[-1] ** 2
+    except Exception:
+        return simulate_gbm(prices, n_paths=n_paths, horizon=horizon, seed=seed)
+
+    t_scale = np.sqrt(nu / (nu - 2)) if nu > 2 else 1.0
+    log_paths = np.zeros((horizon + 1, n_paths))
+    var_t = np.full(n_paths, last_var)
+    resid_t = np.full(n_paths, last_resid)
+    for t in range(1, horizon + 1):
+        var_t = omega + alpha * resid_t ** 2 + beta * var_t
+        z = rng.standard_t(nu, size=n_paths) / t_scale
+        resid_t = np.sqrt(var_t) * z
+        ret_pct = mu + resid_t
+        log_paths[t, :] = log_paths[t - 1, :] + np.log1p(ret_pct / 100.0)
+    return start * np.exp(log_paths)
+
+
+def compute_risk_metrics(paths: np.ndarray, start_price: float) -> dict:
+    """Risk metrics from a simulated path matrix (rows=time, cols=paths)."""
+    terminal = paths[-1, :]
+    returns = terminal / start_price - 1.0
+    var_95 = float(np.percentile(returns, 5))
+    cvar_95 = float(returns[returns <= var_95].mean()) if (returns <= var_95).any() else var_95
+    return {
+        "var_95": var_95,
+        "cvar_95": cvar_95,
+        "prob_profit": float((terminal > start_price).mean()),
+        "expected_return": float(np.median(returns)),
+        "p50_price": float(np.median(terminal)),
+        "mean_price": float(np.mean(terminal)),
+    }
+
+
+def compute_percentile_bands(paths: np.ndarray,
+                             percentiles: list[int] | None = None) -> pd.DataFrame:
+    """Per-timestep percentile bands across all paths. Columns: p{n}."""
+    percentiles = percentiles or [10, 25, 50, 75, 90]
+    data = {f"p{p}": np.percentile(paths, p, axis=1) for p in percentiles}
+    return pd.DataFrame(data)
+
+
 def run_simulation(
     ticker: str,
     model: str = "gbm",

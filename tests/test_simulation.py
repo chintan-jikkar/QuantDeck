@@ -80,3 +80,59 @@ def test_calibrate_ou_recovers_parameters():
     params = calibrate_ou(series)
     assert params["theta"] > 0
     assert abs(params["mu"] - mu_true) < 5.0
+
+
+def test_garch_paths_shape(price_series):
+    from layers.simulation import simulate_garch
+    paths = simulate_garch(price_series, n_paths=100, horizon=20, seed=1)
+    assert paths.shape == (21, 100)
+
+
+def test_garch_paths_start_at_current_price(price_series):
+    from layers.simulation import simulate_garch
+    paths = simulate_garch(price_series, n_paths=50, horizon=10, seed=1)
+    assert np.allclose(paths[0, :], float(price_series.iloc[-1]))
+
+
+def test_garch_paths_positive(price_series):
+    from layers.simulation import simulate_garch
+    paths = simulate_garch(price_series, n_paths=50, horizon=10, seed=1)
+    assert (paths > 0).all()
+
+
+def test_compute_risk_metrics_keys():
+    from layers.simulation import compute_risk_metrics
+    rng = np.random.default_rng(0)
+    paths = 100 * np.exp(np.cumsum(rng.standard_normal((30, 1000)) * 0.01, axis=0))
+    paths = np.vstack([np.full((1, 1000), 100.0), paths])
+    m = compute_risk_metrics(paths, start_price=100.0)
+    for k in ["var_95", "cvar_95", "prob_profit", "expected_return", "p50_price"]:
+        assert k in m
+
+
+def test_var_cvar_ordering():
+    from layers.simulation import compute_risk_metrics
+    rng = np.random.default_rng(2)
+    term = 100 * np.exp(rng.standard_normal((1, 5000)) * 0.2)
+    paths = np.vstack([np.full((1, 5000), 100.0), term])
+    m = compute_risk_metrics(paths, start_price=100.0)
+    assert m["cvar_95"] <= m["var_95"]
+
+
+def test_prob_profit_bounds():
+    from layers.simulation import compute_risk_metrics
+    rng = np.random.default_rng(5)
+    paths = 100 * np.exp(np.cumsum(rng.standard_normal((30, 1000)) * 0.01, axis=0))
+    paths = np.vstack([np.full((1, 1000), 100.0), paths])
+    m = compute_risk_metrics(paths, start_price=100.0)
+    assert 0.0 <= m["prob_profit"] <= 1.0
+
+
+def test_percentile_bands_shape():
+    from layers.simulation import compute_percentile_bands
+    rng = np.random.default_rng(0)
+    paths = 100 * np.exp(np.cumsum(rng.standard_normal((30, 500)) * 0.01, axis=0))
+    paths = np.vstack([np.full((1, 500), 100.0), paths])
+    bands = compute_percentile_bands(paths, percentiles=[10, 25, 50, 75, 90])
+    assert bands.shape == (31, 5)
+    assert bands.iloc[-1]["p10"] <= bands.iloc[-1]["p50"] <= bands.iloc[-1]["p90"]
