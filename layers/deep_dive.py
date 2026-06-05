@@ -31,13 +31,22 @@ def compute_balance_sheet_ratios(
     balance: pd.DataFrame,
     income: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Return DataFrame with debt_equity, current_ratio, interest_coverage per year."""
+    """Return DataFrame with debt_equity, current_ratio, interest_coverage per year.
+
+    Interest coverage joins income to balance on the shared `date` key so that a
+    mismatch in row counts between the two statements (FMP can return different
+    history depth per statement) degrades to NaN for unmatched years rather than
+    raising a length-mismatch error.
+    """
     df = balance.copy()
     df["debt_equity"] = df["totalDebt"] / df["totalEquity"]
     df["current_ratio"] = df["totalCurrentAssets"] / df["totalCurrentLiabilities"]
-    df["interest_coverage"] = (
-        income["operatingIncome"].values / income["interestExpense"].values
-    )
+
+    income_by_date = income.set_index("date")
+    op_income = df["date"].map(income_by_date["operatingIncome"])
+    interest  = df["date"].map(income_by_date["interestExpense"])
+    df["interest_coverage"] = op_income.values / interest.values
+
     return df[["date", "debt_equity", "current_ratio", "interest_coverage"]]
 
 

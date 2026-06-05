@@ -159,3 +159,18 @@ def test_beneish_manipulator_above_threshold():
     cashflow_bad.loc[0, "operatingCashFlow"] = 10_000_000
     score = compute_beneish_mscore(income_bad, balance_bad, cashflow_bad)
     assert score > -2.22
+
+
+def test_balance_sheet_ratios_mismatched_row_counts():
+    """FMP can return a different number of years per statement.
+
+    Interest coverage should join on date and degrade to NaN for unmatched
+    years rather than raising a length-mismatch error.
+    """
+    from layers.deep_dive import compute_balance_sheet_ratios
+    balance = _balance()                   # 2 years: 2023, 2022
+    income_one_year = _income().iloc[[0]]  # only 2023
+    result = compute_balance_sheet_ratios(balance, income_one_year)
+    # 2023 row matches → 80/5 = 16; 2022 row has no income match → NaN
+    assert result.loc[0, "interest_coverage"] == pytest.approx(16.0, rel=1e-4)
+    assert pd.isna(result.loc[1, "interest_coverage"])
