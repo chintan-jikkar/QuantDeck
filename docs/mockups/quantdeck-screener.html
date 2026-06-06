@@ -196,11 +196,12 @@ tbody tr { transition: background .12s; }
 tbody tr:hover { background: var(--panel-2); }
 .tk { display: flex; align-items: center; gap: 11px; }
 .tk .badge {
-  width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
+  width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
   font-weight: 700; font-size: 12px; color: #fff; flex-shrink: 0;
-  background: #fff; overflow: hidden; padding: 5px;
+  background: #fff; overflow: hidden; padding: 4px;
   box-shadow: inset 0 0 0 1px var(--border);
 }
+.tk .badge.dark { background: #14182a; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); }
 .tk .badge img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .tk .nm { font-weight: 600; }
 .tk .co { color: var(--text-dim); font-size: 11.5px; }
@@ -230,8 +231,17 @@ td.num { text-align: right; }
 .filters .frow:last-child { border-bottom: 0; }
 .filters .fk { color: var(--text-muted); font-size: 12.5px; }
 .filters .fv { font-variant-numeric: tabular-nums; font-size: 12.5px; font-weight: 500; }
-.track { height: 4px; background: var(--panel-2); border-radius: 4px; margin-top: 7px; position: relative; }
-.track .fill { position: absolute; height: 100%; border-radius: 4px; background: var(--violet); }
+.track {
+  height: 9px; border-radius: 99px; margin-top: 12px; position: relative;
+  background: linear-gradient(90deg, #4F6BFF 0%, #7C5CFF 48%, #C95CC8 100%);
+  box-shadow: 0 0 14px rgba(124,92,255,0.30);
+}
+.track .unfill { position: absolute; top: 0; right: 0; height: 100%; background: var(--panel-2); border-radius: 0 99px 99px 0; }
+.track .knob {
+  position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%;
+  transform: translate(-50%, -50%); background: #fff;
+  box-shadow: 0 2px 7px rgba(0,0,0,0.5), 0 0 0 4px rgba(124,92,255,0.28);
+}
 .chips { display: flex; flex-wrap: wrap; gap: 7px; padding: 0 18px 16px; }
 .chip { font-size: 11.5px; padding: 4px 10px; border-radius: 20px; background: var(--panel-2); color: var(--text-muted); border: 1px solid var(--border); }
 .chip b { color: var(--text); font-weight: 600; }
@@ -363,11 +373,11 @@ td.num { text-align: right; }
             <div class="card-head"><div class="t">Active Filters</div><div class="meta">Balanced</div></div>
             <div class="filters">
               <div class="frow"><span class="fk">Max P/E</span><span class="fv">25</span></div>
-              <div class="track"><div class="fill" style="width:42%"></div></div>
+              <div class="track"><div class="unfill" style="left:42%"></div><div class="knob" style="left:42%"></div></div>
               <div class="frow" style="margin-top:6px"><span class="fk">Min ROE</span><span class="fv">10%</span></div>
-              <div class="track"><div class="fill" style="width:20%"></div></div>
+              <div class="track"><div class="unfill" style="left:20%"></div><div class="knob" style="left:20%"></div></div>
               <div class="frow" style="margin-top:6px"><span class="fk">Max Debt/Equity</span><span class="fv">1.0</span></div>
-              <div class="track"><div class="fill" style="width:33%"></div></div>
+              <div class="track"><div class="unfill" style="left:33%"></div><div class="knob" style="left:33%"></div></div>
             </div>
             <div class="chips">
               <span class="chip">RSI <b>0–100</b></span>
@@ -395,12 +405,12 @@ const rows = [
   { tk:'JPM',  co:'JPMorgan Chase',    c:'#1a4f8b', score:71, pe:12.1, roe:.17, rg:.043, rsi:58, d1:0.67,  sig:'strong', mc:34, star:0 },
   { tk:'CAT',  co:'Caterpillar',       c:'#ffcd11', score:66, pe:16.8, roe:.48, rg:.031, rsi:49, d1:0.12,  sig:'neutral',mc:18, star:0 },
   { tk:'HD',   co:'Home Depot',        c:'#f96302', score:63, pe:23.5, roe:.39, rg:.024, rsi:47, d1:-0.55, sig:'neutral',mc:24, star:0 },
-  { tk:'DIS',  co:'Walt Disney',       c:'#113ccf', score:58, pe:21.0, roe:.09, rg:.018, rsi:44, d1:0.28,  sig:'neutral',mc:16, star:0 },
+  { tk:'DIS',  co:'Walt Disney',       c:'#113ccf', score:58, pe:21.0, roe:.09, rg:.018, rsi:44, d1:0.28,  sig:'neutral',mc:16, star:0, light:1 },
   { tk:'CVX',  co:'Chevron',           c:'#0066b2', score:54, pe:14.2, roe:.13, rg:-.012,rsi:41, d1:-0.21, sig:'neutral',mc:22, star:0 },
   { tk:'KO',   co:'Coca-Cola',         c:'#f40009', score:49, pe:24.8, roe:.40, rg:.007, rsi:46, d1:0.05,  sig:'neutral',mc:21, star:0 },
-  { tk:'BA',   co:'Boeing',            c:'#1d439c', score:44, pe:0,    roe:-.20,rg:-.041,rsi:38, d1:-1.12, sig:'weak',   mc:9,  star:0 },
+  { tk:'BA',   co:'Boeing',            c:'#1d439c', score:44, pe:0,    roe:-.20,rg:-.041,rsi:38, d1:-1.12, sig:'weak',   mc:9,  star:0, light:1 },
   { tk:'VZ',   co:'Verizon',           c:'#cd040b', score:42, pe:9.1,  roe:.21, rg:-.028,rsi:35, d1:-0.42, sig:'weak',   mc:13, star:0 },
-  { tk:'INTC', co:'Intel Corp',        c:'#0071c5', score:41, pe:0,    roe:-.05,rg:-.067,rsi:33, d1:-0.88, sig:'weak',   mc:8,  star:0 },
+  { tk:'INTC', co:'Intel Corp',        c:'#0071c5', score:41, pe:0,    roe:-.05,rg:-.067,rsi:33, d1:-0.88, sig:'weak',   mc:8,  star:0, light:1 },
 ];
 function scoreColor(s){
   // red -> gold -> green
@@ -417,7 +427,7 @@ function render(){
     const [fg,bg] = scoreColor(r.score);
     return `<tr>
       <td><span class="star ${r.star?'on':''}">${r.star?'★':'☆'}</span></td>
-      <td><div class="tk"><div class="badge"><img src="https://financialmodelingprep.com/image-stock/${r.tk}.png" alt="${r.tk}" onerror="this.parentElement.style.background='${r.c}';this.parentElement.style.padding='0';this.parentElement.style.color='#fff';this.parentElement.style.boxShadow='none';this.parentElement.textContent='${r.tk.slice(0,2)}';"></div>
+      <td><div class="tk"><div class="badge ${r.light?'dark':''}"><img src="https://financialmodelingprep.com/image-stock/${r.tk}.png" alt="${r.tk}" onerror="this.parentElement.style.background='${r.c}';this.parentElement.style.padding='0';this.parentElement.style.color='#fff';this.parentElement.style.boxShadow='none';this.parentElement.textContent='${r.tk.slice(0,2)}';"></div>
         <div><div class="nm">${r.tk}</div><div class="co">${r.co}</div></div></div></td>
       <td class="num"><span class="score mono" style="color:${fg};background:${bg}">${r.score}</span></td>
       <td class="num mono">${r.pe? r.pe.toFixed(1) : '—'}</td>
