@@ -170,6 +170,53 @@ def compute_capital_allocation(
     return df.reset_index(drop=True)
 
 
+# ── FX Market Drivers ─────────────────────────────────────────────────────────
+
+def run_fx_market_drivers(ticker: str) -> dict:
+    """Compute market driver metrics for an FX pair.
+
+    Returns a dict consumed by Deep Dive Tab 2 when asset_type == "fx":
+      prices — OHLCV DataFrame (2 years)
+      momentum_12_1 — 12-1 month price return (float, NaN if history <252d)
+      realized_vol_30d — 30-day realized vol annualized (float)
+      rsi — current RSI(14)
+      pair — display string e.g. "EURUSD"
+      asset_type — "fx"
+    """
+    from data.prices import compute_rsi
+
+    prices = fetch_prices(ticker, period="2y")
+    close = prices["Close"]
+    result: dict = {"prices": prices, "asset_type": "fx"}
+    result["pair"] = ticker.upper().replace("=X", "")
+
+    # 12-1 momentum: price 21 bars ago vs price 252 bars ago
+    n = len(close)
+    try:
+        past = float(close.iloc[-22]) if n >= 22 else float("nan")
+        ref  = float(close.iloc[max(0, n - 252)]) if n >= 30 else float("nan")
+        result["momentum_12_1"] = (past / ref - 1.0) if (ref and ref == ref and past == past) else float("nan")
+    except Exception:
+        result["momentum_12_1"] = float("nan")
+
+    # 30-day realized vol (annualized)
+    try:
+        rets = close.pct_change().dropna()
+        result["realized_vol_30d"] = float(rets.iloc[-30:].std() * (252 ** 0.5)) if len(rets) >= 30 else float("nan")
+    except Exception:
+        result["realized_vol_30d"] = float("nan")
+
+    # RSI(14)
+    try:
+        rsi_series = compute_rsi(close)
+        valid = rsi_series.dropna()
+        result["rsi"] = float(valid.iloc[-1]) if not valid.empty else float("nan")
+    except Exception:
+        result["rsi"] = float("nan")
+
+    return result
+
+
 # ── Main entry point (data assembly in Task 3) ────────────────────────────────
 
 def run_deep_dive(ticker: str, country: str = "US") -> dict:

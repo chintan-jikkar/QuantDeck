@@ -230,3 +230,47 @@ def test_balance_sheet_ratios_mismatched_row_counts():
     # 2023 row matches → 80/5 = 16; 2022 row has no income match → NaN
     assert result.loc[0, "interest_coverage"] == pytest.approx(16.0, rel=1e-4)
     assert pd.isna(result.loc[1, "interest_coverage"])
+
+
+# ── FX Market Drivers ─────────────────────────────────────────────────────────
+
+from unittest.mock import patch as _patch
+
+
+def _fx_prices(n=300):
+    idx = pd.date_range("2022-01-01", periods=n, freq="B")
+    rng = np.random.default_rng(7)
+    close = 1.10 * (1 + rng.standard_normal(n) * 0.005).cumprod()
+    return pd.DataFrame({"Open": close * 0.999, "High": close * 1.001,
+                          "Low": close * 0.998, "Close": close,
+                          "Volume": np.ones(n)}, index=idx)
+
+
+def test_run_fx_market_drivers_required_keys():
+    with _patch("layers.deep_dive.fetch_prices", return_value=_fx_prices()):
+        from layers.deep_dive import run_fx_market_drivers
+        result = run_fx_market_drivers("EURUSD=X")
+    for k in ["prices", "momentum_12_1", "realized_vol_30d", "rsi", "asset_type", "pair"]:
+        assert k in result
+
+
+def test_run_fx_market_drivers_asset_type_is_fx():
+    with _patch("layers.deep_dive.fetch_prices", return_value=_fx_prices()):
+        from layers.deep_dive import run_fx_market_drivers
+        result = run_fx_market_drivers("GBPUSD=X")
+    assert result["asset_type"] == "fx"
+
+
+def test_run_fx_realized_vol_is_positive():
+    with _patch("layers.deep_dive.fetch_prices", return_value=_fx_prices()):
+        from layers.deep_dive import run_fx_market_drivers
+        result = run_fx_market_drivers("EURUSD=X")
+    assert result["realized_vol_30d"] > 0
+
+
+def test_run_fx_rsi_in_valid_range():
+    with _patch("layers.deep_dive.fetch_prices", return_value=_fx_prices()):
+        from layers.deep_dive import run_fx_market_drivers
+        result = run_fx_market_drivers("EURUSD=X")
+    rsi = result["rsi"]
+    assert 0 <= rsi <= 100
