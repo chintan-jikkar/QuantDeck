@@ -5,7 +5,7 @@ from data.fundamentals import (
     fetch_income_statement, fetch_balance_sheet, fetch_cash_flow,
     fetch_key_metrics, fetch_peers,
 )
-from data.prices import fetch_prices, compute_returns, compute_rolling_beta, detect_asset_type
+from data.prices import fetch_prices, compute_returns, compute_rolling_beta, detect_asset_type, market_index_for_country
 from data.macro import fetch_fred_series
 from config import COUNTRY_RISK
 
@@ -140,20 +140,33 @@ def _derive_wacc_inputs(
     balance: pd.DataFrame,
     country: str,
 ) -> dict:
-    """Derive WACC inputs from FMP statements + FRED risk-free + config risk premia."""
+    """Derive WACC inputs from FMP statements + FRED/yfinance risk-free + config risk premia.
+
+    For US, uses DGS10 (FRED) for Rf and ^GSPC for beta — preserving test compatibility.
+    For non-US, uses the country's rf_ticker from COUNTRY_RISK (FRED series) and
+    the country's local market index for beta calculation.
+    """
     cr = COUNTRY_RISK.get(country, COUNTRY_RISK["US"])
     erp = cr["erp"]
     crp = cr["crp"]
+    rf_ticker = cr["rf_ticker"]
 
+    # Risk-free rate: US uses DGS10 (preserves existing test mocking);
+    # non-US uses the country's FRED series from COUNTRY_RISK.
     try:
-        rf_series = fetch_fred_series("DGS10", years=1)
+        if country == "US":
+            rf_series = fetch_fred_series("DGS10", years=1)
+        else:
+            rf_series = fetch_fred_series(rf_ticker, years=1)
         rf = float(rf_series.iloc[-1]) / 100
     except Exception:
         rf = 0.04
 
+    # Beta vs local market index (country-correct for non-US equities)
+    local_index = market_index_for_country(country)
     try:
         prices = fetch_prices(ticker, period="5y")
-        market = fetch_prices("^GSPC", period="5y")
+        market = fetch_prices(local_index, period="5y")
         sr = compute_returns(prices)
         mr = compute_returns(market)
         idx = sr.index.intersection(mr.index)

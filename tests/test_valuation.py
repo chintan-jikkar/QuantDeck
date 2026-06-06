@@ -270,3 +270,50 @@ def test_run_valuation_not_applicable_returns_immediately_no_network():
     from layers.valuation import run_valuation
     result = run_valuation("NZDUSD=X")
     assert result.get("applicable") is False
+
+
+def test_derive_wacc_inputs_uk_uses_local_rf_and_crp():
+    """For UK: rf from FRED IRLTLT01GBM156N; crp=0.0051; local index=^FTSE.
+
+    Hand-computed:
+      rf=0.045; beta=0.9; erp=0.0472; crp=0.0051
+      ke = 0.045 + 0.9×0.0472 + 0.0051 = 0.09258
+    """
+    import layers.valuation as val
+    income = pd.DataFrame([{
+        "interestExpense": 5_000_000,
+        "incomeTaxExpense": 15_000_000,
+        "incomeBeforeTax": 60_000_000,
+    }])
+    balance = pd.DataFrame([{
+        "totalDebt": 100_000_000,
+        "totalEquity": 300_000_000,
+    }])
+    patches = _patch_wacc_data(pd.Series([4.5]), pd.Series([0.9]))
+    with patches[0], patches[1], patches[2]:
+        out = val._derive_wacc_inputs("BP.L", income, balance, "UK")
+
+    assert out["rf"]  == pytest.approx(0.045, rel=1e-9)
+    assert out["crp"] == pytest.approx(0.0051, rel=1e-9)
+    assert out["ke"]  == pytest.approx(0.09258, rel=1e-5)
+
+
+def test_derive_wacc_inputs_india_uses_high_crp():
+    """India CRP = 0.0234 — a visibly larger ke bump than US."""
+    import layers.valuation as val
+    income = pd.DataFrame([{
+        "interestExpense": 5_000_000,
+        "incomeTaxExpense": 15_000_000,
+        "incomeBeforeTax": 60_000_000,
+    }])
+    balance = pd.DataFrame([{
+        "totalDebt": 100_000_000,
+        "totalEquity": 300_000_000,
+    }])
+    patches = _patch_wacc_data(pd.Series([7.0]), pd.Series([1.1]))
+    with patches[0], patches[1], patches[2]:
+        out = val._derive_wacc_inputs("RELIANCE.NS", income, balance, "India")
+
+    # ke = 0.07 + 1.1×0.0472 + 0.0234 = 0.07 + 0.05192 + 0.0234 = 0.14532
+    assert out["crp"] == pytest.approx(0.0234, rel=1e-9)
+    assert out["ke"]  == pytest.approx(0.14532, rel=1e-5)
