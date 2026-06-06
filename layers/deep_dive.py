@@ -217,6 +217,61 @@ def run_fx_market_drivers(ticker: str) -> dict:
     return result
 
 
+# ── Commodity Market Drivers ──────────────────────────────────────────────────
+
+def run_commodity_market_drivers(ticker: str) -> dict:
+    """Compute market driver metrics for a commodity futures ticker.
+
+    Returns a dict consumed by Deep Dive Tab 2 when asset_type == "commodity":
+      prices — OHLCV DataFrame (5 years)
+      momentum_12_1 — 12-1 month price return
+      realized_vol_30d — 30-day realized vol annualized
+      rsi — current RSI(14)
+      price_vs_5y_mean_pct — % deviation of current price from 5Y rolling mean
+        (positive = above average = historically expensive)
+      asset_type — "commodity"
+    """
+    from data.prices import compute_rsi
+
+    prices = fetch_prices(ticker, period="5y")
+    close = prices["Close"]
+    result: dict = {"prices": prices, "asset_type": "commodity"}
+
+    # 12-1 momentum
+    n = len(close)
+    try:
+        past = float(close.iloc[-22]) if n >= 22 else float("nan")
+        ref  = float(close.iloc[max(0, n - 253)]) if n >= 30 else float("nan")
+        result["momentum_12_1"] = (past / ref - 1.0) if (ref and ref == ref and past == past) else float("nan")
+    except Exception:
+        result["momentum_12_1"] = float("nan")
+
+    # 30-day realized vol (annualized)
+    try:
+        rets = close.pct_change().dropna()
+        result["realized_vol_30d"] = float(rets.iloc[-30:].std() * (252 ** 0.5)) if len(rets) >= 30 else float("nan")
+    except Exception:
+        result["realized_vol_30d"] = float("nan")
+
+    # RSI(14)
+    try:
+        rsi_series = compute_rsi(close)
+        valid = rsi_series.dropna()
+        result["rsi"] = float(valid.iloc[-1]) if not valid.empty else float("nan")
+    except Exception:
+        result["rsi"] = float("nan")
+
+    # Price vs 5Y rolling mean (measures whether commodity is historically rich/cheap)
+    try:
+        mean_5y = float(close.mean())
+        last    = float(close.iloc[-1])
+        result["price_vs_5y_mean_pct"] = (last / mean_5y - 1.0) if mean_5y != 0 else float("nan")
+    except Exception:
+        result["price_vs_5y_mean_pct"] = float("nan")
+
+    return result
+
+
 # ── Main entry point (data assembly in Task 3) ────────────────────────────────
 
 def run_deep_dive(ticker: str, country: str = "US") -> dict:

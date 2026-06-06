@@ -274,3 +274,44 @@ def test_run_fx_rsi_in_valid_range():
         result = run_fx_market_drivers("EURUSD=X")
     rsi = result["rsi"]
     assert 0 <= rsi <= 100
+
+
+# ── Commodity Market Drivers ──────────────────────────────────────────────────
+
+def _commodity_prices(n=600):
+    idx = pd.date_range("2021-01-01", periods=n, freq="B")
+    rng = np.random.default_rng(3)
+    close = 1800 * (1 + rng.standard_normal(n) * 0.01).cumprod()
+    return pd.DataFrame({"Open": close * 0.999, "High": close * 1.001,
+                          "Low": close * 0.998, "Close": close,
+                          "Volume": np.ones(n)}, index=idx)
+
+
+def test_run_commodity_market_drivers_required_keys():
+    with _patch("layers.deep_dive.fetch_prices", return_value=_commodity_prices()):
+        from layers.deep_dive import run_commodity_market_drivers
+        result = run_commodity_market_drivers("GC=F")
+    for k in ["prices", "momentum_12_1", "realized_vol_30d", "rsi",
+              "price_vs_5y_mean_pct", "asset_type"]:
+        assert k in result
+
+
+def test_run_commodity_asset_type():
+    with _patch("layers.deep_dive.fetch_prices", return_value=_commodity_prices()):
+        from layers.deep_dive import run_commodity_market_drivers
+        result = run_commodity_market_drivers("GC=F")
+    assert result["asset_type"] == "commodity"
+
+
+def test_run_commodity_vol_positive():
+    with _patch("layers.deep_dive.fetch_prices", return_value=_commodity_prices()):
+        from layers.deep_dive import run_commodity_market_drivers
+        result = run_commodity_market_drivers("CL=F")
+    assert result["realized_vol_30d"] > 0
+
+
+def test_run_commodity_price_vs_5y_mean_is_float():
+    with _patch("layers.deep_dive.fetch_prices", return_value=_commodity_prices()):
+        from layers.deep_dive import run_commodity_market_drivers
+        result = run_commodity_market_drivers("GC=F")
+    assert isinstance(result["price_vs_5y_mean_pct"], float)
