@@ -93,3 +93,60 @@ def test_compute_rolling_beta_self_is_one(sample_prices):
     valid = beta.dropna()
     assert len(valid) > 0
     assert abs(valid.iloc[-1] - 1.0) < 0.001
+
+
+# ── Asset-type detection ───────────────────────────────────────────────────────
+
+def test_detect_asset_type_fx():
+    from data.prices import detect_asset_type
+    assert detect_asset_type("EURUSD=X") == "fx"
+    assert detect_asset_type("USDINR=X") == "fx"
+
+
+def test_detect_asset_type_commodity():
+    from data.prices import detect_asset_type
+    assert detect_asset_type("GC=F") == "commodity"
+    assert detect_asset_type("CL=F") == "commodity"
+
+
+def test_detect_asset_type_equity_us():
+    from data.prices import detect_asset_type
+    assert detect_asset_type("AAPL") == "equity"
+    assert detect_asset_type("MSFT") == "equity"
+
+
+def test_detect_asset_type_equity_intl():
+    from data.prices import detect_asset_type
+    assert detect_asset_type("BP.L") == "equity"
+    assert detect_asset_type("SIE.DE") == "equity"
+
+
+def test_detect_asset_type_case_insensitive():
+    from data.prices import detect_asset_type
+    assert detect_asset_type("eurusd=x") == "fx"
+    assert detect_asset_type("gc=f") == "commodity"
+
+
+def test_get_benchmark_fx_returns_uup():
+    from data.prices import get_benchmark
+    assert get_benchmark("EURUSD=X") == "UUP"
+
+
+def test_get_benchmark_commodity_returns_djp():
+    from data.prices import get_benchmark
+    assert get_benchmark("GC=F") == "DJP"
+
+
+def test_get_benchmark_us_equity_returns_spy():
+    from data.prices import get_benchmark
+    assert get_benchmark("AAPL") == "SPY"
+
+
+def test_get_benchmark_uk_equity_returns_ewu():
+    from data.prices import get_benchmark
+    assert get_benchmark("BP.L") == "EWU"
+
+
+def test_get_benchmark_japan_equity_returns_ewj():
+    from data.prices import get_benchmark
+    assert get_benchmark("7203.T") == "EWJ"

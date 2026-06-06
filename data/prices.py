@@ -66,3 +66,39 @@ def compute_rolling_beta(
     cov = stock_returns.rolling(window).cov(market_returns)
     var = market_returns.rolling(window).var()
     return cov / var
+
+
+def detect_asset_type(ticker: str) -> str:
+    """Detect asset class from yfinance ticker format.
+
+    =X suffix → "fx"; =F suffix → "commodity"; else → "equity".
+    Case-insensitive.
+    """
+    t = ticker.upper().strip()
+    if t.endswith("=X"):
+        return "fx"
+    if t.endswith("=F"):
+        return "commodity"
+    return "equity"
+
+
+def get_benchmark(ticker: str) -> str:
+    """Return the benchmark ETF ticker for a given ticker based on asset type.
+
+    FX → UUP (US Dollar Index ETF).
+    Commodity → DJP (broad commodity ETF).
+    Equity → looks up the universe benchmark by ticker suffix; defaults to SPY.
+    """
+    from config import FX_BENCHMARK, COMMODITY_BENCHMARK, EQUITY_UNIVERSES
+    asset_type = detect_asset_type(ticker)
+    if asset_type == "fx":
+        return FX_BENCHMARK
+    if asset_type == "commodity":
+        return COMMODITY_BENCHMARK
+    # Equity: match suffix to a universe entry
+    suffix_map = {info["suffix"]: info["benchmark"] for info in EQUITY_UNIVERSES.values() if info["suffix"]}
+    t = ticker.upper()
+    for suffix, benchmark in suffix_map.items():
+        if t.endswith(suffix.upper()):
+            return benchmark
+    return "SPY"
