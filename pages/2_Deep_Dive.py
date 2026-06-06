@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
+from streamlit_autorefresh import st_autorefresh
 from utils.formatting import fmt_number, fmt_percent, fmt_large_number, fmt_currency
 from utils.charts import candlestick, line, heatmap
 
@@ -52,10 +53,18 @@ curve    = data.get("yield_curve", pd.Series(dtype=float))
 
 # ── Price chart ───────────────────────────────────────────────────────────────
 st.subheader(f"{ticker} — Price")
-period_map = {"1M": 21, "3M": 63, "6M": 126, "1Y": 252, "3Y": 756, "5Y": 1260}
-period = st.radio("Range", list(period_map.keys()), index=3, horizontal=True)
+period_map = {"1D": 1, "1M": 21, "3M": 63, "6M": 126, "1Y": 252, "3Y": 756, "5Y": 1260}
+period = st.radio("Range", list(period_map.keys()), index=4, horizontal=True)
 n_bars = period_map[period]
-price_slice = prices.tail(n_bars) if len(prices) > n_bars else prices
+
+_is_live = (period == "1D")
+if _is_live:
+    st_autorefresh(interval=60_000, key="deep_dive_refresh")
+    st.markdown("🔴 **Live** (refreshes every 60s · 15-min delay on free tier)")
+    intraday = data.get("intraday")
+    price_slice = intraday if (intraday is not None and not intraday.empty) else prices.tail(78)
+else:
+    price_slice = prices.tail(n_bars) if len(prices) > n_bars else prices
 
 c50, c200, cbb = st.columns(3)
 show_sma50  = c50.checkbox("50 SMA", value=True)
