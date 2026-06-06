@@ -80,3 +80,33 @@ def test_group_by_theme_ai_keyword():
     headlines = [{"title": "AI chip demand surges", "url": "http://a.com"}]
     grouped = group_by_theme(headlines)
     assert any("AI" in theme or "Tech" in theme for theme in grouped.keys())
+
+
+# ── suggest_tickers_for_themes ─────────────────────────────────────────────────
+
+def _finance_headlines():
+    return [
+        {"title": "AI chip stocks surge as Nvidia beats earnings", "url": "", "publishedAt": ""},
+        {"title": "Federal Reserve signals rate hold for longer", "url": "", "publishedAt": ""},
+        {"title": "Oil prices fall on OPEC+ production concerns", "url": "", "publishedAt": ""},
+    ]
+
+
+def test_suggest_tickers_for_themes_returns_list():
+    from data.news import group_by_theme, suggest_tickers_for_themes
+    grouped = group_by_theme(_finance_headlines())
+    tickers = suggest_tickers_for_themes(grouped)
+    assert isinstance(tickers, list)
+    assert len(tickers) > 0
+
+
+def test_suggest_tickers_no_duplicate():
+    from data.news import group_by_theme, suggest_tickers_for_themes
+    grouped = group_by_theme(_finance_headlines())
+    tickers = suggest_tickers_for_themes(grouped)
+    assert len(tickers) == len(set(tickers))
+
+
+def test_suggest_tickers_unknown_theme_returns_empty():
+    from data.news import suggest_tickers_for_themes
+    assert suggest_tickers_for_themes({"Narnia Finance": []}) == []

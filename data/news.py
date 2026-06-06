@@ -74,3 +74,30 @@ def group_by_theme(headlines: list[dict]) -> dict[str, list[dict]]:
             if any(kw.lower() in title_lower for kw in keywords):
                 grouped.setdefault(theme, []).append(headline)
     return grouped
+
+
+THEME_TICKERS: dict[str, list[str]] = {
+    "AI & Technology":                  ["NVDA", "MSFT", "GOOGL", "AMD", "TSM", "AMAT", "ASML"],
+    "Energy & Oil":                     ["XOM", "CVX", "COP", "SLB", "CL=F", "BZ=F"],
+    "Interest Rates & Monetary Policy": ["TLT", "IEF", "SHY", "GLD", "JPM", "BAC"],
+    "Emerging Markets":                 ["EEM", "FXI", "INDY", "EWZ", "MCHI"],
+    "Healthcare & Pharma":              ["JNJ", "PFE", "MRK", "ABBV", "UNH", "AMGN"],
+    "Financial Services":               ["JPM", "BAC", "GS", "MS", "BLK", "V", "MA"],
+    "Commodities & Metals":             ["GLD", "SLV", "GC=F", "SI=F", "HG=F", "CPER"],
+}
+
+
+def suggest_tickers_for_themes(grouped: dict[str, list]) -> list[str]:
+    """Return a deduplicated list of suggested tickers for the themes present in grouped headlines.
+
+    Themes with no mapping are silently skipped. Order is stable (themes appear in THEME_TICKERS order).
+    """
+    seen: set[str] = set()
+    result: list[str] = []
+    for theme in THEME_TICKERS:
+        if theme in grouped:
+            for ticker in THEME_TICKERS[theme]:
+                if ticker not in seen:
+                    seen.add(ticker)
+                    result.append(ticker)
+    return result
