@@ -13,11 +13,46 @@ tab_eq, tab_fx, tab_cmd = st.tabs(["📈 Equities", "💱 FX", "🛢 Commodities
 
 # ── Equities tab ──────────────────────────────────────────────────────────────
 with tab_eq:
+    # ── Smart Suggestions panel ────────────────────────────────────────────────
+    with st.expander("💡 Smart Suggestions — themed navigation from today's headlines", expanded=False):
+        st.caption("Sectors getting attention today. Click a theme to add its tickers to the Custom universe. Not investment advice.")
+        with st.spinner("Fetching headlines…"):
+            try:
+                from data.news import fetch_headlines, group_by_theme, suggest_tickers_for_themes
+                _headlines = fetch_headlines()
+                _grouped = group_by_theme(_headlines)
+            except Exception:
+                _grouped = {}
+        if not _grouped:
+            st.info("No headlines available. Set NEWSAPI_KEY in .env for live data, or check your connection.")
+        else:
+            _theme_list = list(_grouped.items())
+            _cols = st.columns(min(len(_theme_list), 4))
+            for i, (theme, hl) in enumerate(_theme_list):
+                col = _cols[i % len(_cols)]
+                # Equity-only tickers for the Screener (skip FX/commodity)
+                _eq_tickers = [t for t in suggest_tickers_for_themes({theme: hl})
+                               if "=F" not in t and "=X" not in t]
+                _label = f"**{theme}** ({len(hl)} stories)"
+                if _eq_tickers and col.button(_label, key=f"theme_{i}", use_container_width=True):
+                    st.session_state["smart_suggest_tickers"] = _eq_tickers
+                    st.session_state["smart_suggest_theme"] = theme
+                    st.rerun()
+        if "smart_suggest_theme" in st.session_state:
+            st.success(
+                f"Theme selected: **{st.session_state['smart_suggest_theme']}** — "
+                f"tickers added to Custom universe. Clear with ✕."
+            )
+            if st.button("✕ Clear theme selection", key="clear_theme"):
+                st.session_state.pop("smart_suggest_tickers", None)
+                st.session_state.pop("smart_suggest_theme", None)
+                st.rerun()
+
     with st.sidebar:
         st.header("Equity Universe")
         universe = st.selectbox(
             "Select universe",
-            ["Dow Jones 30", "S&P 500", "NASDAQ 100", "Custom"],
+            ["Dow Jones 30", "S&P 500", "NASDAQ 100", "Watchlist", "Custom"],
             index=0,
         )
         custom_tickers_input = ""
@@ -72,15 +107,27 @@ with tab_eq:
             "above_200sma":       above_200sma,
         }
         custom_tickers = None
-        if universe == "Custom" and custom_tickers_input.strip():
+        universe_key = universe if universe != "Custom" else "custom"
+
+        if universe == "Watchlist":
+            from utils.watchlist import load_watchlist as _lwl
+            custom_tickers = _lwl()
+            if not custom_tickers:
+                st.warning("Your watchlist is empty. Pin tickers from the results table below.")
+                st.stop()
+            universe_key = "custom"
+        elif universe == "Custom" and custom_tickers_input.strip():
             raw = custom_tickers_input.replace(",", "\n").split("\n")
             custom_tickers = [t.strip().upper() for t in raw if t.strip()]
+        elif not custom_tickers and "smart_suggest_tickers" in st.session_state:
+            custom_tickers = st.session_state["smart_suggest_tickers"]
+            universe_key = "custom"
 
         with st.spinner("Fetching data and applying filters…"):
             try:
                 from layers.screener import run_screener
                 results = run_screener(
-                    universe if universe != "Custom" else "custom",
+                    universe_key,
                     filters,
                     custom_tickers=custom_tickers,
                 )
@@ -132,6 +179,20 @@ with tab_eq:
                 styled = styled.map(_score_style, subset=["Score"])
             styled = styled.format(fmt_map)
             st.dataframe(styled, use_container_width=True, height=400)
+
+            # ── Watchlist pin buttons ──────────────────────────────────────────
+            from utils.watchlist import load_watchlist, add_ticker, remove_ticker
+            _wl = load_watchlist()
+            st.caption("⭐ = in watchlist — click to pin/unpin")
+            _pin_cols = st.columns(min(len(results), 8))
+            for _ci, _t in enumerate(results.index[:8]):
+                _pinned = _t in _wl
+                if _pin_cols[_ci].button(f"{'⭐' if _pinned else '☆'} {_t}", key=f"pin_{_t}"):
+                    if _pinned:
+                        remove_ticker(_t)
+                    else:
+                        add_ticker(_t)
+                    st.rerun()
 
             selected = st.selectbox(
                 "Open a ticker in Deep Dive →",
