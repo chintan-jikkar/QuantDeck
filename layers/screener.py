@@ -177,3 +177,94 @@ def run_screener(
     tech_filtered["composite_score"] = scores
 
     return tech_filtered.sort_values("composite_score", ascending=False)
+
+
+# ── FX + Commodity Screener ───────────────────────────────────────────────────
+
+def _fetch_asset_technicals(tickers: list[str]) -> pd.DataFrame:
+    """Fetch close prices for a list of yfinance tickers and compute technicals.
+
+    Returns DataFrame indexed by ticker with columns:
+    rsi, momentum_12_1, realized_vol_30d, last_price.
+    """
+    raw = yf.download(tickers, period="2y", interval="1d", auto_adjust=True, progress=False)
+    if raw.empty:
+        return pd.DataFrame(index=tickers)
+
+    if isinstance(raw.columns, pd.MultiIndex):
+        close = raw["Close"]
+    else:
+        close = raw[["Close"]]
+        close.columns = [tickers[0]]
+
+    rows = {}
+    for ticker in tickers:
+        if ticker not in close.columns:
+            continue
+        prices = close[ticker].dropna()
+        n = len(prices)
+        if n < 30:
+            continue
+        from data.prices import compute_rsi
+        rsi_series = compute_rsi(prices)
+        past = float(prices.iloc[-22]) if n >= 22 else float("nan")
+        ref  = float(prices.iloc[max(0, n - 252)]) if n >= 252 else float(prices.iloc[0])
+        mom  = (past / ref - 1.0) if (ref and ref == ref and past == past) else float("nan")
+        vol  = float(prices.pct_change().iloc[-30:].std() * (252 ** 0.5))
+        rows[ticker] = {
+            "rsi":              float(rsi_series.dropna().iloc[-1]) if not rsi_series.dropna().empty else float("nan"),
+            "momentum_12_1":    mom,
+            "realized_vol_30d": vol,
+            "last_price":       float(prices.iloc[-1]),
+        }
+    return pd.DataFrame(rows).T
+
+
+def run_fx_screener(group: str = "G10 Majors") -> pd.DataFrame:
+    """Screen FX pairs in a group by momentum, RSI, and realized vol.
+
+    Returns a DataFrame sorted by |momentum| composite score descending,
+    with display names as the index (not raw yfinance tickers).
+    """
+    from config import FX_PAIRS
+    pairs = FX_PAIRS.get(group, {})
+    if not pairs:
+        return pd.DataFrame()
+    tickers = list(pairs.values())
+    tech_df = _fetch_asset_technicals(tickers)
+    if tech_df.empty:
+        return pd.DataFrame()
+    ticker_to_name = {v: k for k, v in pairs.items()}
+    tech_df.index = [ticker_to_name.get(t, t) for t in tech_df.index]
+    tech_df["composite_score"] = (
+        pd.to_numeric(tech_df["momentum_12_1"], errors="coerce").abs()
+        .rank(pct=True) * 100
+    )
+    return tech_df.sort_values("composite_score", ascending=False)
+
+
+def run_commodity_screener(group: str = "all") -> pd.DataFrame:
+    """Screen commodities in a group by momentum, RSI, and realized vol.
+
+    group: one of the COMMODITIES keys ("Precious Metals", "Energy", etc.)
+    or "all" to screen across all groups.
+    Returns a DataFrame sorted by |momentum| composite score descending.
+    """
+    from config import COMMODITIES
+    if group == "all":
+        pairs = {name: ticker for grp in COMMODITIES.values() for name, ticker in grp.items()}
+    else:
+        pairs = COMMODITIES.get(group, {})
+    if not pairs:
+        return pd.DataFrame()
+    tickers = list(pairs.values())
+    tech_df = _fetch_asset_technicals(tickers)
+    if tech_df.empty:
+        return pd.DataFrame()
+    ticker_to_name = {v: k for k, v in pairs.items()}
+    tech_df.index = [ticker_to_name.get(t, t) for t in tech_df.index]
+    tech_df["composite_score"] = (
+        pd.to_numeric(tech_df["momentum_12_1"], errors="coerce").abs()
+        .rank(pct=True) * 100
+    )
+    return tech_df.sort_values("composite_score", ascending=False)
