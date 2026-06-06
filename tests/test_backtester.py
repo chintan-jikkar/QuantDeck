@@ -115,3 +115,39 @@ def test_win_rate_bounds():
     eq = (1 + rets).cumprod() * 10_000
     ts = compute_tearsheet(eq, rets)
     assert 0.0 <= ts["win_rate"] <= 1.0
+
+
+# ── Benchmark auto-selection ──────────────────────────────────────────────────
+
+def _make_prices_df(n=200):
+    dates = pd.date_range("2021-01-01", periods=n, freq="B")
+    return pd.DataFrame({
+        "Close": np.linspace(100, 150, n),
+        "Open": 100.0, "High": 101.0, "Low": 99.0, "Volume": 1e6,
+    }, index=dates)
+
+
+def test_run_backtest_result_has_benchmark_curve():
+    from unittest.mock import patch
+    with patch("layers.backtester.fetch_prices", return_value=_make_prices_df()):
+        from layers.backtester import run_backtest
+        result = run_backtest("MA Crossover", "AAPL", "2021-01-01", "2022-01-01")
+    assert "benchmark_curve" in result
+    assert "benchmark_ticker" in result
+
+
+def test_run_backtest_benchmark_curve_is_series_or_none():
+    from unittest.mock import patch
+    with patch("layers.backtester.fetch_prices", return_value=_make_prices_df()):
+        from layers.backtester import run_backtest
+        result = run_backtest("MA Crossover", "AAPL", "2021-01-01", "2022-01-01")
+    bc = result["benchmark_curve"]
+    assert bc is None or isinstance(bc, pd.Series)
+
+
+def test_run_backtest_benchmark_ticker_is_spy_for_us_equity():
+    from unittest.mock import patch
+    with patch("layers.backtester.fetch_prices", return_value=_make_prices_df()):
+        from layers.backtester import run_backtest
+        result = run_backtest("MA Crossover", "AAPL", "2021-01-01", "2022-01-01")
+    assert result["benchmark_ticker"] == "SPY"

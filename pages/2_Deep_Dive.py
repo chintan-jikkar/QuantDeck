@@ -21,14 +21,17 @@ with col_btn:
 
 cache_key = f"deep_dive_{ticker}"
 if not run and cache_key not in st.session_state:
-    st.info("Enter a US equity ticker and click **Load**.")
+    st.info("Enter any ticker: US/international equity (AAPL, BP.L), FX (EURUSD=X), or commodity (GC=F).")
     st.stop()
 
 if run or cache_key not in st.session_state:
     with st.spinner(f"Loading data for {ticker}…"):
         try:
             from layers.deep_dive import run_deep_dive
-            data = run_deep_dive(ticker)
+            from data.prices import detect_asset_type, country_from_ticker
+            detected_type = detect_asset_type(ticker)
+            detected_country = country_from_ticker(ticker) if detected_type == "equity" else "US"
+            data = run_deep_dive(ticker, country=detected_country, asset_type=detected_type)
             st.session_state[cache_key] = data
             st.session_state["deep_dive_ticker"] = ticker
         except Exception as e:
@@ -36,6 +39,8 @@ if run or cache_key not in st.session_state:
             st.stop()
 else:
     data = st.session_state[cache_key]
+
+asset_type = data.get("asset_type", "equity")
 
 prices   = data.get("prices", pd.DataFrame())
 income   = data.get("income", pd.DataFrame())
@@ -157,7 +162,35 @@ with tab1:
                 st.dataframe(km[available].head(1), use_container_width=True)
 
 with tab2:
-    if income.empty:
+    if asset_type == "fx":
+        md = data.get("market_drivers", {})
+        st.subheader(f"FX Market Drivers — {md.get('pair', ticker)}")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("12-1 Month Momentum", fmt_percent(md.get("momentum_12_1")))
+        c2.metric("RSI (14)", fmt_number(md.get("rsi")))
+        c3.metric("30d Realized Vol (ann.)", fmt_percent(md.get("realized_vol_30d")))
+        prices_chart = md.get("prices")
+        if prices_chart is not None and not prices_chart.empty:
+            fig_fx = go.Figure(go.Scatter(x=prices_chart.index, y=prices_chart["Close"],
+                                          line={"color": "steelblue"}, name=ticker))
+            fig_fx.update_layout(height=350, title=f"{ticker} Price", hovermode="x unified")
+            st.plotly_chart(fig_fx, use_container_width=True)
+    elif asset_type == "commodity":
+        md = data.get("market_drivers", {})
+        st.subheader(f"Commodity Market Drivers — {ticker}")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("12-1 Month Momentum", fmt_percent(md.get("momentum_12_1")))
+        c2.metric("RSI (14)", fmt_number(md.get("rsi")))
+        c3.metric("30d Realized Vol (ann.)", fmt_percent(md.get("realized_vol_30d")))
+        c4.metric("Price vs 5Y Mean", fmt_percent(md.get("price_vs_5y_mean_pct")),
+                  help="+ = historically expensive vs 5Y average")
+        prices_chart = md.get("prices")
+        if prices_chart is not None and not prices_chart.empty:
+            fig_cmd = go.Figure(go.Scatter(x=prices_chart.index, y=prices_chart["Close"],
+                                            line={"color": "goldenrod"}, name=ticker))
+            fig_cmd.update_layout(height=350, title=f"{ticker} Price", hovermode="x unified")
+            st.plotly_chart(fig_cmd, use_container_width=True)
+    elif income.empty:
         st.warning(f"No fundamental data available for {ticker} from FMP.")
     else:
         st.subheader("Revenue & Margins")
@@ -242,7 +275,12 @@ with tab2:
                                      hovermode="x unified", height=350)
                 st.plotly_chart(fig_ca, use_container_width=True)
 
-# ── Investment Memo Card (always visible, below tabs) ─────────────────────────
+# ── Investment Memo Card (equity only) ───────────────────────────────────────
+if asset_type != "equity":
+    st.session_state[f"deep_dive_result_{ticker}"] = data
+    st.caption("QuantDeck is a quantitative analysis tool, not financial advice.")
+    st.stop()
+
 st.divider()
 st.subheader("Investment Memo")
 

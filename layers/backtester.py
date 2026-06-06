@@ -1,6 +1,7 @@
 # layers/backtester.py — no Streamlit imports
 import numpy as np
 import pandas as pd
+from data.prices import fetch_prices, get_benchmark
 
 
 def run_engine(prices: pd.Series, signals: pd.Series, initial_capital: float = 100_000,
@@ -120,11 +121,11 @@ def run_backtest(strategy_name: str, ticker: str, start: str, end: str,
                  params: dict | None = None, initial_capital: float = 100_000,
                  commission_bps: float = 10, slippage_pct: float = 0.001) -> dict:
     """Fetch prices, generate signals from the named strategy, run the engine,
-    and attach a full tearsheet. Single-ticker (Pairs handled in the page layer).
+    attach a full tearsheet, and include a benchmark buy-and-hold equity curve.
 
-    Returns dict: equity_curve, returns, positions, trades, tearsheet, prices.
+    Returns dict: equity_curve, returns, positions, trades, tearsheet, prices,
+    benchmark_curve (pd.Series or None), benchmark_ticker (str).
     """
-    from data.prices import fetch_prices
     from strategies import get_strategy
     params = params or {}
 
@@ -140,4 +141,18 @@ def run_backtest(strategy_name: str, ticker: str, start: str, end: str,
                         commission_bps, slippage_pct)
     result["tearsheet"] = compute_tearsheet(result["equity_curve"], result["returns"])
     result["prices"] = prices_df["Close"]
+
+    # Benchmark buy-and-hold (no costs) over the same date range
+    benchmark_ticker = get_benchmark(ticker)
+    try:
+        bench_df = fetch_prices(benchmark_ticker, period="5y")
+        bench_df = bench_df.loc[start:end] if start and end else bench_df
+        bench_signals = pd.Series(1, index=bench_df.index)
+        bench_result = run_engine(bench_df["Close"], bench_signals,
+                                  initial_capital, commission_bps=0, slippage_pct=0)
+        result["benchmark_curve"] = bench_result["equity_curve"]
+    except Exception:
+        result["benchmark_curve"] = None
+    result["benchmark_ticker"] = benchmark_ticker
+
     return result

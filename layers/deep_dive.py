@@ -1,7 +1,10 @@
 # layers/deep_dive.py — no Streamlit imports
 import pandas as pd
 import numpy as np
-from data.prices import fetch_prices, fetch_intraday, compute_returns, compute_rolling_beta
+from data.prices import (
+    fetch_prices, fetch_intraday, compute_returns, compute_rolling_beta,
+    detect_asset_type, market_index_for_country, country_from_ticker,
+)
 from data.fundamentals import (
     fetch_income_statement, fetch_balance_sheet,
     fetch_cash_flow, fetch_key_metrics, fetch_peers,
@@ -170,29 +173,152 @@ def compute_capital_allocation(
     return df.reset_index(drop=True)
 
 
-# ── Main entry point (data assembly in Task 3) ────────────────────────────────
+# ── FX Market Drivers ─────────────────────────────────────────────────────────
 
-def run_deep_dive(ticker: str, country: str = "US") -> dict:
-    """Assemble all data for the Deep Dive page.
+def run_fx_market_drivers(ticker: str) -> dict:
+    """Compute market driver metrics for an FX pair.
 
-    Returns a dict with keys:
-      prices, intraday, income, balance, cashflow, key_metrics, peers,
-      macro_regime, yield_curve, news_themes, margins, balance_ratios,
-      earnings_quality, beneish_mscore, capital_allocation, beta, country.
-
-    Every external fetch is defensive — missing data degrades to empty/NaN
-    rather than crashing (spec: never crash on missing data).
+    Returns a dict consumed by Deep Dive Tab 2 when asset_type == "fx":
+      prices — OHLCV DataFrame (2 years)
+      momentum_12_1 — 12-1 month price return (float, NaN if history <252d)
+      realized_vol_30d — 30-day realized vol annualized (float)
+      rsi — current RSI(14)
+      pair — display string e.g. "EURUSD"
+      asset_type — "fx"
     """
-    result: dict = {}
+    from data.prices import compute_rsi
 
-    # ── Price data ─────────────────────────────────────────────────────────
+    prices = fetch_prices(ticker, period="2y")
+    close = prices["Close"]
+    result: dict = {"prices": prices, "asset_type": "fx"}
+    result["pair"] = ticker.upper().replace("=X", "")
+
+    # 12-1 momentum: price 21 bars ago vs price 252 bars ago
+    n = len(close)
+    try:
+        past = float(close.iloc[-22]) if n >= 22 else float("nan")
+        ref  = float(close.iloc[max(0, n - 253)]) if n >= 30 else float("nan")
+        result["momentum_12_1"] = (past / ref - 1.0) if (ref and ref == ref and past == past) else float("nan")
+    except Exception:
+        result["momentum_12_1"] = float("nan")
+
+    # 30-day realized vol (annualized)
+    try:
+        rets = close.pct_change().dropna()
+        result["realized_vol_30d"] = float(rets.iloc[-30:].std() * (252 ** 0.5)) if len(rets) >= 30 else float("nan")
+    except Exception:
+        result["realized_vol_30d"] = float("nan")
+
+    # RSI(14)
+    try:
+        rsi_series = compute_rsi(close)
+        valid = rsi_series.dropna()
+        result["rsi"] = float(valid.iloc[-1]) if not valid.empty else float("nan")
+    except Exception:
+        result["rsi"] = float("nan")
+
+    return result
+
+
+# ── Commodity Market Drivers ──────────────────────────────────────────────────
+
+def run_commodity_market_drivers(ticker: str) -> dict:
+    """Compute market driver metrics for a commodity futures ticker.
+
+    Returns a dict consumed by Deep Dive Tab 2 when asset_type == "commodity":
+      prices — OHLCV DataFrame (5 years)
+      momentum_12_1 — 12-1 month price return
+      realized_vol_30d — 30-day realized vol annualized
+      rsi — current RSI(14)
+      price_vs_5y_mean_pct — % deviation of current price from 5Y rolling mean
+        (positive = above average = historically expensive)
+      asset_type — "commodity"
+    """
+    from data.prices import compute_rsi
+
+    prices = fetch_prices(ticker, period="5y")
+    close = prices["Close"]
+    result: dict = {"prices": prices, "asset_type": "commodity"}
+
+    # 12-1 momentum
+    n = len(close)
+    try:
+        past = float(close.iloc[-22]) if n >= 22 else float("nan")
+        ref  = float(close.iloc[max(0, n - 253)]) if n >= 30 else float("nan")
+        result["momentum_12_1"] = (past / ref - 1.0) if (ref and ref == ref and past == past) else float("nan")
+    except Exception:
+        result["momentum_12_1"] = float("nan")
+
+    # 30-day realized vol (annualized)
+    try:
+        rets = close.pct_change().dropna()
+        result["realized_vol_30d"] = float(rets.iloc[-30:].std() * (252 ** 0.5)) if len(rets) >= 30 else float("nan")
+    except Exception:
+        result["realized_vol_30d"] = float("nan")
+
+    # RSI(14)
+    try:
+        rsi_series = compute_rsi(close)
+        valid = rsi_series.dropna()
+        result["rsi"] = float(valid.iloc[-1]) if not valid.empty else float("nan")
+    except Exception:
+        result["rsi"] = float("nan")
+
+    # Price vs 5Y rolling mean (measures whether commodity is historically rich/cheap)
+    try:
+        mean_5y = float(close.mean())
+        last    = float(close.iloc[-1])
+        result["price_vs_5y_mean_pct"] = (last / mean_5y - 1.0) if mean_5y != 0 else float("nan")
+    except Exception:
+        result["price_vs_5y_mean_pct"] = float("nan")
+
+    return result
+
+
+# ── Main entry point ──────────────────────────────────────────────────────────
+
+def run_deep_dive(ticker: str, country: str | None = None,
+                  asset_type: str | None = None) -> dict:
+    """Assemble all data for the Deep Dive page, dispatching by asset type.
+
+    For equity: runs the full fundamental analysis.
+    For FX/commodity: runs only price + macro context + market drivers.
+
+    asset_type is auto-detected from the ticker if not provided.
+    country is auto-detected for equities if not provided.
+    """
+    if asset_type is None:
+        asset_type = detect_asset_type(ticker)
+    if country is None:
+        country = country_from_ticker(ticker) if asset_type == "equity" else "US"
+
+    result: dict = {"asset_type": asset_type, "country": country}
+
+    # ── Price data (all asset classes) ─────────────────────────────────────
     result["prices"] = fetch_prices(ticker, period="5y")
     try:
         result["intraday"] = fetch_intraday(ticker)
     except Exception:
         result["intraday"] = None
 
-    # ── Fundamentals ────────────────────────────────────────────────────────
+    # ── Macro context (all asset classes) ──────────────────────────────────
+    result["macro_regime"] = fetch_macro_regime(country)
+    result["yield_curve"]  = fetch_yield_curve(country)
+
+    # ── News themes (all asset classes) ────────────────────────────────────
+    headlines = fetch_headlines(ticker=ticker)
+    result["news_themes"] = group_by_theme(headlines)
+
+    # ── Asset-class-specific analysis ──────────────────────────────────────
+    if asset_type == "fx":
+        result["market_drivers"] = run_fx_market_drivers(ticker)
+        return result
+
+    if asset_type == "commodity":
+        result["market_drivers"] = run_commodity_market_drivers(ticker)
+        return result
+
+    # ── Equity: full fundamental analysis ──────────────────────────────────
     income      = fetch_income_statement(ticker, limit=5)
     balance     = fetch_balance_sheet(ticker, limit=5)
     cashflow    = fetch_cash_flow(ticker, limit=5)
@@ -203,18 +329,6 @@ def run_deep_dive(ticker: str, country: str = "US") -> dict:
     result["key_metrics"] = key_metrics
     result["peers"]       = fetch_peers(ticker)
 
-    # ── Macro ────────────────────────────────────────────────────────────────
-    result["macro_regime"] = fetch_macro_regime(country)
-    result["yield_curve"]  = fetch_yield_curve(country)
-
-    # ── News themes ─────────────────────────────────────────────────────────
-    headlines = fetch_headlines(ticker=ticker)
-    result["news_themes"] = group_by_theme(headlines)
-
-    # ── Computed metrics ─────────────────────────────────────────────────────
-    # Defaults so a missing or malformed statement degrades to empty/NaN rather
-    # than crashing the page. Each compute_* is isolated in its own try/except so
-    # that one statement's row-count mismatch can't wipe out the other metrics.
     result["margins"]            = pd.DataFrame()
     result["balance_ratios"]     = pd.DataFrame()
     result["earnings_quality"]   = pd.DataFrame()
@@ -243,9 +357,10 @@ def run_deep_dive(ticker: str, country: str = "US") -> dict:
         except Exception:
             pass
 
-    # ── Rolling beta vs S&P 500 ──────────────────────────────────────────────
+    # ── Rolling beta vs local market index ──────────────────────────────────
     try:
-        market = fetch_prices("^GSPC", period="5y")
+        local_index = market_index_for_country(country)
+        market = fetch_prices(local_index, period="5y")
         stock_ret  = compute_returns(result["prices"])
         market_ret = compute_returns(market)
         idx = stock_ret.index.intersection(market_ret.index)
@@ -255,5 +370,4 @@ def run_deep_dive(ticker: str, country: str = "US") -> dict:
     except Exception:
         result["beta"] = float("nan")
 
-    result["country"] = country
     return result

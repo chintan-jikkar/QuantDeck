@@ -99,3 +99,61 @@ def test_run_screener_returns_dataframe_with_required_columns(monkeypatch):
     assert "peRatio" in result.columns
     assert "rsi" in result.columns
     assert len(result) == 2
+
+
+# ── FX + Commodity Screener ───────────────────────────────────────────────────
+
+def _mock_tech_df(tickers):
+    return pd.DataFrame({
+        "rsi":              [45.0, 55.0, 65.0][:len(tickers)],
+        "momentum_12_1":    [0.05, -0.02, 0.08][:len(tickers)],
+        "realized_vol_30d": [0.07, 0.09, 0.06][:len(tickers)],
+        "last_price":       [1.10, 1.25, 0.65][:len(tickers)],
+    }, index=tickers)
+
+
+def test_run_fx_screener_returns_dataframe():
+    tickers = ["EURUSD=X", "GBPUSD=X", "AUDUSD=X"]
+    with patch("layers.screener._fetch_asset_technicals",
+               return_value=_mock_tech_df(tickers)):
+        from layers.screener import run_fx_screener
+        result = run_fx_screener("G10 Majors")
+    assert isinstance(result, pd.DataFrame)
+    assert "momentum_12_1" in result.columns
+    assert "rsi" in result.columns
+    assert "composite_score" in result.columns
+
+
+def test_run_fx_screener_sorted_descending():
+    tickers = ["EURUSD=X", "GBPUSD=X"]
+    with patch("layers.screener._fetch_asset_technicals",
+               return_value=_mock_tech_df(tickers)):
+        from layers.screener import run_fx_screener
+        result = run_fx_screener("G10 Majors")
+    scores = result["composite_score"].tolist()
+    assert scores == sorted(scores, reverse=True)
+
+
+def test_run_fx_screener_unknown_group_returns_empty():
+    from layers.screener import run_fx_screener
+    result = run_fx_screener("NonexistentGroup")
+    assert result.empty
+
+
+def test_run_commodity_screener_returns_dataframe():
+    tickers = ["GC=F", "SI=F", "CL=F"]
+    with patch("layers.screener._fetch_asset_technicals",
+               return_value=_mock_tech_df(tickers)):
+        from layers.screener import run_commodity_screener
+        result = run_commodity_screener("Precious Metals")
+    assert isinstance(result, pd.DataFrame)
+    assert "momentum_12_1" in result.columns
+
+
+def test_run_commodity_screener_all_groups():
+    tickers = ["GC=F", "CL=F"]
+    with patch("layers.screener._fetch_asset_technicals",
+               return_value=_mock_tech_df(tickers)):
+        from layers.screener import run_commodity_screener
+        result = run_commodity_screener("all")
+    assert not result.empty

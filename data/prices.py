@@ -66,3 +66,75 @@ def compute_rolling_beta(
     cov = stock_returns.rolling(window).cov(market_returns)
     var = market_returns.rolling(window).var()
     return cov / var
+
+
+def detect_asset_type(ticker: str) -> str:
+    """Detect asset class from yfinance ticker format.
+
+    =X suffix → "fx"; =F suffix → "commodity"; else → "equity".
+    Case-insensitive.
+    """
+    t = ticker.upper().strip()
+    if t.endswith("=X"):
+        return "fx"
+    if t.endswith("=F"):
+        return "commodity"
+    return "equity"
+
+
+def get_benchmark(ticker: str) -> str:
+    """Return the benchmark ETF ticker for a given ticker based on asset type.
+
+    FX → UUP (US Dollar Index ETF).
+    Commodity → DJP (broad commodity ETF).
+    Equity → looks up the universe benchmark by ticker suffix; defaults to SPY.
+    """
+    from config import FX_BENCHMARK, COMMODITY_BENCHMARK, EQUITY_UNIVERSES
+    asset_type = detect_asset_type(ticker)
+    if asset_type == "fx":
+        return FX_BENCHMARK
+    if asset_type == "commodity":
+        return COMMODITY_BENCHMARK
+    # Equity: match suffix to a universe entry
+    # Empty suffix means US (S&P 500, NASDAQ, Russell) — those fall through to the "SPY" default below.
+    suffix_map = {info["suffix"]: info["benchmark"] for info in EQUITY_UNIVERSES.values() if info["suffix"]}
+    t = ticker.upper()
+    for suffix, benchmark in suffix_map.items():
+        if t.endswith(suffix.upper()):
+            return benchmark
+    return "SPY"
+
+
+def country_from_ticker(ticker: str) -> str:
+    """Derive the issuing country from a yfinance equity ticker suffix.
+
+    Derives suffix→country mapping from config.EQUITY_UNIVERSES so it stays
+    in sync automatically when new universes are added. Non-suffixed tickers
+    (US stocks) return "US". FX and commodity tickers return "US" as a neutral
+    default since country-risk valuation doesn't apply to them.
+    """
+    from config import EQUITY_UNIVERSES
+    suffix_country = {
+        info["suffix"]: info["country"]
+        for info in EQUITY_UNIVERSES.values()
+        if info["suffix"]
+    }
+    t = ticker.upper()
+    for suffix, country in suffix_country.items():
+        if t.endswith(suffix.upper()):
+            return country
+    return "US"
+
+
+def market_index_for_country(country: str) -> str:
+    """Return the local equity market index ticker for beta calculation.
+
+    Reads from config.EQUITY_UNIVERSES (first match wins for countries with
+    multiple universes, e.g. India → ^NSEI from Nifty 50). Falls back to
+    ^GSPC (S&P 500) for unknown countries.
+    """
+    from config import EQUITY_UNIVERSES
+    for info in EQUITY_UNIVERSES.values():
+        if info["country"] == country:
+            return info["market_index"]
+    return "^GSPC"

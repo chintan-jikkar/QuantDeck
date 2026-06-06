@@ -238,3 +238,82 @@ def test_derive_wacc_inputs_beta_falls_back_to_one_on_fetch_failure():
     assert out["beta"] == pytest.approx(1.0, rel=1e-9)
     # ke = 0.04 + 1.0×0.0472 = 0.0872
     assert out["ke"] == pytest.approx(0.0872, rel=1e-6)
+
+
+# ── Valuation not-applicable gate ─────────────────────────────────────────────
+
+def test_run_valuation_not_applicable_for_fx():
+    from layers.valuation import run_valuation
+    result = run_valuation("EURUSD=X")
+    assert result["applicable"] is False
+    assert "fx" in result["reason"].lower()
+    assert result["asset_type"] == "fx"
+
+
+def test_run_valuation_not_applicable_for_commodity():
+    from layers.valuation import run_valuation
+    result = run_valuation("GC=F")
+    assert result["applicable"] is False
+    assert "commodity" in result["reason"].lower()
+    assert result["asset_type"] == "commodity"
+
+
+def test_run_valuation_not_applicable_returns_no_dcf():
+    from layers.valuation import run_valuation
+    result = run_valuation("CL=F")
+    assert "dcf_base" not in result
+
+
+def test_run_valuation_not_applicable_returns_immediately_no_network():
+    # detect_asset_type is pure string logic — no network calls needed.
+    # If FX gate is working, this should return instantly without errors.
+    from layers.valuation import run_valuation
+    result = run_valuation("NZDUSD=X")
+    assert result.get("applicable") is False
+
+
+def test_derive_wacc_inputs_uk_uses_local_rf_and_crp():
+    """For UK: rf from FRED IRLTLT01GBM156N; crp=0.0051; local index=^FTSE.
+
+    Hand-computed:
+      rf=0.045; beta=0.9; erp=0.0472; crp=0.0051
+      ke = 0.045 + 0.9×0.0472 + 0.0051 = 0.09258
+    """
+    import layers.valuation as val
+    income = pd.DataFrame([{
+        "interestExpense": 5_000_000,
+        "incomeTaxExpense": 15_000_000,
+        "incomeBeforeTax": 60_000_000,
+    }])
+    balance = pd.DataFrame([{
+        "totalDebt": 100_000_000,
+        "totalEquity": 300_000_000,
+    }])
+    patches = _patch_wacc_data(pd.Series([4.5]), pd.Series([0.9]))
+    with patches[0], patches[1], patches[2]:
+        out = val._derive_wacc_inputs("BP.L", income, balance, "UK")
+
+    assert out["rf"]  == pytest.approx(0.045, rel=1e-9)
+    assert out["crp"] == pytest.approx(0.0051, rel=1e-9)
+    assert out["ke"]  == pytest.approx(0.09258, rel=1e-5)
+
+
+def test_derive_wacc_inputs_india_uses_high_crp():
+    """India CRP = 0.0234 — a visibly larger ke bump than US."""
+    import layers.valuation as val
+    income = pd.DataFrame([{
+        "interestExpense": 5_000_000,
+        "incomeTaxExpense": 15_000_000,
+        "incomeBeforeTax": 60_000_000,
+    }])
+    balance = pd.DataFrame([{
+        "totalDebt": 100_000_000,
+        "totalEquity": 300_000_000,
+    }])
+    patches = _patch_wacc_data(pd.Series([7.0]), pd.Series([1.1]))
+    with patches[0], patches[1], patches[2]:
+        out = val._derive_wacc_inputs("RELIANCE.NS", income, balance, "India")
+
+    # ke = 0.07 + 1.1×0.0472 + 0.0234 = 0.07 + 0.05192 + 0.0234 = 0.14532
+    assert out["crp"] == pytest.approx(0.0234, rel=1e-9)
+    assert out["ke"]  == pytest.approx(0.14532, rel=1e-5)
