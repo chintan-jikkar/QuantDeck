@@ -5,7 +5,7 @@ from data.fundamentals import (
     fetch_income_statement, fetch_balance_sheet, fetch_cash_flow,
     fetch_key_metrics, fetch_peers,
 )
-from data.prices import fetch_prices, compute_returns, compute_rolling_beta
+from data.prices import fetch_prices, compute_returns, compute_rolling_beta, detect_asset_type
 from data.macro import fetch_fred_series
 from config import COUNTRY_RISK
 
@@ -198,13 +198,25 @@ def run_valuation(ticker: str, country: str = "US", overrides: dict | None = Non
     comps_implied, ddm, current_price, shares_outstanding.
     Every block is defensive — partial data degrades to None/empty, never crashes.
     """
+    asset_type = detect_asset_type(ticker)
+    if asset_type != "equity":
+        return {
+            "applicable": False,
+            "asset_type": asset_type,
+            "reason": (
+                f"Valuation models (DCF, DDM, comparable comps) apply to equities only. "
+                f"{ticker!r} is a {asset_type} instrument. "
+                f"FX and commodity prices are driven by macro flows, not discounted cash flows."
+            ),
+        }
+
     ov = overrides or {}
     income      = fetch_income_statement(ticker, limit=5)
     balance     = fetch_balance_sheet(ticker, limit=5)
     cashflow    = fetch_cash_flow(ticker, limit=5)
     key_metrics = fetch_key_metrics(ticker, limit=5)
 
-    result: dict = {}
+    result: dict = {"applicable": True}
 
     wacc_inputs = _derive_wacc_inputs(ticker, income, balance, country)
     for k in ("rf", "beta", "erp", "crp", "ke", "kd", "tax_rate", "wacc"):

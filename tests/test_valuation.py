@@ -238,3 +238,35 @@ def test_derive_wacc_inputs_beta_falls_back_to_one_on_fetch_failure():
     assert out["beta"] == pytest.approx(1.0, rel=1e-9)
     # ke = 0.04 + 1.0×0.0472 = 0.0872
     assert out["ke"] == pytest.approx(0.0872, rel=1e-6)
+
+
+# ── Valuation not-applicable gate ─────────────────────────────────────────────
+
+def test_run_valuation_not_applicable_for_fx():
+    from layers.valuation import run_valuation
+    result = run_valuation("EURUSD=X")
+    assert result["applicable"] is False
+    assert "fx" in result["reason"].lower()
+    assert result["asset_type"] == "fx"
+
+
+def test_run_valuation_not_applicable_for_commodity():
+    from layers.valuation import run_valuation
+    result = run_valuation("GC=F")
+    assert result["applicable"] is False
+    assert "commodity" in result["reason"].lower()
+    assert result["asset_type"] == "commodity"
+
+
+def test_run_valuation_not_applicable_returns_no_dcf():
+    from layers.valuation import run_valuation
+    result = run_valuation("CL=F")
+    assert "dcf_base" not in result
+
+
+def test_run_valuation_not_applicable_returns_immediately_no_network():
+    # detect_asset_type is pure string logic — no network calls needed.
+    # If FX gate is working, this should return instantly without errors.
+    from layers.valuation import run_valuation
+    result = run_valuation("NZDUSD=X")
+    assert result.get("applicable") is False
