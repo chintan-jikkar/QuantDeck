@@ -16,16 +16,28 @@ with col_btn:
     st.write("")
     run = st.button("Value", type="primary")
 
+from data.prices import detect_asset_type, country_from_ticker
+asset_type = detect_asset_type(ticker)
+if asset_type != "equity":
+    st.info(
+        f"**Valuation not applicable for {asset_type.upper()} instruments.**\n\n"
+        f"DCF, DDM, and comparable company models require cash flow forecasts. "
+        f"FX rates and commodity prices are driven by macro flows rather than "
+        f"discounted earnings. Use the Deep Dive → Market Drivers panel for {ticker}."
+    )
+    st.stop()
+country = country_from_ticker(ticker)
+
 cache_key = f"val_{ticker}"
 if not run and cache_key not in st.session_state:
-    st.info("Enter a US equity ticker and click **Value**.")
+    st.info("Enter an equity ticker and click **Value**.")
     st.stop()
 
 if run or cache_key not in st.session_state:
     with st.spinner(f"Running valuation for {ticker}…"):
         try:
             from layers.valuation import run_valuation
-            val = run_valuation(ticker)
+            val = run_valuation(ticker, country=country)
             st.session_state[cache_key] = val
         except Exception as e:
             st.error(f"Valuation failed for {ticker!r}: {e}")

@@ -14,6 +14,16 @@ c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
 ticker = c1.text_input("Ticker", value=default_ticker).upper().strip()
 model = c2.selectbox("Model", ["GBM", "GARCH", "OU"],
                      help="GBM = bootstrap; GARCH = fat tails + clustering; OU = mean reversion")
+from data.prices import detect_asset_type as _dat
+_asset_type = _dat(ticker)
+_model_hints = {
+    "equity":    "GBM (bootstrap) or GARCH for equities",
+    "fx":        "GBM or GARCH for FX pairs",
+    "commodity": "OU (mean reversion) recommended for commodities",
+}
+_hint = _model_hints.get(_asset_type, "")
+if _hint:
+    c2.caption(_hint)
 n_paths = c3.select_slider("Paths", options=[1000, 5000, 10000], value=5000)
 horizon = c4.select_slider("Horizon (days)", options=[21, 63, 126, 252], value=252)
 

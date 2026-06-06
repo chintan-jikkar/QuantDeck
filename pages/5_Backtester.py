@@ -63,6 +63,12 @@ with main:
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=eq.index, y=eq.values, name="Strategy",
                              line={"color": "steelblue", "width": 2}))
+    bench_curve = result.get("benchmark_curve")
+    bench_ticker = result.get("benchmark_ticker", "Benchmark")
+    if bench_curve is not None:
+        fig.add_trace(go.Scatter(x=bench_curve.index, y=bench_curve.values,
+                                 name=f"Benchmark ({bench_ticker})",
+                                 line={"color": "gray", "width": 1.5, "dash": "dot"}))
     log = st.checkbox("Log scale")
     fig.update_layout(height=400, hovermode="x unified", yaxis_title="Portfolio value",
                       yaxis_type="log" if log else "linear")
