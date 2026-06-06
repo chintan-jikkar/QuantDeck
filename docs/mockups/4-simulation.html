@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuantDeck Simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="quantdeck.css">
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar" id="topbar"></div>
+    <div class="content">
+      <div class="page-head">
+        <div><h1>Simulation</h1><div class="sub">Distributional reality is modeled; discrete jump risk is not.</div></div>
+        <div class="controls">
+          <input class="input" value="AAPL" style="width:110px">
+          <div class="seg"><button class="on">GBM</button><button>GARCH</button><button>OU</button></div>
+          <div class="pill-select"><span class="cap">Paths</span> 5,000</div>
+          <div class="pill-select"><span class="cap">Horizon</span> 63d</div>
+          <button class="btn-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m5 3 14 9-14 9z"/></svg> Run</button>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="label">VaR 95%</div><div class="val" style="color:var(--red)">-16.7%</div><div class="ctx">worst 5% outcome</div></div>
+        <div class="kpi"><div class="label">CVaR 95%</div><div class="val" style="color:var(--red)">-22.1%</div><div class="ctx">avg of worst 5%</div></div>
+        <div class="kpi"><div class="label">Prob of Profit</div><div class="val" style="color:var(--green)">58%</div><div class="ctx">P(end &gt; entry)</div></div>
+        <div class="kpi"><div class="label">Expected Return</div><div class="val" style="color:var(--green)">+5.4%</div><div class="ctx">P50 path</div></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card"><div class="card-head"><div class="t">Simulation Cone</div><div class="meta">P10 to P90 · 63 days</div></div>
+          <div id="cone" style="height:320px;padding:0 8px 8px"></div></div>
+        <div class="card"><div class="card-head"><div class="t">Terminal Distribution</div><div class="meta">end-of-horizon prices</div></div>
+          <div id="hist" style="height:320px;padding:0 8px 8px"></div></div>
+      </div>
+
+      <div class="card"><div class="card-head"><div class="t">Cross-Layer Decision Signal</div><div class="meta">a framework, not a buy/sell call</div></div>
+        <div class="card-body" style="display:grid;grid-template-columns:repeat(3,1fr) 1.3fr;gap:16px;align-items:center">
+          <div><div class="label" style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.7px">Fundamental Health</div><div style="font-size:26px;font-weight:600">4<span style="color:var(--text-dim);font-size:15px">/5</span></div><div class="ctx" style="color:var(--text-dim);font-size:12px">Strong margins, clean accruals</div></div>
+          <div><div class="label" style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.7px">Valuation</div><div style="font-size:26px;font-weight:600">3<span style="color:var(--text-dim);font-size:15px">/5</span></div><div class="ctx" style="color:var(--text-dim);font-size:12px">Fairly valued, slight upside</div></div>
+          <div><div class="label" style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.7px">Simulation Odds</div><div style="font-size:26px;font-weight:600">4<span style="color:var(--text-dim);font-size:15px">/5</span></div><div class="ctx" style="color:var(--text-dim);font-size:12px">58% profit, favorable skew</div></div>
+          <div>
+            <div class="label" style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Reward / Risk</div>
+            <div style="display:flex;height:26px;border-radius:8px;overflow:hidden">
+              <div style="width:36%;background:var(--red-soft);color:var(--red);display:grid;place-items:center;font-size:12px;font-weight:600">-12%</div>
+              <div style="width:64%;background:var(--green-soft);color:var(--green);display:grid;place-items:center;font-size:12px;font-weight:600">+21%</div>
+            </div>
+            <div class="ctx" style="margin-top:6px;color:var(--text-dim);font-size:12px">Reward/Risk <b style="color:var(--text)">1.8×</b> · worth exploring</div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">This signal is a quantitative framework, not financial advice. It does not account for gap risk from earnings or macro shocks. Mockup · illustrative data.</div>
+    </div>
+  </div>
+</div>
+<script src="quantdeck.js"></script>
+<script>
+QuantDeck.shell('simulation');
+const H=63, start=307, days=[...Array(H+1).keys()];
+const p50=days.map(t=>start*(1+0.0009*t));
+const band=(k)=>days.map((t,i)=>p50[i]*(1+k*0.013*Math.sqrt(t)));
+const p10=band(-1.28),p25=band(-0.67),p75=band(0.67),p90=band(1.28);
+const paths=[]; for(let s=0;s<18;s++){let v=start;const arr=[v];for(let t=1;t<=H;t++){v*=(1+0.0009+(Math.random()-0.5)*0.022);arr.push(v);}paths.push(arr);}
+
+QuantDeck.onTheme(()=>{
+  const base=QuantDeck.plotlyBase();
+  const fill=(y,c)=>({x:days,y,type:'scatter',mode:'lines',line:{width:0},fillcolor:c,fill:'tonexty',hoverinfo:'skip'});
+  const traces=[
+    {x:days,y:p90,type:'scatter',mode:'lines',line:{width:0},hoverinfo:'skip'},
+    fill(p10,'rgba(124,92,255,0.13)'),
+    {x:days,y:p75,type:'scatter',mode:'lines',line:{width:0},hoverinfo:'skip'},
+    fill(p25,'rgba(124,92,255,0.26)'),
+  ];
+  paths.forEach(pa=>traces.push({x:days,y:pa,type:'scatter',mode:'lines',line:{color:'rgba(150,150,170,0.12)',width:1},hoverinfo:'skip'}));
+  traces.push({x:days,y:p50,type:'scatter',mode:'lines',line:{color:QuantDeck.cssVar('--violet'),width:2.4},name:'Median',hovertemplate:'Day %{x}<br>$%{y:.0f}<extra></extra>'});
+  Plotly.newPlot('cone',traces,Object.assign(base,{margin:{l:44,r:12,t:8,b:30},xaxis:Object.assign(base.xaxis,{title:{text:'Trading days',font:{size:10}}})}),{displayModeBar:false,responsive:true});
+
+  // terminal histogram
+  const term=[]; for(let i=0;i<4000;i++){let v=start;for(let t=1;t<=H;t++)v*=(1+0.0009+(Math.random()-0.5)*0.022);term.push(v);}
+  const b2=QuantDeck.plotlyBase();
+  Plotly.newPlot('hist',[{x:term,type:'histogram',nbinsx:50,marker:{color:'rgba(124,92,255,0.6)'},hovertemplate:'$%{x:.0f}<extra></extra>'}],
+    Object.assign(b2,{margin:{l:44,r:12,t:8,b:30},xaxis:Object.assign(b2.xaxis,{title:{text:'Terminal price',font:{size:10}}}),yaxis:Object.assign(b2.yaxis,{title:{text:'Frequency',font:{size:10}}}),
+      shapes:[{type:'line',x0:start,x1:start,yref:'paper',y0:0,y1:1,line:{color:QuantDeck.cssVar('--text'),width:1.5,dash:'dash'}}]}),
+    {displayModeBar:false,responsive:true});
+});
+</script>
+</body>
+</html>

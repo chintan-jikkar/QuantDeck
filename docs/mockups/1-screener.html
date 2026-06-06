@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuantDeck Screener</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="quantdeck.css">
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar" id="topbar"></div>
+    <div class="content">
+      <div class="page-head">
+        <div><h1>Screener</h1><div class="sub">Narrow a universe down to a ranked shortlist worth investigating.</div></div>
+        <div class="controls">
+          <div class="seg">
+            <button class="on"><span class="dot" style="background:var(--violet)"></span>Equities</button>
+            <button><span class="dot" style="background:var(--teal)"></span>FX</button>
+            <button><span class="dot" style="background:var(--gold)"></span>Commodities</button>
+          </div>
+          <div class="pill-select"><span class="cap">Universe</span> Dow Jones 30 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+          <button class="btn-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m5 3 14 9-14 9z"/></svg> Run Screener</button>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="label">Universe</div><div class="val">30 <span style="font-size:14px;color:var(--text-muted)">tickers</span></div><div class="ctx">Dow Jones 30 · equities</div></div>
+        <div class="kpi"><div class="label">Passed Filters</div><div class="val">12 <span class="chg up">&#9650; 3</span></div><div class="ctx">vs last run (9)</div></div>
+        <div class="kpi"><div class="label">Avg Composite</div><div class="val mono">64</div><div class="ctx">range 41 to 91</div>
+          <svg class="spark" width="74" height="30" viewBox="0 0 74 30" fill="none"><polyline points="0,22 12,18 24,20 36,12 48,15 60,7 74,9" stroke="var(--violet)" stroke-width="2"/><circle cx="74" cy="9" r="2.5" fill="var(--violet)"/></svg></div>
+        <div class="kpi"><div class="label">Top Signal</div><div class="val" style="font-size:23px">NVDA</div><div class="ctx">Score 91 · <span style="color:var(--green)">Strong</span></div></div>
+      </div>
+
+      <div class="split">
+        <div class="card">
+          <div class="card-head"><div class="t">Results <span style="color:var(--text-dim);font-weight:400">· 12 matched</span></div><div class="meta">Sorted by composite score</div></div>
+          <div style="overflow-x:auto"><table>
+            <thead><tr><th style="width:28px"></th><th>Ticker</th><th class="num">Score</th><th class="num">P/E</th><th class="num">ROE</th><th class="num">Rev&nbsp;Gr</th><th class="num">RSI</th><th class="num">1D</th><th class="num">Signal</th></tr></thead>
+            <tbody id="tbody"></tbody>
+          </table></div>
+        </div>
+        <div class="rail">
+          <div class="card">
+            <div class="card-head"><div class="t">Valuation vs Growth</div><div class="meta">bubble = mkt cap</div></div>
+            <div id="scatter" style="height:240px;padding:0 8px 10px"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="t">Active Filters</div><div class="meta">Balanced</div></div>
+            <div class="filters">
+              <div class="fgroup"><div class="frow"><span class="fk">Max P/E</span><span class="fv">25</span></div><div class="track"><div class="unfill" style="left:42%"></div><div class="knob" style="left:42%"></div></div></div>
+              <div class="fgroup"><div class="frow"><span class="fk">Min ROE</span><span class="fv">10%</span></div><div class="track"><div class="unfill" style="left:20%"></div><div class="knob" style="left:20%"></div></div></div>
+              <div class="fgroup"><div class="frow"><span class="fk">Max Debt/Equity</span><span class="fv">1.0</span></div><div class="track"><div class="unfill" style="left:33%"></div><div class="knob" style="left:33%"></div></div></div>
+            </div>
+            <div class="chips"><span class="chip">RSI <b>0 to 100</b></span><span class="chip">Net Margin <b>&gt;5%</b></span><span class="chip">Rev Growth <b>&gt;0%</b></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="foot">QuantDeck is a quantitative analysis tool, not financial advice. Composite scores are relative ranks within the filtered universe.<br>Mockup · design preview · data shown is illustrative.</div>
+    </div>
+  </div>
+</div>
+<script src="quantdeck.js"></script>
+<script>
+QuantDeck.shell('screener');
+const rows = [
+  { tk:'NVDA', co:'NVIDIA Corp',    score:91, pe:34.2, roe:.91, rg:.122, rsi:61, d1:1.84,  sig:'strong', mc:60, star:1 },
+  { tk:'MSFT', co:'Microsoft',      score:84, pe:32.1, roe:.43, rg:.089, rsi:55, d1:0.42,  sig:'strong', mc:55, star:1 },
+  { tk:'AAPL', co:'Apple Inc',      score:78, pe:28.4, roe:.56, rg:.061, rsi:52, d1:-0.31, sig:'strong', mc:50, star:0 },
+  { tk:'JPM',  co:'JPMorgan Chase', score:71, pe:12.1, roe:.17, rg:.043, rsi:58, d1:0.67,  sig:'strong', mc:34, star:0 },
+  { tk:'CAT',  co:'Caterpillar',    score:66, pe:16.8, roe:.48, rg:.031, rsi:49, d1:0.12,  sig:'neutral',mc:18, star:0 },
+  { tk:'HD',   co:'Home Depot',     score:63, pe:23.5, roe:.39, rg:.024, rsi:47, d1:-0.55, sig:'neutral',mc:24, star:0 },
+  { tk:'DIS',  co:'Walt Disney',    score:58, pe:21.0, roe:.09, rg:.018, rsi:44, d1:0.28,  sig:'neutral',mc:16, star:0 },
+  { tk:'CVX',  co:'Chevron',        score:54, pe:14.2, roe:.13, rg:-.012,rsi:41, d1:-0.21, sig:'neutral',mc:22, star:0 },
+  { tk:'KO',   co:'Coca-Cola',      score:49, pe:24.8, roe:.40, rg:.007, rsi:46, d1:0.05,  sig:'neutral',mc:21, star:0 },
+  { tk:'BA',   co:'Boeing',         score:44, pe:0,    roe:-.20,rg:-.041,rsi:38, d1:-1.12, sig:'weak',   mc:9,  star:0 },
+  { tk:'VZ',   co:'Verizon',        score:42, pe:9.1,  roe:.21, rg:-.028,rsi:35, d1:-0.42, sig:'weak',   mc:13, star:0 },
+  { tk:'INTC', co:'Intel Corp',     score:41, pe:0,    roe:-.05,rg:-.067,rsi:33, d1:-0.88, sig:'weak',   mc:8,  star:0 },
+];
+const sc = s => s>=70?['var(--green)','var(--green-soft)']:s>=50?['var(--gold)','var(--gold-soft)']:['var(--red)','var(--red-soft)'];
+const SL = {strong:'Strong',neutral:'Neutral',weak:'Weak'};
+const pct = x => (x>=0?'+':'')+(x*100).toFixed(1)+'%';
+document.getElementById('tbody').innerHTML = rows.map(r=>{
+  const [fg,bg]=sc(r.score);
+  return `<tr><td><span class="star ${r.star?'on':''}">${r.star?'★':'☆'}</span></td>
+    <td><div class="tk">${QuantDeck.logoBadge(r.tk)}<div><div class="nm">${r.tk}</div><div class="co">${r.co}</div></div></div></td>
+    <td class="num"><span class="score" style="color:${fg};background:${bg}">${r.score}</span></td>
+    <td class="num mono">${r.pe?r.pe.toFixed(1):'n/a'}</td>
+    <td class="num mono">${(r.roe*100).toFixed(0)}%</td>
+    <td class="num mono ${r.rg>=0?'delta up':'delta down'}">${pct(r.rg)}</td>
+    <td class="num mono">${r.rsi}</td>
+    <td class="num delta ${r.d1>=0?'up':'down'}">${r.d1>=0?'▲':'▼'} ${Math.abs(r.d1).toFixed(2)}%</td>
+    <td class="num"><span class="signal sig-${r.sig}"><span class="d"></span>${SL[r.sig]}</span></td></tr>`;
+}).join('');
+
+QuantDeck.onTheme(()=>{
+  const base = QuantDeck.plotlyBase();
+  const trace = { x: rows.map(r=>r.pe||40), y: rows.map(r=>r.rg*100), text: rows.map(r=>r.tk), mode:'markers',
+    marker:{ size: rows.map(r=>8+r.mc*0.7), color: rows.map(r=>r.score),
+      colorscale:[[0,QuantDeck.cssVar('--red')],[0.5,QuantDeck.cssVar('--gold')],[1,QuantDeck.cssVar('--green')]],
+      line:{width:1,color:'rgba(124,92,255,0.5)'}, opacity:.9 },
+    hovertemplate:'<b>%{text}</b><br>P/E %{x:.1f}<br>Rev Gr %{y:.1f}%<extra></extra>' };
+  const layout = Object.assign(base, { margin:{l:38,r:10,t:6,b:34},
+    xaxis: Object.assign(base.xaxis,{title:{text:'P/E',font:{size:10}},tickfont:{size:9}}),
+    yaxis: Object.assign(base.yaxis,{title:{text:'Rev Growth %',font:{size:10}},tickfont:{size:9}}) });
+  Plotly.newPlot('scatter',[trace],layout,{displayModeBar:false,responsive:true});
+});
+</script>
+</body>
+</html>

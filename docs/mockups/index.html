@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuantDeck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="quantdeck.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar" id="topbar"></div>
+    <div class="content">
+      <div class="page-head">
+        <div><h1>Welcome back, Chintan 👋</h1><div class="sub">Walk in with a ticker, walk out with a full investment thesis.</div></div>
+        <a class="btn-primary" href="1-screener.html" style="text-decoration:none">Start screening
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="label">S&amp;P 500</div><div class="val mono" style="font-size:23px">6,012</div><div class="ctx"><span style="color:var(--green)">▲ +0.62%</span> today</div></div>
+        <div class="kpi"><div class="label">Nasdaq 100</div><div class="val mono" style="font-size:23px">21,840</div><div class="ctx"><span style="color:var(--green)">▲ +0.91%</span> today</div></div>
+        <div class="kpi"><div class="label">VIX</div><div class="val mono" style="font-size:23px">14.2</div><div class="ctx"><span style="color:var(--red)">▼ -3.1%</span> low vol</div></div>
+        <div class="kpi"><div class="label">US 10Y</div><div class="val mono" style="font-size:23px">4.21%</div><div class="ctx"><span style="color:var(--green)">▲ +2bps</span></div></div>
+      </div>
+
+      <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-top:4px">The five layers</div>
+      <div class="layer-grid">
+        <a class="layer" href="1-screener.html"><div class="n"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg></div><h3>1 · Screener</h3><p>Rank and filter a universe down to a shortlist. Equities, FX, commodities.</p></a>
+        <a class="layer" href="2-deep-dive.html"><div class="n"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg></div><h3>2 · Deep Dive</h3><p>A complete, interpreted picture of one name with live price and fundamentals.</p></a>
+        <a class="layer" href="3-valuation.html"><div class="n"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><h3>3 · Valuation</h3><p>DCF, comparables, and DDM with country-correct WACC. A price-target range.</p></a>
+        <a class="layer" href="4-simulation.html"><div class="n"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg></div><h3>4 · Simulation</h3><p>Monte Carlo paths (GBM, GARCH, OU) with VaR, CVaR, and a decision signal.</p></a>
+        <a class="layer" href="5-backtester.html"><div class="n"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="7"/><rect x="13" y="6" width="3" height="11"/></svg></div><h3>5 · Backtester</h3><p>Run a strategy over history with a full tearsheet, benchmarked automatically.</p></a>
+        <a class="layer" href="#" style="opacity:.6"><div class="n" style="background:var(--panel-2);color:var(--text-dim)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></div><h3 style="color:var(--text-muted)">More soon</h3><p>Portfolio optimizer and strategy gallery are on the roadmap.</p></a>
+      </div>
+      <div class="foot">QuantDeck is a quantitative analysis and educational tool. Every signal, valuation, and backtest is a model output, not financial advice. Mockup · design preview.</div>
+    </div>
+  </div>
+</div>
+<script src="quantdeck.js"></script>
+<script>QuantDeck.shell('');</script>
+</body>
+</html>

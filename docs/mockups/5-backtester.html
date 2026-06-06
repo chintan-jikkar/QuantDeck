@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuantDeck Backtester</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="quantdeck.css">
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar" id="topbar"></div>
+    <div class="content">
+      <div class="page-head">
+        <div><h1>Backtester</h1><div class="sub">Run a strategy over history and read the full tearsheet, benchmarked automatically.</div></div>
+        <div class="controls">
+          <div class="pill-select"><span class="cap">Strategy</span> MA Crossover <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+          <input class="input" value="AAPL" style="width:100px">
+          <div class="pill-select"><span class="cap">Range</span> 2021 to 2024</div>
+          <button class="btn-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m5 3 14 9-14 9z"/></svg> Run Backtest</button>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="label">CAGR</div><div class="val" style="color:var(--green)">+18.4%</div><div class="ctx">vs SPY +11.2%</div></div>
+        <div class="kpi"><div class="label">Sharpe</div><div class="val mono">1.42</div><div class="ctx">Sortino 1.97</div></div>
+        <div class="kpi"><div class="label">Max Drawdown</div><div class="val" style="color:var(--red)">-19.8%</div><div class="ctx">2022 selloff</div></div>
+        <div class="kpi"><div class="label">Win Rate</div><div class="val mono">54%</div><div class="ctx">Profit factor 1.7</div></div>
+      </div>
+
+      <div class="card"><div class="card-head"><div class="t">Equity Curve</div><div class="meta">strategy vs benchmark (SPY)</div></div>
+        <div id="equity" style="height:320px;padding:0 8px 8px"></div></div>
+
+      <div class="grid-2">
+        <div class="card"><div class="card-head"><div class="t">Drawdown</div><div class="meta">from peak</div></div>
+          <div id="dd" style="height:240px;padding:0 8px 8px"></div></div>
+        <div class="card"><div class="card-head"><div class="t">Monthly Returns</div><div class="meta">% per month</div></div>
+          <div id="months" style="height:240px;padding:0 8px 8px"></div></div>
+      </div>
+      <div class="foot">Backtested performance is not indicative of future results. QuantDeck is a quantitative analysis tool, not financial advice. Mockup · illustrative data.</div>
+    </div>
+  </div>
+</div>
+<script src="quantdeck.js"></script>
+<script>
+QuantDeck.shell('backtester');
+const N=750, d=[], strat=[], bench=[]; let s=100000, b=100000;
+for(let i=0;i<N;i++){ const dt=new Date(2021,0,1); dt.setDate(dt.getDate()+Math.round(i*1.45)); d.push(dt.toISOString().slice(0,10));
+  s*=(1+0.0007+(Math.random()-0.48)*0.012); b*=(1+0.00045+(Math.random()-0.49)*0.010); strat.push(s); bench.push(b); }
+const peak=[]; let mx=-1e9; const ddv=strat.map(v=>{mx=Math.max(mx,v);return (v/mx-1)*100;});
+
+QuantDeck.onTheme(()=>{
+  const base=QuantDeck.plotlyBase();
+  Plotly.newPlot('equity',[
+    {x:d,y:strat,type:'scatter',mode:'lines',line:{color:QuantDeck.cssVar('--violet'),width:2.2},name:'Strategy',hovertemplate:'$%{y:,.0f}<extra>Strategy</extra>'},
+    {x:d,y:bench,type:'scatter',mode:'lines',line:{color:QuantDeck.cssVar('--text-dim'),width:1.5,dash:'dot'},name:'SPY',hovertemplate:'$%{y:,.0f}<extra>SPY</extra>'}
+  ],Object.assign(base,{margin:{l:54,r:12,t:8,b:30},showlegend:true,legend:{orientation:'h',y:1.12,font:{size:11}}}),{displayModeBar:false,responsive:true});
+
+  const b2=QuantDeck.plotlyBase();
+  Plotly.newPlot('dd',[{x:d,y:ddv,type:'scatter',mode:'lines',fill:'tozeroy',line:{color:QuantDeck.cssVar('--red'),width:1},fillcolor:'rgba(248,81,73,0.18)',hovertemplate:'%{y:.1f}%<extra></extra>'}],
+    Object.assign(b2,{margin:{l:44,r:12,t:8,b:30},yaxis:Object.assign(b2.yaxis,{ticksuffix:'%'})}),{displayModeBar:false,responsive:true});
+
+  // monthly returns heatmap
+  const mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], yr=['2021','2022','2023','2024'];
+  const z=yr.map(()=>mo.map(()=>+( (Math.random()-0.45)*14 ).toFixed(1)));
+  const b3=QuantDeck.plotlyBase();
+  Plotly.newPlot('months',[{z,x:mo,y:yr,type:'heatmap',
+    colorscale:[[0,QuantDeck.cssVar('--red')],[0.5,'rgba(120,120,140,0.25)'],[1,QuantDeck.cssVar('--green')]],zmid:0,showscale:false,
+    text:z,texttemplate:'%{z}',textfont:{size:9},hovertemplate:'%{y} %{x}: %{z}%<extra></extra>'}],
+    Object.assign(b3,{margin:{l:44,r:10,t:8,b:26},xaxis:Object.assign(b3.xaxis,{gridcolor:'rgba(0,0,0,0)'}),yaxis:Object.assign(b3.yaxis,{gridcolor:'rgba(0,0,0,0)'})}),
+    {displayModeBar:false,responsive:true});
+});
+</script>
+</body>
+</html>

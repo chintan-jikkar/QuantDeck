@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuantDeck Valuation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="quantdeck.css">
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charset="utf-8"></script>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar" id="topbar"></div>
+    <div class="content">
+      <div class="page-head">
+        <div><h1>Valuation</h1><div class="sub">A price-target range, never false precision. Equity only.</div></div>
+        <div class="controls"><input class="input" value="AAPL" style="width:120px"><button class="btn-primary">Value</button></div>
+      </div>
+
+      <div class="card"><div class="card-head"><div class="t">WACC Breakdown</div><div class="meta">Damodaran · Ke = Rf + β×ERP + CRP</div></div>
+        <div class="card-body" style="display:grid;grid-template-columns:repeat(7,1fr);gap:10px">
+          <div class="kpi" style="border-radius:11px;padding:13px"><div class="label">Rf</div><div class="val mono" style="font-size:20px">4.2%</div></div>
+          <div class="kpi" style="border-radius:11px;padding:13px"><div class="label">Beta</div><div class="val mono" style="font-size:20px">1.21</div></div>
+          <div class="kpi" style="border-radius:11px;padding:13px"><div class="label">ERP</div><div class="val mono" style="font-size:20px">4.7%</div></div>
+          <div class="kpi" style="border-radius:11px;padding:13px"><div class="label">CRP</div><div class="val mono" style="font-size:20px">0.0%</div></div>
+          <div class="kpi" style="border-radius:11px;padding:13px;background:var(--violet-soft);border-color:var(--violet)"><div class="label" style="color:var(--violet)">Ke</div><div class="val mono" style="font-size:20px">9.9%</div></div>
+          <div class="kpi" style="border-radius:11px;padding:13px"><div class="label">Kd (a/t)</div><div class="val mono" style="font-size:20px">2.4%</div></div>
+          <div class="kpi" style="border-radius:11px;padding:13px;background:var(--violet-soft);border-color:var(--violet)"><div class="label" style="color:var(--violet)">WACC</div><div class="val mono" style="font-size:20px">9.1%</div></div>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="label">Current Price</div><div class="val mono">$307</div><div class="ctx">NASDAQ close</div></div>
+        <div class="kpi"><div class="label">Fair Value</div><div class="val mono" style="font-size:22px">$290 to $355</div><div class="ctx">blended range</div></div>
+        <div class="kpi"><div class="label">Upside (mid)</div><div class="val" style="color:var(--green)">+5.0%</div><div class="ctx">to $322 midpoint</div></div>
+        <div class="kpi"><div class="label">Verdict</div><div class="val" style="font-size:22px"><span class="signal sig-neutral"><span class="d"></span>Fairly valued</span></div><div class="ctx">within 10% band</div></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card"><div class="card-head"><div class="t">DCF Sensitivity</div><div class="meta">WACC × terminal growth</div></div>
+          <div id="heat" style="height:300px;padding:0 8px 8px"></div></div>
+        <div class="card"><div class="card-head"><div class="t">Football Field</div><div class="meta">implied value by method · | = current $307</div></div>
+          <div class="card-body" id="ff" style="padding-top:10px"></div></div>
+      </div>
+      <div class="foot">QuantDeck is a quantitative analysis tool, not financial advice. Valuation ranges are model outputs. Mockup · illustrative data.</div>
+    </div>
+  </div>
+</div>
+<script src="quantdeck.js"></script>
+<script>
+QuantDeck.shell('valuation');
+
+// Football field
+const MIN=240,MAX=380, line=307;
+const methods=[['DCF (bear/base/bull)',270,360],['Comps EV/EBITDA',290,340],['Comps P/E',300,355],['DDM',250,300]];
+const pos=v=>((v-MIN)/(MAX-MIN)*100);
+document.getElementById('ff').innerHTML = methods.map(([m,lo,hi])=>{
+  const left=pos(lo), w=pos(hi)-pos(lo);
+  return `<div class="ff-row"><div class="lbl">${m}</div>
+    <div class="ff-track"><div class="ff-bar" style="left:${left}%;width:${w}%"></div><div class="ff-now" style="left:${pos(line)}%"></div></div>
+    <div class="rng">$${lo} to $${hi}</div></div>`;
+}).join('') + `<div style="text-align:center;margin-top:14px;color:var(--text-muted);font-size:13px">Implied fair value <b style="color:var(--text)">$290 to $355</b> · Current <b style="color:var(--text)">$307</b> · Upside <b style="color:var(--green)">-6% to +16%</b></div>`;
+
+QuantDeck.onTheme(()=>{
+  const g=['0.5%','1.5%','2.0%','2.5%','3.5%'], w=['11%','10%','9.1%','8%','7%'];
+  const z=[[250,268,278,292,318],[262,281,293,309,338],[271,292,307,325,357],[284,308,326,347,384],[300,329,351,377,420]];
+  const base=QuantDeck.plotlyBase();
+  Plotly.newPlot('heat',[{z,x:g,y:w,type:'heatmap',
+    colorscale:[[0,QuantDeck.cssVar('--red')],[0.5,QuantDeck.cssVar('--gold')],[1,QuantDeck.cssVar('--green')]],
+    showscale:false, hovertemplate:'WACC %{y} · g %{x}<br>Implied $%{z}<extra></extra>',
+    text:z, texttemplate:'$%{z}', textfont:{size:10,color:'#0b0b12'}}],
+    Object.assign(base,{margin:{l:48,r:10,t:8,b:34},
+      xaxis:Object.assign(base.xaxis,{title:{text:'Terminal growth',font:{size:10}},gridcolor:'rgba(0,0,0,0)'}),
+      yaxis:Object.assign(base.yaxis,{title:{text:'WACC',font:{size:10}},gridcolor:'rgba(0,0,0,0)'})}),
+    {displayModeBar:false,responsive:true});
+});
+</script>
+</body>
+</html>
