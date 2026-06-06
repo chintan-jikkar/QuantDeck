@@ -1,7 +1,10 @@
 # layers/deep_dive.py — no Streamlit imports
 import pandas as pd
 import numpy as np
-from data.prices import fetch_prices, fetch_intraday, compute_returns, compute_rolling_beta
+from data.prices import (
+    fetch_prices, fetch_intraday, compute_returns, compute_rolling_beta,
+    detect_asset_type, market_index_for_country, country_from_ticker,
+)
 from data.fundamentals import (
     fetch_income_statement, fetch_balance_sheet,
     fetch_cash_flow, fetch_key_metrics, fetch_peers,
@@ -272,29 +275,50 @@ def run_commodity_market_drivers(ticker: str) -> dict:
     return result
 
 
-# ── Main entry point (data assembly in Task 3) ────────────────────────────────
+# ── Main entry point ──────────────────────────────────────────────────────────
 
-def run_deep_dive(ticker: str, country: str = "US") -> dict:
-    """Assemble all data for the Deep Dive page.
+def run_deep_dive(ticker: str, country: str | None = None,
+                  asset_type: str | None = None) -> dict:
+    """Assemble all data for the Deep Dive page, dispatching by asset type.
 
-    Returns a dict with keys:
-      prices, intraday, income, balance, cashflow, key_metrics, peers,
-      macro_regime, yield_curve, news_themes, margins, balance_ratios,
-      earnings_quality, beneish_mscore, capital_allocation, beta, country.
+    For equity: runs the full fundamental analysis.
+    For FX/commodity: runs only price + macro context + market drivers.
 
-    Every external fetch is defensive — missing data degrades to empty/NaN
-    rather than crashing (spec: never crash on missing data).
+    asset_type is auto-detected from the ticker if not provided.
+    country is auto-detected for equities if not provided.
     """
-    result: dict = {}
+    if asset_type is None:
+        asset_type = detect_asset_type(ticker)
+    if country is None:
+        country = country_from_ticker(ticker) if asset_type == "equity" else "US"
 
-    # ── Price data ─────────────────────────────────────────────────────────
+    result: dict = {"asset_type": asset_type, "country": country}
+
+    # ── Price data (all asset classes) ─────────────────────────────────────
     result["prices"] = fetch_prices(ticker, period="5y")
     try:
         result["intraday"] = fetch_intraday(ticker)
     except Exception:
         result["intraday"] = None
 
-    # ── Fundamentals ────────────────────────────────────────────────────────
+    # ── Macro context (all asset classes) ──────────────────────────────────
+    result["macro_regime"] = fetch_macro_regime(country)
+    result["yield_curve"]  = fetch_yield_curve(country)
+
+    # ── News themes (all asset classes) ────────────────────────────────────
+    headlines = fetch_headlines(ticker=ticker)
+    result["news_themes"] = group_by_theme(headlines)
+
+    # ── Asset-class-specific analysis ──────────────────────────────────────
+    if asset_type == "fx":
+        result["market_drivers"] = run_fx_market_drivers(ticker)
+        return result
+
+    if asset_type == "commodity":
+        result["market_drivers"] = run_commodity_market_drivers(ticker)
+        return result
+
+    # ── Equity: full fundamental analysis ──────────────────────────────────
     income      = fetch_income_statement(ticker, limit=5)
     balance     = fetch_balance_sheet(ticker, limit=5)
     cashflow    = fetch_cash_flow(ticker, limit=5)
@@ -305,18 +329,6 @@ def run_deep_dive(ticker: str, country: str = "US") -> dict:
     result["key_metrics"] = key_metrics
     result["peers"]       = fetch_peers(ticker)
 
-    # ── Macro ────────────────────────────────────────────────────────────────
-    result["macro_regime"] = fetch_macro_regime(country)
-    result["yield_curve"]  = fetch_yield_curve(country)
-
-    # ── News themes ─────────────────────────────────────────────────────────
-    headlines = fetch_headlines(ticker=ticker)
-    result["news_themes"] = group_by_theme(headlines)
-
-    # ── Computed metrics ─────────────────────────────────────────────────────
-    # Defaults so a missing or malformed statement degrades to empty/NaN rather
-    # than crashing the page. Each compute_* is isolated in its own try/except so
-    # that one statement's row-count mismatch can't wipe out the other metrics.
     result["margins"]            = pd.DataFrame()
     result["balance_ratios"]     = pd.DataFrame()
     result["earnings_quality"]   = pd.DataFrame()
@@ -345,9 +357,10 @@ def run_deep_dive(ticker: str, country: str = "US") -> dict:
         except Exception:
             pass
 
-    # ── Rolling beta vs S&P 500 ──────────────────────────────────────────────
+    # ── Rolling beta vs local market index ──────────────────────────────────
     try:
-        market = fetch_prices("^GSPC", period="5y")
+        local_index = market_index_for_country(country)
+        market = fetch_prices(local_index, period="5y")
         stock_ret  = compute_returns(result["prices"])
         market_ret = compute_returns(market)
         idx = stock_ret.index.intersection(market_ret.index)
@@ -357,5 +370,4 @@ def run_deep_dive(ticker: str, country: str = "US") -> dict:
     except Exception:
         result["beta"] = float("nan")
 
-    result["country"] = country
     return result

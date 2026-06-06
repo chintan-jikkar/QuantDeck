@@ -315,3 +315,43 @@ def test_run_commodity_price_vs_5y_mean_is_float():
         from layers.deep_dive import run_commodity_market_drivers
         result = run_commodity_market_drivers("GC=F")
     assert isinstance(result["price_vs_5y_mean_pct"], float)
+
+
+# ── Deep Dive asset-type dispatch ─────────────────────────────────────────────
+
+def test_run_deep_dive_fx_returns_asset_type_key():
+    mock_data = _fx_prices()
+    with _patch("layers.deep_dive.fetch_prices", return_value=mock_data), \
+         _patch("layers.deep_dive.fetch_headlines", return_value=[]), \
+         _patch("layers.deep_dive.group_by_theme", return_value=[]), \
+         _patch("layers.deep_dive.fetch_macro_regime", return_value={}), \
+         _patch("layers.deep_dive.fetch_yield_curve", return_value={}):
+        from layers.deep_dive import run_deep_dive
+        result = run_deep_dive("EURUSD=X")
+    assert result["asset_type"] == "fx"
+    assert "market_drivers" in result
+
+
+def test_run_deep_dive_commodity_returns_asset_type_key():
+    mock_data = _commodity_prices()
+    with _patch("layers.deep_dive.fetch_prices", return_value=mock_data), \
+         _patch("layers.deep_dive.fetch_headlines", return_value=[]), \
+         _patch("layers.deep_dive.group_by_theme", return_value=[]), \
+         _patch("layers.deep_dive.fetch_macro_regime", return_value={}), \
+         _patch("layers.deep_dive.fetch_yield_curve", return_value={}):
+        from layers.deep_dive import run_deep_dive
+        result = run_deep_dive("GC=F")
+    assert result["asset_type"] == "commodity"
+    assert "market_drivers" in result
+
+
+def test_run_deep_dive_fx_has_no_beneish():
+    mock_data = _fx_prices()
+    with _patch("layers.deep_dive.fetch_prices", return_value=mock_data), \
+         _patch("layers.deep_dive.fetch_headlines", return_value=[]), \
+         _patch("layers.deep_dive.group_by_theme", return_value=[]), \
+         _patch("layers.deep_dive.fetch_macro_regime", return_value={}), \
+         _patch("layers.deep_dive.fetch_yield_curve", return_value={}):
+        from layers.deep_dive import run_deep_dive
+        result = run_deep_dive("EURUSD=X")
+    assert "beneish_mscore" not in result
