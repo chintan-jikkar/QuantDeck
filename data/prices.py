@@ -96,6 +96,7 @@ def get_benchmark(ticker: str) -> str:
     if asset_type == "commodity":
         return COMMODITY_BENCHMARK
     # Equity: match suffix to a universe entry
+    # Empty suffix means US (S&P 500, NASDAQ, Russell) — those fall through to the "SPY" default below.
     suffix_map = {info["suffix"]: info["benchmark"] for info in EQUITY_UNIVERSES.values() if info["suffix"]}
     t = ticker.upper()
     for suffix, benchmark in suffix_map.items():

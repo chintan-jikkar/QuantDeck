@@ -150,3 +150,8 @@ def test_get_benchmark_uk_equity_returns_ewu():
 def test_get_benchmark_japan_equity_returns_ewj():
     from data.prices import get_benchmark
     assert get_benchmark("7203.T") == "EWJ"
+
+
+def test_get_benchmark_unknown_intl_suffix_returns_spy():
+    from data.prices import get_benchmark
+    assert get_benchmark("LOGN.S") == "SPY"
