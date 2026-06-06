@@ -194,7 +194,7 @@ def run_fx_market_drivers(ticker: str) -> dict:
     n = len(close)
     try:
         past = float(close.iloc[-22]) if n >= 22 else float("nan")
-        ref  = float(close.iloc[max(0, n - 252)]) if n >= 30 else float("nan")
+        ref  = float(close.iloc[max(0, n - 253)]) if n >= 30 else float("nan")
         result["momentum_12_1"] = (past / ref - 1.0) if (ref and ref == ref and past == past) else float("nan")
     except Exception:
         result["momentum_12_1"] = float("nan")
