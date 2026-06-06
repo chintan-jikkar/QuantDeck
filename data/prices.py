@@ -108,23 +108,19 @@ def get_benchmark(ticker: str) -> str:
 def country_from_ticker(ticker: str) -> str:
     """Derive the issuing country from a yfinance equity ticker suffix.
 
-    Suffix → country mapping mirrors config.EQUITY_UNIVERSES. Non-suffixed
-    tickers (US stocks) return "US". FX and commodity tickers return "US" as
-    a neutral default since country-risk valuation doesn't apply to them.
+    Derives suffix→country mapping from config.EQUITY_UNIVERSES so it stays
+    in sync automatically when new universes are added. Non-suffixed tickers
+    (US stocks) return "US". FX and commodity tickers return "US" as a neutral
+    default since country-risk valuation doesn't apply to them.
     """
-    _SUFFIX_COUNTRY = {
-        ".L":  "UK",
-        ".DE": "Germany",
-        ".PA": "France",
-        ".T":  "Japan",
-        ".HK": "HongKong",
-        ".NS": "India",
-        ".BO": "India",
-        ".AX": "Australia",
-        ".TO": "Canada",
+    from config import EQUITY_UNIVERSES
+    suffix_country = {
+        info["suffix"]: info["country"]
+        for info in EQUITY_UNIVERSES.values()
+        if info["suffix"]
     }
     t = ticker.upper()
-    for suffix, country in _SUFFIX_COUNTRY.items():
+    for suffix, country in suffix_country.items():
         if t.endswith(suffix.upper()):
             return country
     return "US"
