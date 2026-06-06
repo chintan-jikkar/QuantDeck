@@ -103,3 +103,42 @@ def get_benchmark(ticker: str) -> str:
         if t.endswith(suffix.upper()):
             return benchmark
     return "SPY"
+
+
+def country_from_ticker(ticker: str) -> str:
+    """Derive the issuing country from a yfinance equity ticker suffix.
+
+    Suffix → country mapping mirrors config.EQUITY_UNIVERSES. Non-suffixed
+    tickers (US stocks) return "US". FX and commodity tickers return "US" as
+    a neutral default since country-risk valuation doesn't apply to them.
+    """
+    _SUFFIX_COUNTRY = {
+        ".L":  "UK",
+        ".DE": "Germany",
+        ".PA": "France",
+        ".T":  "Japan",
+        ".HK": "HongKong",
+        ".NS": "India",
+        ".BO": "India",
+        ".AX": "Australia",
+        ".TO": "Canada",
+    }
+    t = ticker.upper()
+    for suffix, country in _SUFFIX_COUNTRY.items():
+        if t.endswith(suffix.upper()):
+            return country
+    return "US"
+
+
+def market_index_for_country(country: str) -> str:
+    """Return the local equity market index ticker for beta calculation.
+
+    Reads from config.EQUITY_UNIVERSES (first match wins for countries with
+    multiple universes, e.g. India → ^NSEI from Nifty 50). Falls back to
+    ^GSPC (S&P 500) for unknown countries.
+    """
+    from config import EQUITY_UNIVERSES
+    for info in EQUITY_UNIVERSES.values():
+        if info["country"] == country:
+            return info["market_index"]
+    return "^GSPC"

@@ -155,3 +155,56 @@ def test_get_benchmark_japan_equity_returns_ewj():
 def test_get_benchmark_unknown_intl_suffix_returns_spy():
     from data.prices import get_benchmark
     assert get_benchmark("LOGN.S") == "SPY"
+
+
+# ── Country helpers ────────────────────────────────────────────────────────────
+
+def test_country_from_ticker_us_default():
+    from data.prices import country_from_ticker
+    assert country_from_ticker("AAPL") == "US"
+    assert country_from_ticker("MSFT") == "US"
+
+
+def test_country_from_ticker_uk():
+    from data.prices import country_from_ticker
+    assert country_from_ticker("BP.L") == "UK"
+
+
+def test_country_from_ticker_germany():
+    from data.prices import country_from_ticker
+    assert country_from_ticker("SIE.DE") == "Germany"
+
+
+def test_country_from_ticker_japan():
+    from data.prices import country_from_ticker
+    assert country_from_ticker("7203.T") == "Japan"
+
+
+def test_country_from_ticker_india_nse():
+    from data.prices import country_from_ticker
+    assert country_from_ticker("RELIANCE.NS") == "India"
+
+
+def test_country_from_ticker_australia():
+    from data.prices import country_from_ticker
+    assert country_from_ticker("CBA.AX") == "Australia"
+
+
+def test_market_index_for_country_us():
+    from data.prices import market_index_for_country
+    assert market_index_for_country("US") == "^GSPC"
+
+
+def test_market_index_for_country_uk():
+    from data.prices import market_index_for_country
+    assert market_index_for_country("UK") == "^FTSE"
+
+
+def test_market_index_for_country_germany():
+    from data.prices import market_index_for_country
+    assert market_index_for_country("Germany") == "^GDAXI"
+
+
+def test_market_index_for_country_unknown_defaults_gspc():
+    from data.prices import market_index_for_country
+    assert market_index_for_country("Narnia") == "^GSPC"
