@@ -92,8 +92,23 @@ QuantDeck.onTheme(()=>{
   const cs={x:dates,open:o,high:h,low:l,close:c,type:'candlestick',
     increasing:{line:{color:QuantDeck.cssVar('--green')}}, decreasing:{line:{color:QuantDeck.cssVar('--red')}}, name:'AAPL'};
   const ma={x:dates,y:sma,type:'scatter',mode:'lines',line:{color:QuantDeck.cssVar('--gold'),width:1.4},name:'50 SMA'};
-  const lay=Object.assign(base,{margin:{l:46,r:12,t:8,b:30},xaxis:Object.assign(base.xaxis,{rangeslider:{visible:false}})});
-  Plotly.newPlot('candle',[cs,ma],lay,{displayModeBar:false,responsive:true});
+  const sp = QuantDeck.cssVar('--text-dim');
+  const lay=Object.assign(base,{
+    dragmode:'pan', hovermode:'x unified', margin:{l:46,r:12,t:8,b:18},
+    xaxis:Object.assign(base.xaxis,{
+      rangeslider:{visible:true, thickness:0.10, bgcolor:'rgba(124,92,255,0.06)', bordercolor:QuantDeck.cssVar('--border')},
+      showspikes:true, spikemode:'across', spikethickness:1, spikecolor:sp, spikedash:'dot', spikesnap:'cursor',
+      rangeselector:{ buttons:[
+        {count:1,label:'1M',step:'month',stepmode:'backward'},
+        {count:3,label:'3M',step:'month',stepmode:'backward'},
+        {count:6,label:'6M',step:'month',stepmode:'backward'},
+        {step:'all',label:'All'}],
+        bgcolor:QuantDeck.cssVar('--panel-2'), activecolor:QuantDeck.cssVar('--violet'),
+        bordercolor:QuantDeck.cssVar('--border'), font:{color:QuantDeck.cssVar('--text-muted'),size:10}, x:0, y:1.08 }
+    }),
+    yaxis:Object.assign(base.yaxis,{showspikes:true, spikemode:'across', spikethickness:1, spikecolor:sp, spikedash:'dot'})
+  });
+  Plotly.newPlot('candle',[cs,ma],lay,{scrollZoom:true, displaylogo:false, responsive:true, modeBarButtonsToRemove:['lasso2d','select2d']});
 
   // revenue + margins
   const yrs=['FY21','FY22','FY23','FY24','FY25'], rev=[365,394,383,391,416], gm=[42,43,44,45,46], nm=[25,25,25,24,26];

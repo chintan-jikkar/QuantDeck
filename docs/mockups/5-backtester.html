@@ -68,8 +68,8 @@ QuantDeck.onTheme(()=>{
   const z=yr.map(()=>mo.map(()=>+( (Math.random()-0.45)*14 ).toFixed(1)));
   const b3=QuantDeck.plotlyBase();
   Plotly.newPlot('months',[{z,x:mo,y:yr,type:'heatmap',
-    colorscale:[[0,QuantDeck.cssVar('--red')],[0.5,'rgba(120,120,140,0.25)'],[1,QuantDeck.cssVar('--green')]],zmid:0,showscale:false,
-    text:z,texttemplate:'%{z}',textfont:{size:9},hovertemplate:'%{y} %{x}: %{z}%<extra></extra>'}],
+    colorscale:[[0,QuantDeck.cssVar('--red')],[0.5,'rgba(28,30,46,1)'],[1,QuantDeck.cssVar('--green')]],zmid:0,showscale:false,
+    text:z,texttemplate:'%{z}',textfont:{size:10,color:'#FFFFFF'},hovertemplate:'%{y} %{x}: %{z}%<extra></extra>'}],
     Object.assign(b3,{margin:{l:44,r:10,t:8,b:26},xaxis:Object.assign(b3.xaxis,{gridcolor:'rgba(0,0,0,0)'}),yaxis:Object.assign(b3.yaxis,{gridcolor:'rgba(0,0,0,0)'})}),
     {displayModeBar:false,responsive:true});
 });

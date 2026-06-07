@@ -76,7 +76,14 @@ QuantDeck.onTheme(()=>{
     {x:days,y:p75,type:'scatter',mode:'lines',line:{width:0},hoverinfo:'skip'},
     fill(p25,'rgba(124,92,255,0.26)'),
   ];
-  paths.forEach(pa=>traces.push({x:days,y:pa,type:'scatter',mode:'lines',line:{color:'rgba(150,150,170,0.12)',width:1},hoverinfo:'skip'}));
+  // color each sample path by its trajectory: ends above entry = green, below = red, deeper tone = bigger move
+  paths.forEach(pa=>{
+    const ret=(pa[pa.length-1]-start)/start;            // terminal return
+    const mag=Math.min(Math.abs(ret)/0.35,1);           // 0..1 intensity
+    const a=(0.20+0.45*mag).toFixed(2);
+    const col = ret>=0 ? `rgba(63,185,80,${a})` : `rgba(248,81,73,${a})`;
+    traces.push({x:days,y:pa,type:'scatter',mode:'lines',line:{color:col,width:1},hoverinfo:'skip'});
+  });
   traces.push({x:days,y:p50,type:'scatter',mode:'lines',line:{color:QuantDeck.cssVar('--violet'),width:2.4},name:'Median',hovertemplate:'Day %{x}<br>$%{y:.0f}<extra></extra>'});
   Plotly.newPlot('cone',traces,Object.assign(base,{margin:{l:44,r:12,t:8,b:30},xaxis:Object.assign(base.xaxis,{title:{text:'Trading days',font:{size:10}}})}),{displayModeBar:false,responsive:true});
 
