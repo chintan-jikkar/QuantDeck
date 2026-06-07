@@ -87,7 +87,10 @@ with right:
     st.metric("VaR 95%", fmt_percent(rm["var_95"]), help="Worst 5% outcome")
     st.metric("CVaR 95%", fmt_percent(rm["cvar_95"]), help="Average of the worst 5%")
     st.metric("Prob. of Profit", fmt_percent(rm["prob_profit"]))
-    st.metric("Expected Return (P50)", fmt_percent(rm["expected_return"]))
+    st.metric("Median Return (P50)", fmt_percent(rm["median_return"]),
+              help="50th-percentile path return")
+    st.metric("Expected Return (mean)", fmt_percent(rm["expected_return"]),
+              help="Mean path return; exceeds the median on right-skewed outcomes")
     st.metric("Median Price", fmt_currency(rm["p50_price"], "USD"))
 
 st.divider()

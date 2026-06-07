@@ -176,6 +176,34 @@ def test_derive_wacc_inputs_hand_computed():
     assert out["wacc"]     == pytest.approx(0.081855, rel=1e-6)
 
 
+def test_derive_wacc_inputs_uses_market_equity_when_provided():
+    """When market_equity (market cap) is supplied it — not book totalEquity —
+    is the equity weight in WACC (Damodaran-correct).
+
+    rf=0.04, beta=1.2 → ke=0.09664; kd=0.05; tax=0.25.
+    Book totalEquity=300M, debt=100M, but market_equity=900M → weights 0.9/0.1:
+      wacc = 0.09664×0.9 + 0.05×(1−0.25)×0.1 = 0.086976 + 0.00375 = 0.090726
+    """
+    import layers.valuation as val
+    income = pd.DataFrame([{
+        "interestExpense": 5_000_000,
+        "incomeTaxExpense": 15_000_000,
+        "incomeBeforeTax": 60_000_000,
+    }])
+    balance = pd.DataFrame([{
+        "totalDebt": 100_000_000,
+        "totalEquity": 300_000_000,
+    }])
+    patches = _patch_wacc_data(pd.Series([4.0]), pd.Series([1.2]))
+    with patches[0], patches[1], patches[2]:
+        out = val._derive_wacc_inputs(
+            "TEST", income, balance, "US", market_equity=900_000_000,
+        )
+
+    assert out["equity"] == pytest.approx(900_000_000, rel=1e-9)
+    assert out["wacc"]   == pytest.approx(0.090726, rel=1e-6)
+
+
 def test_derive_wacc_inputs_loss_year_clamps_tax_to_zero():
     """A loss year (negative incomeBeforeTax) would yield a nonsense negative
     tax rate; the [0, 0.5] clamp must floor it at 0, not pass −0.2 through."""

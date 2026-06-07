@@ -68,11 +68,17 @@ def compute_sharpe(returns: pd.Series, rf: float = 0.0, periods_per_year: int = 
 
 
 def compute_sortino(returns: pd.Series, rf: float = 0.0, periods_per_year: int = 252) -> float:
-    """Annualized Sortino ratio (downside deviation only)."""
+    """Annualized Sortino ratio.
+
+    Downside deviation is the root-mean-square of below-target (excess < 0)
+    returns measured over ALL periods — the standard definition — rather than
+    the sample std of only the negative subset (which both under-counts the
+    denominator and demeans it, inflating the ratio).
+    """
     r = returns.dropna()
     excess = r - rf / periods_per_year
-    downside = excess[excess < 0]
-    dd = downside.std(ddof=1)
+    downside = np.minimum(excess.to_numpy(dtype=float), 0.0)
+    dd = float(np.sqrt(np.mean(downside ** 2)))
     if dd == 0 or np.isnan(dd):
         return 0.0
     return float(excess.mean() / dd * np.sqrt(periods_per_year))

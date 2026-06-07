@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 import yfinance as yf
-from data.fundamentals import _get
+from data.fundamentals import fetch_key_metrics
 
 DEFAULT_FILTERS = {
     "pe_max":            30.0,
@@ -29,23 +29,20 @@ _DOW30 = [
 def _fetch_universe_tickers(universe: str) -> list[str]:
     if universe == "Dow Jones 30":
         return _DOW30
-    endpoint_map = {
-        "S&P 500":    "sp500_constituent",
-        "NASDAQ 100": "nasdaq_constituent",
-    }
-    endpoint = endpoint_map.get(universe, "sp500_constituent")
-    data = _get(endpoint)
-    tickers = [row["symbol"] for row in data if row.get("symbol")]
-    return tickers[:100]
+    # S&P 500 / NASDAQ 100 constituents are scraped from Wikipedia and cached
+    # (FMP gated its constituent endpoints behind a paid plan). Capped at 100
+    # tickers to keep a screen responsive on the free fundamentals tier.
+    from data.universe import fetch_constituents
+    return fetch_constituents(universe)[:100]
 
 
 def _fetch_key_metrics_batch(tickers: list[str]) -> pd.DataFrame:
     rows = []
     for ticker in tickers:
         try:
-            data = _get(f"key-metrics/{ticker}", {"limit": 1})
-            if data:
-                row = data[0]
+            km = fetch_key_metrics(ticker, limit=1)
+            if not km.empty:
+                row = km.iloc[0].to_dict()
                 row["symbol"] = ticker
                 rows.append(row)
         except Exception:

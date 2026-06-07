@@ -116,7 +116,10 @@ def compute_risk_metrics(paths: np.ndarray, start_price: float) -> dict:
         "var_95": var_95,
         "cvar_95": cvar_95,
         "prob_profit": float((terminal > start_price).mean()),
-        "expected_return": float(np.median(returns)),
+        # expected_return is the mean (true expectation); median_return is kept
+        # separately because terminal price distributions are right-skewed.
+        "expected_return": float(np.mean(returns)),
+        "median_return": float(np.median(returns)),
         "p50_price": float(np.median(terminal)),
         "mean_price": float(np.mean(terminal)),
     }

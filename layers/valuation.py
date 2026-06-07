@@ -139,12 +139,17 @@ def _derive_wacc_inputs(
     income: pd.DataFrame,
     balance: pd.DataFrame,
     country: str,
+    market_equity: float | None = None,
 ) -> dict:
     """Derive WACC inputs from FMP statements + FRED/yfinance risk-free + config risk premia.
 
     For US, uses DGS10 (FRED) for Rf and ^GSPC for beta — preserving test compatibility.
     For non-US, uses the country's rf_ticker from COUNTRY_RISK (FRED series) and
     the country's local market index for beta calculation.
+
+    Equity weight in WACC uses ``market_equity`` (market cap = shares × price) when
+    provided — the Damodaran-correct convention — and falls back to book equity
+    (balance-sheet totalEquity) only when a market value is unavailable.
     """
     cr = COUNTRY_RISK.get(country, COUNTRY_RISK["US"])
     erp = cr["erp"]
@@ -190,8 +195,11 @@ def _derive_wacc_inputs(
         tax_rate = 0.21
 
     try:
-        equity = float(balance.loc[0, "totalEquity"])
+        book_equity = float(balance.loc[0, "totalEquity"])
         debt   = float(balance.loc[0, "totalDebt"])
+        # Market value of equity is the correct WACC weight (Damodaran); book
+        # equity is only a fallback when no market cap is available.
+        equity = market_equity if (market_equity is not None and market_equity > 0) else book_equity
         wacc   = compute_wacc(ke, kd, tax_rate, equity, debt)
     except Exception:
         equity = debt = float("nan")
@@ -231,13 +239,8 @@ def run_valuation(ticker: str, country: str = "US", overrides: dict | None = Non
 
     result: dict = {"applicable": True}
 
-    wacc_inputs = _derive_wacc_inputs(ticker, income, balance, country)
-    for k in ("rf", "beta", "erp", "crp", "ke", "kd", "tax_rate", "wacc"):
-        if k in ov:
-            wacc_inputs[k] = ov[k]
-    result["wacc_inputs"] = wacc_inputs
-    wacc = wacc_inputs["wacc"]
-
+    # Current price and share count come first — both feed the market-cap
+    # equity weight used by WACC below.
     try:
         prices = fetch_prices(ticker, period="5d")
         current_price = float(prices["Close"].iloc[-1])
@@ -246,10 +249,23 @@ def run_valuation(ticker: str, country: str = "US", overrides: dict | None = Non
     result["current_price"] = current_price
 
     try:
-        shares = float(key_metrics.loc[0, "sharesOutstanding"]) if "sharesOutstanding" in key_metrics.columns else float("nan")
+        shares = float(income.loc[0, "weightedAverageShsOut"]) if "weightedAverageShsOut" in income.columns else float("nan")
     except Exception:
         shares = float("nan")
     result["shares_outstanding"] = shares
+
+    market_equity = (
+        shares * current_price
+        if (shares == shares and current_price == current_price and shares > 0 and current_price > 0)
+        else None
+    )
+
+    wacc_inputs = _derive_wacc_inputs(ticker, income, balance, country, market_equity=market_equity)
+    for k in ("rf", "beta", "erp", "crp", "ke", "kd", "tax_rate", "wacc"):
+        if k in ov:
+            wacc_inputs[k] = ov[k]
+    result["wacc_inputs"] = wacc_inputs
+    wacc = wacc_inputs["wacc"]
 
     # DCF
     try:

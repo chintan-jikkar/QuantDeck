@@ -63,13 +63,21 @@ def test_fetch_key_metrics_returns_dataframe(monkeypatch):
 
 def test_fetch_peers_returns_list(monkeypatch):
     monkeypatch.setenv("FMP_API_KEY", "test_key")
-    payload = [{"symbol": "AAPL", "peersList": ["MSFT", "GOOG", "META"]}]
+    # /stable/stock-peers returns a flat list of peer rows (not a nested peersList),
+    # and the queried symbol itself is excluded from the result.
+    payload = [
+        {"symbol": "AAPL", "companyName": "Apple Inc.", "price": 307.0, "mktCap": 4.6e12},
+        {"symbol": "MSFT", "companyName": "Microsoft", "price": 400.0, "mktCap": 3.0e12},
+        {"symbol": "GOOG", "companyName": "Alphabet", "price": 150.0, "mktCap": 2.0e12},
+        {"symbol": "META", "companyName": "Meta Platforms", "price": 500.0, "mktCap": 1.3e12},
+    ]
     with patch("data.fundamentals.requests.get") as mock_get:
         mock_get.return_value = _mock_get(payload)
         from data.fundamentals import fetch_peers
         peers = fetch_peers("AAPL")
     assert isinstance(peers, list)
     assert "MSFT" in peers
+    assert "AAPL" not in peers  # queried symbol excluded
 
 
 def test_fetch_peers_returns_empty_list_when_no_data(monkeypatch):
