@@ -1,0 +1,11 @@
+# QuantDeck — Quant Terminal theme (dark violet)
+# Mirrors docs/mockups/quantdeck.css design tokens.
+[theme]
+base = "dark"
+primaryColor = "#7C5CFF"
+backgroundColor = "#070610"
+secondaryBackgroundColor = "#100D1B"
+textColor = "#E6E9EF"
+
+[browser]
+gatherUsageStats = false

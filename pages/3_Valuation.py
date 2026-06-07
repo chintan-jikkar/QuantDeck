@@ -3,8 +3,10 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from utils.formatting import fmt_currency, fmt_percent, fmt_number
+from utils.theme import inject_css, SCORE_SCALE
 
 st.set_page_config(page_title="Valuation — QuantDeck", layout="wide")
+inject_css()
 st.title("Layer 3 — Valuation Engine")
 st.caption("Equity only. Price-target range, not a single number.")
 
@@ -83,7 +85,7 @@ with tab_dcf:
             st.subheader("WACC × Terminal Growth Sensitivity")
             st.caption("Each cell = implied price per share. Green = higher, red = lower.")
             from utils.charts import heatmap as _heatmap
-            fig_heat = _heatmap(sensitivity.astype(float).round(2), colorscale="RdYlGn", title="")
+            fig_heat = _heatmap(sensitivity.astype(float).round(2), colorscale=SCORE_SCALE, title="")
             fig_heat.update_layout(height=300,
                                    xaxis_title="Terminal Growth", yaxis_title="WACC")
             st.plotly_chart(fig_heat, use_container_width=True)
@@ -146,7 +148,7 @@ ranges = [(label, lo, hi) for (label, lo, hi) in ranges if _ok(lo) and _ok(hi) a
 
 if ranges:
     fig_ff = go.Figure()
-    colors = ["steelblue", "orange", "green", "purple", "teal"]
+    colors = ["#7C5CFF", "#D9A441", "#3FB950", "#C95CC8", "#2DD4BF"]
     for i, (label, lo, hi) in enumerate(ranges):
         fig_ff.add_trace(go.Bar(
             x=[max(hi - lo, 0.01)], y=[label], base=[lo],
@@ -154,7 +156,7 @@ if ranges:
             hovertemplate=f"{label}: ${lo:.2f} – ${hi:.2f}<extra></extra>",
         ))
     if _ok(current_price):
-        fig_ff.add_vline(x=current_price, line_color="black", line_dash="dash",
+        fig_ff.add_vline(x=current_price, line_color="#E6E9EF", line_dash="dash",
                          annotation_text=f"Current ${current_price:.2f}", annotation_position="top")
     fig_ff.update_layout(barmode="overlay", height=300, showlegend=False,
                          xaxis_title="Implied Price (USD)", title="Valuation Range by Method")

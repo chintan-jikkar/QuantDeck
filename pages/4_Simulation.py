@@ -4,8 +4,10 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from utils.formatting import fmt_percent, fmt_currency
+from utils.theme import inject_css
 
 st.set_page_config(page_title="Simulation — QuantDeck", layout="wide")
+inject_css()
 st.title("Layer 4 — Monte Carlo Simulation")
 st.caption("Distributional reality (fat tails, clustering) is modeled; discrete jump risk is not.")
 
@@ -60,11 +62,11 @@ with left:
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=x, y=bands["p90"], line={"width": 0}, showlegend=False))
     fig.add_trace(go.Scatter(x=x, y=bands["p10"], fill="tonexty",
-                             fillcolor="rgba(70,130,180,0.2)", line={"width": 0}, name="P10–P90"))
+                             fillcolor="rgba(124,92,255,0.16)", line={"width": 0}, name="P10–P90"))
     fig.add_trace(go.Scatter(x=x, y=bands["p75"], line={"width": 0}, showlegend=False))
     fig.add_trace(go.Scatter(x=x, y=bands["p25"], fill="tonexty",
-                             fillcolor="rgba(70,130,180,0.35)", line={"width": 0}, name="P25–P75"))
-    fig.add_trace(go.Scatter(x=x, y=bands["p50"], line={"color": "steelblue", "width": 2}, name="Median"))
+                             fillcolor="rgba(124,92,255,0.32)", line={"width": 0}, name="P25–P75"))
+    fig.add_trace(go.Scatter(x=x, y=bands["p50"], line={"color": "#7C5CFF", "width": 2}, name="Median"))
     sample = paths[:, :min(40, paths.shape[1])]
     for i in range(sample.shape[1]):
         fig.add_trace(go.Scatter(x=x, y=sample[:, i],
@@ -76,8 +78,8 @@ with left:
 
     st.subheader("Terminal Distribution")
     terminal = paths[-1, :]
-    hist = go.Figure(go.Histogram(x=terminal, nbinsx=60, marker_color="steelblue"))
-    hist.add_vline(x=start, line_dash="dash", line_color="black",
+    hist = go.Figure(go.Histogram(x=terminal, nbinsx=60, marker_color="#7C5CFF"))
+    hist.add_vline(x=start, line_dash="dash", line_color="#E6E9EF",
                    annotation_text=f"Start ${start:.0f}")
     hist.update_layout(height=300, xaxis_title="Terminal price", yaxis_title="Frequency")
     st.plotly_chart(hist, use_container_width=True)

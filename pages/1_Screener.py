@@ -4,8 +4,10 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from utils.formatting import fmt_number, fmt_percent, fmt_large_number
+from utils.theme import inject_css, themed, GREEN, GOLD, RED, SCORE_SCALE
 
 st.set_page_config(page_title="Screener — QuantDeck", layout="wide")
+inject_css()
 st.title("Layer 1 — Screener")
 st.caption("Narrow a universe down to a ranked shortlist worth investigating.")
 
@@ -139,6 +141,16 @@ with tab_eq:
             st.warning("No tickers matched the current filters. Try relaxing the criteria.")
         else:
             st.success(f"**{len(results)} tickers** passed all filters.")
+
+            # KPI tiles (themed metric cards)
+            k1, k2, k3, k4 = st.columns(4)
+            k1.metric("Matches", len(results))
+            if "composite_score" in results.columns:
+                k2.metric("Avg Score", f"{results['composite_score'].mean():.0f}")
+                k3.metric("Top Pick", str(results.index[0]),
+                          f"{results.iloc[0]['composite_score']:.0f} score")
+            if "peRatio" in results.columns:
+                k4.metric("Median P/E", f"{results['peRatio'].median():.1f}")
             st.divider()
 
             display_cols = {
@@ -157,12 +169,9 @@ with tab_eq:
             display_df.columns = [display_cols[c] for c in display_df.columns]
 
             def _score_style(val):
-                if isinstance(val, float):
-                    if val >= 70:
-                        return "background-color: #1a7a4a; color: white"
-                    if val >= 40:
-                        return "background-color: #b8860b; color: white"
-                    return "background-color: #8b1a1a; color: white"
+                if isinstance(val, (int, float)):
+                    c = GREEN if val >= 70 else GOLD if val >= 40 else RED
+                    return f"background-color: {c}; color: #07060f; font-weight: 600"
                 return ""
 
             fmt_map = {}
@@ -211,13 +220,13 @@ with tab_eq:
                     size="marketCap" if "marketCap" in scatter_df.columns else None,
                     color="composite_score" if "composite_score" in scatter_df.columns else None,
                     hover_name=scatter_df.reset_index().columns[0],
-                    color_continuous_scale="RdYlGn",
+                    color_continuous_scale=SCORE_SCALE,
                     labels={"peRatio": "P/E Ratio", "revenueGrowth": "Revenue Growth (YoY)",
                             "composite_score": "Score"},
                     title="P/E vs Revenue Growth  (bubble size = market cap, colour = composite score)",
                 )
                 fig.update_layout(hovermode="closest")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(themed(fig), use_container_width=True)
 
     st.caption(
         "QuantDeck is a quantitative analysis tool, not financial advice. "

@@ -1,6 +1,7 @@
 # app.py
 from dotenv import load_dotenv
 import streamlit as st
+from utils.theme import inject_css
 
 load_dotenv()
 
@@ -10,6 +11,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+inject_css()
 
 st.title("QuantDeck")
 st.markdown(

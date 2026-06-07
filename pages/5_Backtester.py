@@ -2,8 +2,10 @@
 import streamlit as st
 import plotly.graph_objects as go
 from utils.formatting import fmt_percent, fmt_number
+from utils.theme import inject_css
 
 st.set_page_config(page_title="Backtester — QuantDeck", layout="wide")
+inject_css()
 st.title("Layer 5 — Backtester")
 st.caption("Run a strategy over history and read the full performance tearsheet.")
 
@@ -62,7 +64,7 @@ with main:
     st.subheader("Equity Curve")
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=eq.index, y=eq.values, name="Strategy",
-                             line={"color": "steelblue", "width": 2}))
+                             line={"color": "#7C5CFF", "width": 2}))
     bench_curve = result.get("benchmark_curve")
     bench_ticker = result.get("benchmark_ticker", "Benchmark")
     if bench_curve is not None:

@@ -7,8 +7,10 @@ import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
 from utils.formatting import fmt_number, fmt_percent, fmt_large_number, fmt_currency
 from utils.charts import candlestick, line, heatmap
+from utils.theme import inject_css
 
 st.set_page_config(page_title="Deep Dive — QuantDeck", layout="wide")
+inject_css()
 st.title("Layer 2 — Deep Dive")
 
 # ── Ticker input ──────────────────────────────────────────────────────────────
@@ -144,7 +146,7 @@ with tab1:
         fig_curve = go.Figure()
         fig_curve.add_trace(go.Scatter(
             x=curve.index.tolist(), y=curve.values,
-            mode="lines+markers", name="Current", line={"color": "steelblue", "width": 2},
+            mode="lines+markers", name="Current", line={"color": "#7C5CFF", "width": 2},
         ))
         fig_curve.update_layout(yaxis_title="Yield (%)", hovermode="x unified",
                                 height=300, margin={"t": 30})
@@ -181,7 +183,7 @@ with tab2:
         prices_chart = md.get("prices")
         if prices_chart is not None and not prices_chart.empty:
             fig_fx = go.Figure(go.Scatter(x=prices_chart.index, y=prices_chart["Close"],
-                                          line={"color": "steelblue"}, name=ticker))
+                                          line={"color": "#7C5CFF"}, name=ticker))
             fig_fx.update_layout(height=350, title=f"{ticker} Price", hovermode="x unified")
             st.plotly_chart(fig_fx, use_container_width=True)
     elif asset_type == "commodity":
@@ -196,7 +198,7 @@ with tab2:
         prices_chart = md.get("prices")
         if prices_chart is not None and not prices_chart.empty:
             fig_cmd = go.Figure(go.Scatter(x=prices_chart.index, y=prices_chart["Close"],
-                                            line={"color": "goldenrod"}, name=ticker))
+                                            line={"color": "#D9A441"}, name=ticker))
             fig_cmd.update_layout(height=350, title=f"{ticker} Price", hovermode="x unified")
             st.plotly_chart(fig_cmd, use_container_width=True)
     elif income.empty:
@@ -208,7 +210,7 @@ with tab2:
             rev_vals  = income["revenue"].tolist()
             fig_rev = go.Figure()
             fig_rev.add_trace(go.Bar(x=rev_dates, y=rev_vals, name="Revenue",
-                                     marker_color="steelblue", yaxis="y1"))
+                                     marker_color="#7C5CFF", yaxis="y1"))
             for col, color, name in [
                 ("gross_margin",     "green",  "Gross Margin"),
                 ("operating_margin", "orange", "Operating Margin"),
@@ -271,7 +273,7 @@ with tab2:
             if pct_cols:
                 ca_dates = income["date"].tolist()[:len(capalloc)]
                 fig_ca = go.Figure()
-                colors = {"capex_pct": "steelblue", "dividends_pct": "green",
+                colors = {"capex_pct": "#7C5CFF", "dividends_pct": "green",
                           "buybacks_pct": "orange", "retained_pct": "grey"}
                 labels = {"capex_pct": "Capex", "dividends_pct": "Dividends",
                           "buybacks_pct": "Buybacks", "retained_pct": "Retained"}
