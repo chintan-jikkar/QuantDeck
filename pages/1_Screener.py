@@ -4,12 +4,34 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from utils.formatting import fmt_number, fmt_percent, fmt_large_number
-from utils.theme import inject_css, themed, GREEN, GOLD, RED, SCORE_SCALE
+from utils.theme import inject_css, themed, SCORE_SCALE, logo_url
 
 st.set_page_config(page_title="Screener — QuantDeck", layout="wide")
 inject_css()
 st.title("Layer 1 — Screener")
 st.caption("Narrow a universe down to a ranked shortlist worth investigating.")
+
+
+def _asset_table(df):
+    """Render an FX/commodity screen result as a themed column_config table."""
+    view = df.copy()
+    for pct in ("momentum_12_1", "realized_vol_30d"):
+        if pct in view.columns:
+            view[pct] = view[pct] * 100.0
+    view = view.rename(columns={
+        "composite_score": "Score", "momentum_12_1": "Momentum 12-1",
+        "realized_vol_30d": "Realized Vol", "rsi": "RSI", "last_price": "Last",
+    })
+    cfg = {
+        "Score":         st.column_config.ProgressColumn("Score", min_value=0, max_value=100, format="%d"),
+        "Momentum 12-1": st.column_config.NumberColumn("Momentum 12-1", format="%.1f%%"),
+        "Realized Vol":  st.column_config.NumberColumn("Realized Vol", format="%.1f%%"),
+        "RSI":           st.column_config.NumberColumn("RSI", format="%.0f"),
+        "Last":          st.column_config.NumberColumn("Last", format="%.4f"),
+    }
+    st.dataframe(view, column_config={k: v for k, v in cfg.items() if k in view.columns},
+                 use_container_width=True, height=360)
+
 
 tab_eq, tab_fx, tab_cmd = st.tabs(["📈 Equities", "💱 FX", "🛢 Commodities"])
 
@@ -153,41 +175,37 @@ with tab_eq:
                 k4.metric("Median P/E", f"{results['peRatio'].median():.1f}")
             st.divider()
 
-            display_cols = {
-                "composite_score": "Score",
-                "peRatio":         "P/E",
-                "pbRatio":         "P/B",
-                "evToEbitda":      "EV/EBITDA",
-                "roe":             "ROE",
-                "revenueGrowth":   "Rev Growth",
-                "netProfitMargin": "Net Margin",
-                "rsi":             "RSI",
-                "above_50sma":     "↑50 SMA",
-                "above_200sma":    "↑200 SMA",
+            view = results.copy()
+            view.insert(0, "Logo", [logo_url(t) for t in view.index])
+            rename = {
+                "composite_score": "Score", "peRatio": "P/E", "pbRatio": "P/B",
+                "evToEbitda": "EV/EBITDA", "roe": "ROE", "revenueGrowth": "Rev Growth",
+                "netProfitMargin": "Net Margin", "rsi": "RSI",
+                "above_50sma": "↑50 SMA", "above_200sma": "↑200 SMA",
             }
-            display_df = results[[c for c in display_cols if c in results.columns]].copy()
-            display_df.columns = [display_cols[c] for c in display_df.columns]
+            keep = ["Logo"] + [rename[c] for c in rename if c in results.columns]
+            view = view.rename(columns=rename)
+            view = view[[c for c in keep if c in view.columns]]
+            for pct in ("ROE", "Rev Growth", "Net Margin"):
+                if pct in view.columns:
+                    view[pct] = view[pct] * 100.0
 
-            def _score_style(val):
-                if isinstance(val, (int, float)):
-                    c = GREEN if val >= 70 else GOLD if val >= 40 else RED
-                    return f"background-color: {c}; color: #07060f; font-weight: 600"
-                return ""
-
-            fmt_map = {}
-            for col, spec in [
-                ("Score", "{:.0f}"), ("P/E", "{:.1f}"), ("P/B", "{:.2f}"),
-                ("EV/EBITDA", "{:.1f}"), ("ROE", "{:.1%}"), ("Rev Growth", "{:.1%}"),
-                ("Net Margin", "{:.1%}"), ("RSI", "{:.1f}"),
-            ]:
-                if col in display_df.columns:
-                    fmt_map[col] = spec
-
-            styled = display_df.style
-            if "Score" in display_df.columns:
-                styled = styled.map(_score_style, subset=["Score"])
-            styled = styled.format(fmt_map)
-            st.dataframe(styled, use_container_width=True, height=400)
+            col_cfg = {
+                "Logo":       st.column_config.ImageColumn(" ", width="small"),
+                "Score":      st.column_config.ProgressColumn("Score", min_value=0, max_value=100, format="%d"),
+                "P/E":        st.column_config.NumberColumn("P/E", format="%.1f"),
+                "P/B":        st.column_config.NumberColumn("P/B", format="%.2f"),
+                "EV/EBITDA":  st.column_config.NumberColumn("EV/EBITDA", format="%.1f"),
+                "ROE":        st.column_config.NumberColumn("ROE", format="%.1f%%"),
+                "Rev Growth": st.column_config.NumberColumn("Rev Growth", format="%.1f%%"),
+                "Net Margin": st.column_config.NumberColumn("Net Margin", format="%.1f%%"),
+                "RSI":        st.column_config.NumberColumn("RSI", format="%.0f"),
+            }
+            st.dataframe(
+                view,
+                column_config={k: v for k, v in col_cfg.items() if k in view.columns},
+                use_container_width=True, height=420,
+            )
 
             # ── Watchlist pin buttons ──────────────────────────────────────────
             from utils.watchlist import load_watchlist, add_ticker, remove_ticker
@@ -249,10 +267,7 @@ with tab_fx:
         if fx_results.empty:
             st.warning("No FX data returned.")
         else:
-            st.dataframe(
-                fx_results.style.background_gradient(subset=["composite_score"], cmap="RdYlGn"),
-                use_container_width=True,
-            )
+            _asset_table(fx_results)
     else:
         st.info("Select a group and click **Screen FX**.")
 
@@ -272,9 +287,6 @@ with tab_cmd:
         if cmd_results.empty:
             st.warning("No commodity data returned.")
         else:
-            st.dataframe(
-                cmd_results.style.background_gradient(subset=["composite_score"], cmap="RdYlGn"),
-                use_container_width=True,
-            )
+            _asset_table(cmd_results)
     else:
         st.info("Select a group and click **Screen Commodities**.")

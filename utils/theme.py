@@ -91,13 +91,33 @@ h1 {{ font-size: 26px; }}
 
 /* Sliders in the brand violet */
 [data-testid="stSlider"] [role="slider"] {{ box-shadow: 0 0 0 4px rgba(124,92,255,0.25); }}
+
+/* Sidebar brand header (mockup .brand) */
+.qd-brand {{ display: flex; align-items: center; gap: 10px; padding: 2px 4px 14px; }}
+.qd-brand .qd-logo {{ width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, {VIOLET}, #9d7bff); display: grid; place-items: center;
+    font-weight: 700; color: #fff; font-size: 15px; box-shadow: 0 4px 14px rgba(124,92,255,0.4); }}
+.qd-brand .qd-name {{ font-weight: 600; font-size: 15px; letter-spacing: -0.2px; color: {TEXT}; }}
+.qd-brand .qd-name span {{ color: {VIOLET}; }}
 </style>
 """
 
+_BRAND_HTML = (
+    '<div class="qd-brand"><div class="qd-logo">Q</div>'
+    '<div class="qd-name">Quant<span>Deck</span></div></div>'
+)
 
-def inject_css() -> None:
-    """Inject the QuantDeck CSS. Call once near the top of every page."""
+
+def inject_css(brand: bool = True) -> None:
+    """Inject the QuantDeck CSS and the sidebar brand. Call once per page, at top."""
     st.markdown(_CSS, unsafe_allow_html=True)
+    if brand:
+        st.sidebar.markdown(_BRAND_HTML, unsafe_allow_html=True)
+
+
+def logo_url(ticker: str) -> str:
+    """FMP company-logo image URL for a ticker (used for result-table logos)."""
+    return f"https://financialmodelingprep.com/image-stock/{ticker.upper()}.png"
 
 
 def setup_page(title: str, icon: str = "📊", layout: str = "wide") -> None:

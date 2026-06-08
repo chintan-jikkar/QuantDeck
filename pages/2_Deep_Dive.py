@@ -80,14 +80,14 @@ if not price_slice.empty:
         sma50 = prices["Close"].rolling(50).mean().tail(n_bars)
         fig_price.add_trace(
             go.Scatter(x=sma50.index, y=sma50.values, mode="lines",
-                       name="50 SMA", line={"color": "orange", "width": 1}),
+                       name="50 SMA", line={"color": "#D9A441", "width": 1}),
             row=1, col=1,
         )
     if show_sma200 and len(prices) >= 200:
         sma200 = prices["Close"].rolling(200).mean().tail(n_bars)
         fig_price.add_trace(
             go.Scatter(x=sma200.index, y=sma200.values, mode="lines",
-                       name="200 SMA", line={"color": "blue", "width": 1}),
+                       name="200 SMA", line={"color": "#7C5CFF", "width": 1}),
             row=1, col=1,
         )
     if show_bb and len(prices) >= 20:
@@ -98,7 +98,7 @@ if not price_slice.empty:
         for band, name in [(upper, "BB Upper"), (lower, "BB Lower")]:
             fig_price.add_trace(
                 go.Scatter(x=band.index, y=band.values, mode="lines",
-                           name=name, line={"color": "grey", "width": 1, "dash": "dot"}),
+                           name=name, line={"color": "#5A6376", "width": 1, "dash": "dot"}),
                 row=1, col=1,
             )
 
@@ -212,9 +212,9 @@ with tab2:
             fig_rev.add_trace(go.Bar(x=rev_dates, y=rev_vals, name="Revenue",
                                      marker_color="#7C5CFF", yaxis="y1"))
             for col, color, name in [
-                ("gross_margin",     "green",  "Gross Margin"),
-                ("operating_margin", "orange", "Operating Margin"),
-                ("net_margin",       "red",    "Net Margin"),
+                ("gross_margin",     "#3FB950", "Gross Margin"),
+                ("operating_margin", "#D9A441", "Operating Margin"),
+                ("net_margin",       "#F85149", "Net Margin"),
             ]:
                 if col in margins.columns:
                     fig_rev.add_trace(go.Scatter(
@@ -273,8 +273,8 @@ with tab2:
             if pct_cols:
                 ca_dates = income["date"].tolist()[:len(capalloc)]
                 fig_ca = go.Figure()
-                colors = {"capex_pct": "#7C5CFF", "dividends_pct": "green",
-                          "buybacks_pct": "orange", "retained_pct": "grey"}
+                colors = {"capex_pct": "#7C5CFF", "dividends_pct": "#3FB950",
+                          "buybacks_pct": "#D9A441", "retained_pct": "#5A6376"}
                 labels = {"capex_pct": "Capex", "dividends_pct": "Dividends",
                           "buybacks_pct": "Buybacks", "retained_pct": "Retained"}
                 for col in pct_cols:
