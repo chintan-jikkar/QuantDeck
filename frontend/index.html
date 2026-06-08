@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuantDesk — Interactive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+:root{
+  --bg-deep:#080b12;--bg-surface:#0d1220;--bg-card:rgba(255,255,255,0.035);
+  --border:rgba(255,255,255,0.07);--border-b:rgba(255,255,255,0.13);
+  --txt:#f0f4ff;--txt-m:#6b7a99;--txt-d:#3a4460;
+  --blue:#4f9eff;--cyan:#00e5cc;--lime:#b8f264;--pink:#ff5fa0;--amber:#ffb340;--purple:#a78bfa;
+  --gblue:rgba(79,158,255,0.15);--gcyan:rgba(0,229,204,0.12);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Mono',monospace;background:var(--bg-deep);color:var(--txt);height:100vh;display:flex;align-items:center;justify-content:center;
+  background-image:radial-gradient(ellipse 700px 400px at 15% 10%,rgba(79,158,255,0.07) 0%,transparent 70%),
+  radial-gradient(ellipse 500px 500px at 85% 85%,rgba(0,229,204,0.05) 0%,transparent 70%),
+  radial-gradient(ellipse 400px 300px at 65% 15%,rgba(255,95,160,0.04) 0%,transparent 70%);}
+.app{display:flex;width:1160px;height:720px;border-radius:18px;border:1px solid var(--border-b);overflow:hidden;
+  background:var(--bg-surface);box-shadow:0 0 0 1px rgba(79,158,255,0.07),0 40px 120px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.05);position:relative;}
+.app::before{content:'';position:absolute;top:0;left:10%;right:10%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--blue),var(--cyan),transparent);z-index:10;}
+
+/* SIDEBAR */
+.sb{width:220px;min-width:220px;background:rgba(8,11,18,0.92);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:2;}
+.sb-logo{padding:20px 18px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.logo-icon{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--blue),var(--cyan));display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:14px;color:#080b12;font-weight:700;box-shadow:0 0 16px var(--gblue);}
+.logo-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--txt);}
+.logo-sub{font-size:9px;color:var(--txt-d);letter-spacing:.14em;text-transform:uppercase;margin-top:1px;}
+.nav{flex:1;padding:12px 0;overflow-y:auto;}
+.nav-lbl{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-d);padding:8px 18px 4px;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 18px;font-size:11px;color:var(--txt-m);cursor:pointer;border-left:2px solid transparent;transition:all .15s;position:relative;}
+.nav-item:hover{color:var(--txt);background:rgba(255,255,255,0.03);}
+.nav-item.active{color:var(--blue);border-left-color:var(--blue);background:linear-gradient(90deg,rgba(79,158,255,0.1),transparent);}
+.nav-item i{font-size:15px;}
+.nav-num{font-size:9px;color:var(--txt-d);margin-left:auto;}
+.sb-bottom{padding:12px 16px;border-top:1px solid var(--border);}
+.wl-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--txt-d);margin-bottom:8px;}
+.wl-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.wl-sym{font-size:11px;font-weight:500;color:var(--txt);}
+.wl-up{font-size:10px;color:var(--lime);}
+.wl-dn{font-size:10px;color:var(--pink);}
+.av{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+.av-circle{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,rgba(79,158,255,0.3),rgba(0,229,204,0.3));border:1px solid var(--border-b);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:var(--cyan);}
+.av-name{font-size:11px;color:var(--txt);}
+.av-role{font-size:9px;color:var(--txt-d);}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.topbar{display:flex;align-items:center;gap:12px;padding:13px 22px;border-bottom:1px solid var(--border);background:rgba(8,11,18,0.6);flex-shrink:0;}
+.topbar-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:600;color:var(--txt);flex:1;}
+.search{display:flex;align-items:center;gap:7px;background:var(--bg-card);border:1px solid var(--border-b);border-radius:8px;padding:6px 12px;font-size:11px;color:var(--txt-m);width:160px;cursor:pointer;font-family:'DM Mono',monospace;transition:border-color .15s;}
+.search:hover{border-color:var(--blue);}
+.pill{font-size:9px;padding:3px 10px;border-radius:20px;font-family:'DM Mono',monospace;font-weight:500;border:1px solid;}
+.pill-blue{background:rgba(79,158,255,0.12);color:var(--blue);border-color:rgba(79,158,255,0.3);}
+.pill-live{display:flex;align-items:center;gap:5px;font-size:9px;padding:3px 10px;border-radius:20px;border:1px solid rgba(184,242,100,0.3);background:rgba(184,242,100,0.08);color:var(--lime);}
+.pill-live::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--lime);box-shadow:0 0 6px var(--lime);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* CONTENT PANEL */
+.content{flex:1;overflow-y:auto;padding:18px 22px;display:flex;flex-direction:column;gap:14px;}
+.module-panel{display:none;}
+.module-panel.active{display:flex;flex-direction:column;gap:14px;}
+
+/* SHARED COMPONENTS */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;}
+.kpi{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;position:relative;overflow:hidden;transition:border-color .2s;}
+.kpi:hover{border-color:var(--border-b);}
+.kpi::after{content:'';position:absolute;top:-30px;right:-30px;width:80px;height:80px;border-radius:50%;opacity:.12;}
+.kpi.b::after{background:var(--blue);}.kpi.c::after{background:var(--cyan);}.kpi.l::after{background:var(--lime);}.kpi.a::after{background:var(--amber);}.kpi.p::after{background:var(--purple);}
+.kpi-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--txt-d);}
+.kpi-val{font-family:'Syne',sans-serif;font-size:24px;font-weight:700;margin:5px 0 2px;line-height:1;}
+.kpi-val.b{color:var(--blue);}.kpi-val.c{color:var(--cyan);}.kpi-val.l{color:var(--lime);}.kpi-val.a{color:var(--amber);}.kpi-val.p{color:var(--purple);}.kpi-val.w{color:var(--txt);}
+.kpi-sub{font-size:10px;color:var(--txt-m);}
+.kpi-sub.up{color:var(--lime);}.kpi-sub.dn{color:var(--pink);}
+.kpi-ico{position:absolute;top:13px;right:13px;font-size:17px;opacity:.25;}
+.two-col{display:grid;grid-template-columns:1.6fr 1fr;gap:13px;}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:15px 17px;position:relative;overflow:hidden;transition:border-color .2s;}
+.card:hover{border-color:var(--border-b);}
+.card.tb::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blue),transparent);}
+.card.tc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--cyan),transparent);}
+.card.tl::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--lime),transparent);}
+.card.ta::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--amber),transparent);}
+.card.tp::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--purple),transparent);}
+.ctitle{font-family:'Syne',sans-serif;font-size:11px;font-weight:600;color:var(--txt-m);text-transform:uppercase;letter-spacing:.1em;margin-bottom:13px;display:flex;align-items:center;gap:8px;}
+.ctitle i{font-size:14px;}
+table{width:100%;border-collapse:collapse;font-size:11px;}
+thead th{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-d);padding:0 7px 9px;text-align:right;font-weight:400;}
+thead th:first-child{text-align:left;}
+tbody tr{border-top:1px solid rgba(255,255,255,0.04);transition:background .1s;}
+tbody tr:hover{background:rgba(255,255,255,0.025);}
+tbody td{padding:8px 7px;text-align:right;color:var(--txt-m);font-family:'DM Mono',monospace;font-size:11px;}
+tbody td:first-child{text-align:left;color:var(--txt);}
+.cn{font-size:12px;font-weight:500;}.cs{display:block;font-size:9px;color:var(--txt-d);margin-top:1px;}
+.sp{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:500;}
+.sh{background:rgba(0,229,204,.14);color:var(--cyan);border:1px solid rgba(0,229,204,.2);}
+.sm{background:rgba(255,179,64,.12);color:var(--amber);border:1px solid rgba(255,179,64,.2);}
+.sl{background:rgba(255,95,160,.12);color:var(--pink);border:1px solid rgba(255,95,160,.2);}
+.sb2{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;}
+.buy{background:rgba(184,242,100,.12);color:var(--lime);border:1px solid rgba(184,242,100,.2);}
+.wch{background:rgba(255,179,64,.12);color:var(--amber);border:1px solid rgba(255,179,64,.2);}
+.avd{background:rgba(255,95,160,.12);color:var(--pink);border:1px solid rgba(255,95,160,.2);}
+.up2{color:var(--lime);}.dn2{color:var(--pink);}
+.fr{display:flex;align-items:center;gap:9px;margin-bottom:9px;}
+.fn{width:70px;font-size:10px;color:var(--txt-m);}
+.ft{flex:1;height:4px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;}
+.ff{height:100%;border-radius:4px;}
+.fv{width:32px;text-align:right;font-size:10px;color:var(--txt-m);}
+.chip-row{display:flex;gap:7px;flex-wrap:wrap;}
+.chip{font-size:10px;padding:4px 11px;border-radius:20px;border:1px solid var(--border);color:var(--txt-d);cursor:pointer;font-family:'DM Mono',monospace;transition:all .15s;}
+.chip:hover{border-color:var(--border-b);color:var(--txt-m);}
+.chip.active{background:rgba(79,158,255,.12);color:var(--blue);border-color:rgba(79,158,255,.35);box-shadow:0 0 10px rgba(79,158,255,.1);}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+/* SVG charts */
+svg.spark{width:100%;height:68px;display:block;}
+svg.donut{width:62px;height:62px;flex-shrink:0;}
+.donut-wrap{display:flex;align-items:center;gap:14px;}
+.dl-row{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:10px;}
+.dl-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.dl-name{color:var(--txt-m);flex:1;}.dl-val{color:var(--txt);font-weight:500;}
+
+/* VALUATION specific */
+.dcf-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+.dcf-field{background:rgba(255,255,255,0.025);border:1px solid var(--border);border-radius:8px;padding:9px 12px;}
+.dcf-lbl{font-size:9px;color:var(--txt-d);text-transform:uppercase;letter-spacing:.1em;}
+.dcf-val{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--cyan);margin-top:3px;}
+.dcf-sub{font-size:9px;color:var(--txt-m);margin-top:1px;}
+.updown-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;}
+
+/* MONTE CARLO paths */
+.mc-paths{position:relative;width:100%;height:140px;margin:8px 0;}
+svg.mc{width:100%;height:140px;display:block;}
+
+/* PORTFOLIO bars */
+.port-bar-wrap{display:flex;flex-direction:column;gap:6px;}
+.port-bar-row{display:flex;align-items:center;gap:9px;font-size:11px;}
+.pb-sym{width:44px;color:var(--txt);font-weight:500;}
+.pb-track{flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;}
+.pb-fill{height:100%;border-radius:3px;}
+.pb-pct{width:36px;text-align:right;font-size:10px;color:var(--txt-m);}
+.pb-ret{width:44px;text-align:right;font-size:10px;}
+
+/* BACKTESTER equity curve */
+.tearsheet-row{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px;}
+.ts-stat{background:rgba(255,255,255,0.025);border-radius:8px;padding:9px 12px;border:1px solid var(--border);}
+.ts-lbl{font-size:9px;color:var(--txt-d);text-transform:uppercase;letter-spacing:.1em;}
+.ts-val{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-top:3px;}
+
+/* STRATEGY cards */
+.strat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.strat-card{background:rgba(255,255,255,0.025);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:all .2s;}
+.strat-card:hover{border-color:var(--border-b);background:rgba(255,255,255,0.05);}
+.strat-card.sel{border-color:var(--blue);background:rgba(79,158,255,0.08);}
+.strat-name{font-family:'Syne',sans-serif;font-size:12px;font-weight:600;color:var(--txt);margin-bottom:4px;}
+.strat-desc{font-size:10px;color:var(--txt-m);line-height:1.5;}
+.strat-meta{display:flex;gap:8px;margin-top:8px;}
+.strat-tag{font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(255,255,255,0.06);color:var(--txt-d);}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<div class="sb">
+  <div class="sb-logo">
+    <div class="logo-icon">Q</div>
+    <div>
+      <div class="logo-name">QuantDesk</div>
+      <div class="logo-sub">Equity Research</div>
+    </div>
+  </div>
+  <div class="nav">
+    <div class="nav-lbl">Modules</div>
+    <div class="nav-item active" onclick="switchModule(0,this)"><i class="ti ti-filter"></i> Screener <span class="nav-num">01</span></div>
+    <div class="nav-item" onclick="switchModule(1,this)"><i class="ti ti-chart-candle"></i> Deep Dive <span class="nav-num">02</span></div>
+    <div class="nav-item" onclick="switchModule(2,this)"><i class="ti ti-calculator"></i> Valuation <span class="nav-num">03</span></div>
+    <div class="nav-item" onclick="switchModule(3,this)"><i class="ti ti-history"></i> Backtester <span class="nav-num">04</span></div>
+    <div class="nav-item" onclick="switchModule(4,this)"><i class="ti ti-math-symbols"></i> Monte Carlo <span class="nav-num">05</span></div>
+    <div class="nav-item" onclick="switchModule(5,this)"><i class="ti ti-books"></i> Strategy Lib <span class="nav-num">06</span></div>
+    <div class="nav-item" onclick="switchModule(6,this)"><i class="ti ti-chart-pie"></i> Portfolio Opt <span class="nav-num">07</span></div>
+    <div class="nav-lbl" style="margin-top:10px">Tools</div>
+    <div class="nav-item"><i class="ti ti-bell"></i> Alerts</div>
+    <div class="nav-item"><i class="ti ti-settings"></i> Settings</div>
+  </div>
+  <div class="sb-bottom">
+    <div class="wl-lbl">Watchlist</div>
+    <div class="wl-row"><span class="wl-sym">NVDA</span><span class="wl-up">+3.21%</span></div>
+    <div class="wl-row"><span class="wl-sym">META</span><span class="wl-up">+1.93%</span></div>
+    <div class="wl-row"><span class="wl-sym">LLY</span><span class="wl-up">+2.11%</span></div>
+    <div class="wl-row"><span class="wl-sym">AAPL</span><span class="wl-up">+0.84%</span></div>
+    <div class="wl-row"><span class="wl-sym">MSFT</span><span class="wl-dn">−0.47%</span></div>
+    <div class="av">
+      <div class="av-circle">CK</div>
+      <div><div class="av-name">Chintan K.</div><div class="av-role">Research Analyst</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div style="flex:1">
+      <span class="topbar-title" id="mod-title">Screener</span>
+      <span id="mod-sub" style="font-size:10px;color:var(--txt-m);font-family:'DM Mono',monospace;margin-left:8px">/ composite factor scoring</span>
+    </div>
+    <div class="search"><i class="ti ti-search" style="font-size:12px"></i> Search ticker…</div>
+    <span class="pill pill-blue">S&amp;P 500</span>
+    <span class="pill-live">Live</span>
+    <i class="ti ti-refresh" style="font-size:16px;color:var(--txt-d);cursor:pointer"></i>
+  </div>
+
+  <div class="content">
+
+    <!-- ═══ MODULE 01: SCREENER ═══ -->
+    <div class="module-panel active" id="m0">
+      <div class="kpi-row">
+        <div class="kpi b"><i class="ti ti-database kpi-ico" style="color:var(--blue)"></i><div class="kpi-lbl">Universe</div><div class="kpi-val b">503</div><div class="kpi-sub">stocks screened</div></div>
+        <div class="kpi c"><i class="ti ti-trending-up kpi-ico" style="color:var(--cyan)"></i><div class="kpi-lbl">Buy signals</div><div class="kpi-val c">38</div><div class="kpi-sub up">↑ 5 vs yesterday</div></div>
+        <div class="kpi l"><i class="ti ti-chart-bar kpi-ico" style="color:var(--lime)"></i><div class="kpi-lbl">Avg P/E (filtered)</div><div class="kpi-val l">17.4×</div><div class="kpi-sub dn">vs 21.1× S&amp;P</div></div>
+        <div class="kpi a"><i class="ti ti-star kpi-ico" style="color:var(--amber)"></i><div class="kpi-lbl">Top Factor</div><div class="kpi-val w" style="font-size:17px;padding-top:5px">Momentum</div><div class="kpi-sub">composite driver</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card tb">
+          <div class="ctitle"><i class="ti ti-table"></i> Top signals — ranked by composite score</div>
+          <table>
+            <thead><tr><th>Company</th><th>Score</th><th>P/E</th><th>Mom 6M</th><th>EV/EBITDA</th><th>Signal</th></tr></thead>
+            <tbody>
+              <tr><td><span class="cn">Nvidia</span><span class="cs">NVDA · Tech</span></td><td><span class="sp sh">91</span></td><td>34.2</td><td class="up2">+61%</td><td>48.1</td><td><span class="sb2 buy">Buy</span></td></tr>
+              <tr><td><span class="cn">Eli Lilly</span><span class="cs">LLY · Health</span></td><td><span class="sp sh">87</span></td><td>51.1</td><td class="up2">+38%</td><td>41.7</td><td><span class="sb2 buy">Buy</span></td></tr>
+              <tr><td><span class="cn">Meta</span><span class="cs">META · Tech</span></td><td><span class="sp sh">83</span></td><td>26.7</td><td class="up2">+22%</td><td>19.3</td><td><span class="sb2 buy">Buy</span></td></tr>
+              <tr><td><span class="cn">Apple</span><span class="cs">AAPL · Tech</span></td><td><span class="sp sm">72</span></td><td>29.4</td><td>+9%</td><td>23.8</td><td><span class="sb2 wch">Watch</span></td></tr>
+              <tr><td><span class="cn">Intel</span><span class="cs">INTC · Tech</span></td><td><span class="sp sl">41</span></td><td>19.8</td><td class="dn2">−18%</td><td>14.2</td><td><span class="sb2 avd">Avoid</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card tc">
+          <div class="ctitle"><i class="ti ti-adjustments"></i> Factor weights</div>
+          <div class="fr"><span class="fn">Momentum</span><div class="ft"><div class="ff" style="width:82%;background:linear-gradient(90deg,var(--blue),var(--cyan))"></div></div><span class="fv">0.82</span></div>
+          <div class="fr"><span class="fn">Quality</span><div class="ft"><div class="ff" style="width:71%;background:linear-gradient(90deg,var(--cyan),var(--blue))"></div></div><span class="fv">0.71</span></div>
+          <div class="fr"><span class="fn">Growth</span><div class="ft"><div class="ff" style="width:65%;background:linear-gradient(90deg,var(--lime),var(--cyan))"></div></div><span class="fv">0.65</span></div>
+          <div class="fr"><span class="fn">Value</span><div class="ft"><div class="ff" style="width:58%;background:linear-gradient(90deg,var(--amber),var(--pink))"></div></div><span class="fv">0.58</span></div>
+          <div class="fr"><span class="fn">Low Vol</span><div class="ft"><div class="ff" style="width:34%;background:#3a4460"></div></div><span class="fv">0.34</span></div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span style="font-size:10px;color:var(--txt-m)">NVDA — score trend</span><span style="font-size:10px;color:var(--lime)">↑ 91pts · 90d</span>
+            </div>
+            <svg class="spark" viewBox="0 0 260 68" preserveAspectRatio="none">
+              <defs><linearGradient id="sg0" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00e5cc" stop-opacity=".3"/><stop offset="100%" stop-color="#00e5cc" stop-opacity="0"/></linearGradient></defs>
+              <polygon points="0,60 32,55 65,50 97,43 130,34 162,24 195,15 228,9 260,4 260,68 0,68" fill="url(#sg0)"/>
+              <polyline points="0,60 32,55 65,50 97,43 130,34 162,24 195,15 228,9 260,4" fill="none" stroke="var(--cyan)" stroke-width="1.8" stroke-linejoin="round"/>
+              <circle cx="260" cy="4" r="3.5" fill="var(--cyan)"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="padding:12px 16px">
+        <div class="ctitle" style="margin-bottom:9px;font-size:10px"><i class="ti ti-layers-subtract"></i> Navigate modules</div>
+        <div class="chip-row">
+          <div class="chip active" onclick="switchModule(0,null)">01 · Screener</div>
+          <div class="chip" onclick="switchModule(1,null)">02 · Deep Dive</div>
+          <div class="chip" onclick="switchModule(2,null)">03 · Valuation</div>
+          <div class="chip" onclick="switchModule(3,null)">04 · Backtester</div>
+          <div class="chip" onclick="switchModule(4,null)">05 · Monte Carlo</div>
+          <div class="chip" onclick="switchModule(5,null)">06 · Strategy Lib</div>
+          <div class="chip" onclick="switchModule(6,null)">07 · Portfolio Opt</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ MODULE 02: DEEP DIVE ═══ -->
+    <div class="module-panel" id="m1">
+      <div class="kpi-row">
+        <div class="kpi b"><div class="kpi-lbl">Market Cap</div><div class="kpi-val b">$3.28T</div><div class="kpi-sub">NVDA · Large Cap</div></div>
+        <div class="kpi c"><div class="kpi-lbl">Revenue TTM</div><div class="kpi-val c">$130.5B</div><div class="kpi-sub up">↑ 122% YoY</div></div>
+        <div class="kpi l"><div class="kpi-lbl">Net Margin</div><div class="kpi-val l">55.7%</div><div class="kpi-sub up">↑ from 26% prior yr</div></div>
+        <div class="kpi a"><div class="kpi-lbl">Analyst Target</div><div class="kpi-val a">$174</div><div class="kpi-sub up">+22% upside</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card tb">
+          <div class="ctitle"><i class="ti ti-chart-area"></i> Revenue &amp; EPS trend — NVDA</div>
+          <svg viewBox="0 0 400 120" style="width:100%;height:120px;display:block">
+            <defs>
+              <linearGradient id="revg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4f9eff" stop-opacity=".3"/><stop offset="100%" stop-color="#4f9eff" stop-opacity="0"/></linearGradient>
+              <linearGradient id="epsg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b8f264" stop-opacity=".25"/><stop offset="100%" stop-color="#b8f264" stop-opacity="0"/></linearGradient>
+            </defs>
+            <!-- x labels -->
+            <text x="20" y="115" fill="#3a4460" font-size="8" font-family="DM Mono,monospace">Q1'23</text>
+            <text x="80" y="115" fill="#3a4460" font-size="8" font-family="DM Mono,monospace">Q2'23</text>
+            <text x="140" y="115" fill="#3a4460" font-size="8" font-family="DM Mono,monospace">Q3'23</text>
+            <text x="200" y="115" fill="#3a4460" font-size="8" font-family="DM Mono,monospace">Q4'23</text>
+            <text x="260" y="115" fill="#3a4460" font-size="8" font-family="DM Mono,monospace">Q1'24</text>
+            <text x="320" y="115" fill="#3a4460" font-size="8" font-family="DM Mono,monospace">Q2'24</text>
+            <text x="365" y="115" fill="#3a4460" font-size="8" font-family="DM Mono,monospace">Q3'24</text>
+            <!-- Revenue area -->
+            <polygon points="20,100 80,90 140,70 200,48 260,30 320,15 380,8 380,105 20,105" fill="url(#revg)"/>
+            <polyline points="20,100 80,90 140,70 200,48 260,30 320,15 380,8" fill="none" stroke="var(--blue)" stroke-width="1.8" stroke-linejoin="round"/>
+            <!-- EPS line -->
+            <polyline points="20,104 80,100 140,88 200,72 260,54 320,38 380,22" fill="none" stroke="var(--lime)" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="4,2"/>
+            <!-- legend -->
+            <line x1="20" y1="12" x2="36" y2="12" stroke="var(--blue)" stroke-width="2"/>
+            <text x="40" y="16" fill="#6b7a99" font-size="9" font-family="DM Mono,monospace">Revenue</text>
+            <line x1="100" y1="12" x2="116" y2="12" stroke="var(--lime)" stroke-width="2" stroke-dasharray="4,2"/>
+            <text x="120" y="16" fill="#6b7a99" font-size="9" font-family="DM Mono,monospace">EPS</text>
+          </svg>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-news"></i> Macro memo highlights</div>
+            <div style="font-size:10px;color:var(--txt-m);line-height:1.7">
+              <span style="color:var(--cyan)">●</span> AI infrastructure buildout remains structural tailwind through 2026<br>
+              <span style="color:var(--lime)">●</span> Data center segment +270% YoY — still accelerating<br>
+              <span style="color:var(--amber)">●</span> Export restrictions to China — ~15% of prior revenue at risk<br>
+              <span style="color:var(--pink)">●</span> AMD &amp; custom silicon from hyperscalers = long-term competitive watch
+            </div>
+          </div>
+        </div>
+        <div class="card tc">
+          <div class="ctitle"><i class="ti ti-building"></i> Fundamentals snapshot</div>
+          <table>
+            <tbody>
+              <tr><td style="color:var(--txt-d);font-size:10px;text-align:left">P/E (TTM)</td><td style="color:var(--txt)">34.2×</td></tr>
+              <tr><td style="color:var(--txt-d);font-size:10px;text-align:left">EV/EBITDA</td><td style="color:var(--txt)">48.1×</td></tr>
+              <tr><td style="color:var(--txt-d);font-size:10px;text-align:left">P/S</td><td style="color:var(--txt)">25.1×</td></tr>
+              <tr><td style="color:var(--txt-d);font-size:10px;text-align:left">ROE</td><td style="color:var(--lime)">123%</td></tr>
+              <tr><td style="color:var(--txt-d);font-size:10px;text-align:left">FCF Margin</td><td style="color:var(--lime)">51.2%</td></tr>
+              <tr><td style="color:var(--txt-d);font-size:10px;text-align:left">Debt/EBITDA</td><td style="color:var(--cyan)">0.4×</td></tr>
+              <tr><td style="color:var(--txt-d);font-size:10px;text-align:left">Beta</td><td style="color:var(--amber)">1.73</td></tr>
+              <tr><td style="color:var(--txt-d);font-size:10px;text-align:left">Div Yield</td><td style="color:var(--txt-m)">0.03%</td></tr>
+            </tbody>
+          </table>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-users"></i> Analyst consensus</div>
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+              <div style="flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden">
+                <div style="display:flex;height:100%">
+                  <div style="width:72%;background:var(--lime)"></div>
+                  <div style="width:18%;background:var(--amber)"></div>
+                  <div style="width:10%;background:var(--pink)"></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;gap:14px;font-size:10px">
+              <span style="color:var(--lime)">■ Buy 72%</span>
+              <span style="color:var(--amber)">■ Hold 18%</span>
+              <span style="color:var(--pink)">■ Sell 10%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ MODULE 03: VALUATION ═══ -->
+    <div class="module-panel" id="m2">
+      <div class="kpi-row">
+        <div class="kpi c"><div class="kpi-lbl">DCF Fair Value</div><div class="kpi-val c">$161.40</div><div class="kpi-sub up">+13.2% upside</div></div>
+        <div class="kpi l"><div class="kpi-lbl">Comps Median</div><div class="kpi-val l">$158.20</div><div class="kpi-sub up">+11% upside</div></div>
+        <div class="kpi b"><div class="kpi-lbl">Current Price</div><div class="kpi-val b">$142.50</div><div class="kpi-sub">NVDA · as of today</div></div>
+        <div class="kpi a"><div class="kpi-lbl">Implied Return</div><div class="kpi-val a">+12.1%</div><div class="kpi-sub up">blended estimate</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card tb">
+          <div class="ctitle"><i class="ti ti-calculator"></i> DCF model — 5-year projection</div>
+          <table>
+            <thead><tr><th>Year</th><th>Rev ($B)</th><th>EBITDA</th><th>FCF ($B)</th><th>Disc. FCF</th></tr></thead>
+            <tbody>
+              <tr><td>2025E</td><td>195.2</td><td>58%</td><td>99.8</td><td class="up2">94.1</td></tr>
+              <tr><td>2026E</td><td>248.7</td><td>60%</td><td>130.4</td><td class="up2">115.8</td></tr>
+              <tr><td>2027E</td><td>298.1</td><td>61%</td><td>159.2</td><td class="up2">133.0</td></tr>
+              <tr><td>2028E</td><td>336.2</td><td>62%</td><td>181.7</td><td class="up2">142.6</td></tr>
+              <tr><td>2029E</td><td>369.8</td><td>62%</td><td>200.3</td><td class="up2">147.4</td></tr>
+            </tbody>
+          </table>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <div class="dcf-field"><div class="dcf-lbl">WACC</div><div class="dcf-val" style="font-size:15px;color:var(--blue)">8.4%</div></div>
+            <div class="dcf-field"><div class="dcf-lbl">Terminal Growth</div><div class="dcf-val" style="font-size:15px;color:var(--cyan)">3.0%</div></div>
+            <div class="dcf-field"><div class="dcf-lbl">Equity Value</div><div class="dcf-val" style="font-size:15px;color:var(--lime)">$3.91T</div></div>
+          </div>
+        </div>
+        <div class="card tc">
+          <div class="ctitle"><i class="ti ti-table"></i> Comps table — semis sector</div>
+          <table>
+            <thead><tr><th>Ticker</th><th>EV/EBITDA</th><th>P/E</th><th>Rev Gr.</th></tr></thead>
+            <tbody>
+              <tr><td><span class="cn">NVDA</span></td><td>48.1×</td><td>34.2×</td><td class="up2">+122%</td></tr>
+              <tr><td><span class="cn">AMD</span></td><td>28.4×</td><td>52.1×</td><td class="up2">+18%</td></tr>
+              <tr><td><span class="cn">INTC</span></td><td>9.2×</td><td>19.8×</td><td class="dn2">−13%</td></tr>
+              <tr><td><span class="cn">AVGO</span></td><td>22.6×</td><td>31.4×</td><td class="up2">+51%</td></tr>
+              <tr><td><span class="cn">QCOM</span></td><td>13.8×</td><td>16.2×</td><td class="up2">+9%</td></tr>
+            </tbody>
+          </table>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-target"></i> Valuation range (waterfall)</div>
+            <svg viewBox="0 0 240 70" style="width:100%;height:70px;display:block">
+              <!-- bars -->
+              <rect x="10" y="20" width="40" height="35" rx="3" fill="rgba(79,158,255,0.2)" stroke="var(--blue)" stroke-width="1"/>
+              <text x="30" y="14" text-anchor="middle" fill="var(--blue)" font-size="8" font-family="DM Mono,monospace">$148</text>
+              <text x="30" y="65" text-anchor="middle" fill="#3a4460" font-size="7" font-family="DM Mono,monospace">Bear</text>
+              <rect x="70" y="10" width="40" height="45" rx="3" fill="rgba(0,229,204,0.2)" stroke="var(--cyan)" stroke-width="1"/>
+              <text x="90" y="6" text-anchor="middle" fill="var(--cyan)" font-size="8" font-family="DM Mono,monospace">$161</text>
+              <text x="90" y="65" text-anchor="middle" fill="#3a4460" font-size="7" font-family="DM Mono,monospace">Base</text>
+              <rect x="130" y="4" width="40" height="51" rx="3" fill="rgba(184,242,100,0.15)" stroke="var(--lime)" stroke-width="1"/>
+              <text x="150" y="0" text-anchor="middle" fill="var(--lime)" font-size="8" font-family="DM Mono,monospace" dy="8">$181</text>
+              <text x="150" y="65" text-anchor="middle" fill="#3a4460" font-size="7" font-family="DM Mono,monospace">Bull</text>
+              <!-- current price line -->
+              <line x1="5" y1="32" x2="235" y2="32" stroke="var(--amber)" stroke-width="1" stroke-dasharray="3,3"/>
+              <text x="238" y="35" fill="var(--amber)" font-size="7" font-family="DM Mono,monospace">Now</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ MODULE 04: BACKTESTER ═══ -->
+    <div class="module-panel" id="m3">
+      <div class="tearsheet-row">
+        <div class="ts-stat"><div class="ts-lbl">Total Return</div><div class="ts-val" style="color:var(--lime)">+214.3%</div></div>
+        <div class="ts-stat"><div class="ts-lbl">Ann. Sharpe</div><div class="ts-val" style="color:var(--cyan)">1.87</div></div>
+        <div class="ts-stat"><div class="ts-lbl">Max Drawdown</div><div class="ts-val" style="color:var(--pink)">−18.4%</div></div>
+        <div class="ts-stat"><div class="ts-lbl">Win Rate</div><div class="ts-val" style="color:var(--blue)">64.2%</div></div>
+        <div class="ts-stat"><div class="ts-lbl">Sortino</div><div class="ts-val" style="color:var(--amber)">2.41</div></div>
+        <div class="ts-stat"><div class="ts-lbl">Alpha (ann.)</div><div class="ts-val" style="color:var(--lime)">+8.3%</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card tb">
+          <div class="ctitle"><i class="ti ti-chart-line"></i> Equity curve — 2020–2025 (Momentum factor)</div>
+          <svg viewBox="0 0 420 120" style="width:100%;height:120px;display:block">
+            <defs>
+              <linearGradient id="ecg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b8f264" stop-opacity=".3"/><stop offset="100%" stop-color="#b8f264" stop-opacity="0"/></linearGradient>
+              <linearGradient id="bmg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4f9eff" stop-opacity=".1"/><stop offset="100%" stop-color="#4f9eff" stop-opacity="0"/></linearGradient>
+            </defs>
+            <!-- benchmark (S&P) -->
+            <polygon points="10,100 80,95 130,75 160,88 210,68 270,52 330,42 400,30 400,105 10,105" fill="url(#bmg)"/>
+            <polyline points="10,100 80,95 130,75 160,88 210,68 270,52 330,42 400,30" fill="none" stroke="var(--blue)" stroke-width="1.2" stroke-dasharray="3,3"/>
+            <!-- strategy -->
+            <polygon points="10,100 80,88 130,60 160,72 210,45 270,28 330,14 400,6 400,105 10,105" fill="url(#ecg)"/>
+            <polyline points="10,100 80,88 130,60 160,72 210,45 270,28 330,14 400,6" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linejoin="round"/>
+            <!-- drawdown marker -->
+            <line x1="155" y1="60" x2="155" y2="72" stroke="var(--pink)" stroke-width="1.5"/>
+            <circle cx="155" cy="66" r="3" fill="var(--pink)" opacity=".8"/>
+            <!-- legend -->
+            <line x1="14" y1="12" x2="30" y2="12" stroke="var(--lime)" stroke-width="2"/>
+            <text x="34" y="16" fill="#6b7a99" font-size="9" font-family="DM Mono,monospace">Strategy</text>
+            <line x1="100" y1="12" x2="116" y2="12" stroke="var(--blue)" stroke-width="1.5" stroke-dasharray="3,2"/>
+            <text x="120" y="16" fill="#6b7a99" font-size="9" font-family="DM Mono,monospace">S&amp;P 500</text>
+            <!-- year labels -->
+            <text x="10" y="115" fill="#3a4460" font-size="8" font-family="DM Mono,monospace">2020</text>
+            <text x="90" y="115" fill="#3a4460" font-size="8" font-family="DM Mono,monospace">2021</text>
+            <text x="170" y="115" fill="#3a4460" font-size="8" font-family="DM Mono,monospace">2022</text>
+            <text x="250" y="115" fill="#3a4460" font-size="8" font-family="DM Mono,monospace">2023</text>
+            <text x="330" y="115" fill="#3a4460" font-size="8" font-family="DM Mono,monospace">2024</text>
+          </svg>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+            <div style="display:flex;gap:6px">
+              <span style="font-size:10px;color:var(--txt-m)">Period:</span>
+              <span style="font-size:10px;padding:1px 8px;border-radius:10px;background:rgba(184,242,100,.12);color:var(--lime);border:1px solid rgba(184,242,100,.2)">Jan 2020 → Dec 2024</span>
+              <span style="font-size:10px;padding:1px 8px;border-radius:10px;background:rgba(255,255,255,.05);color:var(--txt-d);border:1px solid var(--border);cursor:pointer">Rebalance: Monthly</span>
+              <span style="font-size:10px;padding:1px 8px;border-radius:10px;background:rgba(255,255,255,.05);color:var(--txt-d);border:1px solid var(--border);cursor:pointer">Slippage: 5bps</span>
+            </div>
+          </div>
+        </div>
+        <div class="card tc">
+          <div class="ctitle"><i class="ti ti-list-details"></i> Trade log — last 5</div>
+          <table>
+            <thead><tr><th>Ticker</th><th>Entry</th><th>Exit</th><th>P&amp;L</th></tr></thead>
+            <tbody>
+              <tr><td><span class="cn">NVDA</span></td><td>$98.40</td><td>$142.50</td><td class="up2">+44.8%</td></tr>
+              <tr><td><span class="cn">META</span></td><td>$310.20</td><td>$480.80</td><td class="up2">+54.9%</td></tr>
+              <tr><td><span class="cn">LLY</span></td><td>$620.10</td><td>$795.40</td><td class="up2">+28.3%</td></tr>
+              <tr><td><span class="cn">INTC</span></td><td>$41.20</td><td>$32.80</td><td class="dn2">−20.4%</td></tr>
+              <tr><td><span class="cn">QCOM</span></td><td>$148.60</td><td>$162.30</td><td class="up2">+9.2%</td></tr>
+            </tbody>
+          </table>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-chart-bar"></i> Monthly returns heatmap</div>
+            <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:3px">
+              <div style="font-size:7px;color:var(--txt-d);text-align:center">J</div><div style="font-size:7px;color:var(--txt-d);text-align:center">F</div><div style="font-size:7px;color:var(--txt-d);text-align:center">M</div><div style="font-size:7px;color:var(--txt-d);text-align:center">A</div><div style="font-size:7px;color:var(--txt-d);text-align:center">M</div><div style="font-size:7px;color:var(--txt-d);text-align:center">J</div><div style="font-size:7px;color:var(--txt-d);text-align:center">J</div><div style="font-size:7px;color:var(--txt-d);text-align:center">A</div><div style="font-size:7px;color:var(--txt-d);text-align:center">S</div><div style="font-size:7px;color:var(--txt-d);text-align:center">O</div><div style="font-size:7px;color:var(--txt-d);text-align:center">N</div><div style="font-size:7px;color:var(--txt-d);text-align:center">D</div>
+              <div style="height:16px;background:rgba(184,242,100,.5);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.3);border-radius:2px"></div><div style="height:16px;background:rgba(255,95,160,.4);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.6);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.8);border-radius:2px"></div><div style="height:16px;background:rgba(255,95,160,.2);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.7);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.4);border-radius:2px"></div><div style="height:16px;background:rgba(255,95,160,.5);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.5);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.9);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.6);border-radius:2px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ MODULE 05: MONTE CARLO ═══ -->
+    <div class="module-panel" id="m4">
+      <div class="kpi-row">
+        <div class="kpi c"><div class="kpi-lbl">Median Return (1Y)</div><div class="kpi-val c">+18.4%</div><div class="kpi-sub">10,000 simulations</div></div>
+        <div class="kpi l"><div class="kpi-lbl">95th Percentile</div><div class="kpi-val l">+64.2%</div><div class="kpi-sub up">bull scenario</div></div>
+        <div class="kpi p"><div class="kpi-lbl">5th Percentile</div><div class="kpi-val p">−22.1%</div><div class="kpi-sub dn">bear scenario</div></div>
+        <div class="kpi a"><div class="kpi-lbl">Prob. of Profit</div><div class="kpi-val a">73.8%</div><div class="kpi-sub up">above entry price</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card tb">
+          <div class="ctitle"><i class="ti ti-chart-dots"></i> GBM path simulation — NVDA · 252-day horizon</div>
+          <svg viewBox="0 0 420 140" style="width:100%;height:140px;display:block">
+            <!-- cone -->
+            <polygon points="10,70 420,20 420,115" fill="rgba(79,158,255,0.04)"/>
+            <!-- many paths -->
+            <polyline points="10,70 60,62 110,55 160,48 210,40 260,32 310,26 360,20 420,14" fill="none" stroke="var(--lime)" stroke-width="1.5" opacity=".9"/>
+            <polyline points="10,70 60,68 110,72 160,60 210,65 260,55 310,48 360,52 420,44" fill="none" stroke="var(--cyan)" stroke-width="1" opacity=".6"/>
+            <polyline points="10,70 60,75 110,80 160,74 210,82 260,88 310,80 360,84 420,78" fill="none" stroke="var(--blue)" stroke-width="1" opacity=".5"/>
+            <polyline points="10,70 60,72 110,65 160,70 210,78 260,70 310,80 360,75 420,88" fill="none" stroke="rgba(167,139,250,.5)" stroke-width="1" opacity=".5"/>
+            <polyline points="10,70 60,78 110,88 160,96 210,100 260,108 310,112 360,108 420,115" fill="none" stroke="var(--pink)" stroke-width="1.5" opacity=".9"/>
+            <!-- cone borders -->
+            <polyline points="10,70 420,14" fill="none" stroke="rgba(184,242,100,.25)" stroke-width="1" stroke-dasharray="4,3"/>
+            <polyline points="10,70 420,115" fill="none" stroke="rgba(255,95,160,.25)" stroke-width="1" stroke-dasharray="4,3"/>
+            <!-- current price -->
+            <circle cx="10" cy="70" r="4" fill="var(--blue)"/>
+            <!-- labels -->
+            <text x="425" y="17" fill="var(--lime)" font-size="8" font-family="DM Mono,monospace">P95</text>
+            <text x="425" y="70" fill="var(--cyan)" font-size="8" font-family="DM Mono,monospace">Med</text>
+            <text x="425" y="117" fill="var(--pink)" font-size="8" font-family="DM Mono,monospace">P5</text>
+          </svg>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;gap:14px;font-size:10px">
+            <span style="color:var(--txt-m)">Model: <span style="color:var(--cyan)">GBM</span></span>
+            <span style="color:var(--txt-m)">μ: <span style="color:var(--txt)">0.18</span></span>
+            <span style="color:var(--txt-m)">σ: <span style="color:var(--txt)">0.42</span></span>
+            <span style="color:var(--txt-m)">N: <span style="color:var(--txt)">10,000</span></span>
+            <span style="color:var(--txt-m)">GARCH available <span style="color:var(--txt-d)">(toggle)</span></span>
+          </div>
+        </div>
+        <div class="card tc">
+          <div class="ctitle"><i class="ti ti-chart-histogram"></i> Return distribution</div>
+          <svg viewBox="0 0 220 100" style="width:100%;height:100px;display:block">
+            <defs><linearGradient id="histg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00e5cc" stop-opacity=".6"/><stop offset="100%" stop-color="#00e5cc" stop-opacity=".1"/></linearGradient></defs>
+            <!-- bell-ish bars -->
+            <rect x="5"  y="80" width="14" height="14" rx="2" fill="rgba(255,95,160,.3)"/>
+            <rect x="22" y="72" width="14" height="22" rx="2" fill="rgba(255,95,160,.2)"/>
+            <rect x="39" y="60" width="14" height="34" rx="2" fill="url(#histg)"/>
+            <rect x="56" y="44" width="14" height="50" rx="2" fill="url(#histg)"/>
+            <rect x="73" y="30" width="14" height="64" rx="2" fill="url(#histg)"/>
+            <rect x="90" y="18" width="14" height="76" rx="2" fill="url(#histg)"/>
+            <rect x="107" y="22" width="14" height="72" rx="2" fill="url(#histg)"/>
+            <rect x="124" y="38" width="14" height="56" rx="2" fill="url(#histg)"/>
+            <rect x="141" y="55" width="14" height="39" rx="2" fill="url(#histg)"/>
+            <rect x="158" y="68" width="14" height="26" rx="2" fill="url(#histg)"/>
+            <rect x="175" y="78" width="14" height="16" rx="2" fill="rgba(184,242,100,.25)"/>
+            <rect x="192" y="84" width="14" height="10" rx="2" fill="rgba(184,242,100,.2)"/>
+            <!-- median line -->
+            <line x1="97" y1="8" x2="97" y2="95" stroke="var(--amber)" stroke-width="1.2" stroke-dasharray="3,2"/>
+            <text x="99" y="12" fill="var(--amber)" font-size="7" font-family="DM Mono,monospace">Med +18%</text>
+          </svg>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+            <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-alert-triangle"></i> Risk metrics</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+              <div class="dcf-field"><div class="dcf-lbl">VaR (95%)</div><div style="font-size:14px;font-weight:700;color:var(--pink);font-family:'Syne',sans-serif;margin-top:3px">−$14.8K</div></div>
+              <div class="dcf-field"><div class="dcf-lbl">CVaR</div><div style="font-size:14px;font-weight:700;color:var(--pink);font-family:'Syne',sans-serif;margin-top:3px">−$21.2K</div></div>
+              <div class="dcf-field"><div class="dcf-lbl">Skewness</div><div style="font-size:14px;font-weight:700;color:var(--cyan);font-family:'Syne',sans-serif;margin-top:3px">+0.34</div></div>
+              <div class="dcf-field"><div class="dcf-lbl">Kurtosis</div><div style="font-size:14px;font-weight:700;color:var(--blue);font-family:'Syne',sans-serif;margin-top:3px">3.82</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ MODULE 06: STRATEGY LIBRARY ═══ -->
+    <div class="module-panel" id="m5">
+      <div class="kpi-row">
+        <div class="kpi b"><div class="kpi-lbl">Strategies saved</div><div class="kpi-val b">12</div><div class="kpi-sub">across 4 categories</div></div>
+        <div class="kpi l"><div class="kpi-lbl">Best Sharpe</div><div class="kpi-val l">2.14</div><div class="kpi-sub">Momentum + Quality</div></div>
+        <div class="kpi c"><div class="kpi-lbl">Avg Ann. Return</div><div class="kpi-val c">+24.1%</div><div class="kpi-sub up">across active strats</div></div>
+        <div class="kpi a"><div class="kpi-lbl">Last Backtest</div><div class="kpi-val w" style="font-size:16px;padding-top:4px">Today</div><div class="kpi-sub">2m ago · all strats</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card tb">
+          <div class="ctitle"><i class="ti ti-books"></i> Strategy cards</div>
+          <div class="strat-grid">
+            <div class="strat-card sel" onclick="this.classList.toggle('sel')">
+              <div class="strat-name">Momentum + Quality</div>
+              <div class="strat-desc">Top-decile momentum stocks filtered by high ROE &amp; low debt. Monthly rebalance.</div>
+              <div class="strat-meta">
+                <span class="strat-tag">Sharpe 2.14</span>
+                <span class="strat-tag">+214% 5yr</span>
+                <span class="strat-tag" style="color:var(--lime)">Active</span>
+              </div>
+            </div>
+            <div class="strat-card" onclick="this.classList.toggle('sel')">
+              <div class="strat-name">Value + Low Vol</div>
+              <div class="strat-desc">Deep value screens (P/B &lt; 1.5, P/E &lt; 15) combined with 52-week low-vol filter.</div>
+              <div class="strat-meta">
+                <span class="strat-tag">Sharpe 1.42</span>
+                <span class="strat-tag">+98% 5yr</span>
+                <span class="strat-tag" style="color:var(--amber)">Idle</span>
+              </div>
+            </div>
+            <div class="strat-card" onclick="this.classList.toggle('sel')">
+              <div class="strat-name">Growth at Reasonable Price</div>
+              <div class="strat-desc">PEG &lt; 1.5, revenue growth &gt; 20%, EPS acceleration. Quarterly rebalance.</div>
+              <div class="strat-meta">
+                <span class="strat-tag">Sharpe 1.78</span>
+                <span class="strat-tag">+161% 5yr</span>
+                <span class="strat-tag" style="color:var(--cyan)">Testing</span>
+              </div>
+            </div>
+            <div class="strat-card" onclick="this.classList.toggle('sel')">
+              <div class="strat-name">Earnings Revisions</div>
+              <div class="strat-desc">Long stocks with strong upward analyst estimate revisions in past 30 days.</div>
+              <div class="strat-meta">
+                <span class="strat-tag">Sharpe 1.61</span>
+                <span class="strat-tag">+132% 5yr</span>
+                <span class="strat-tag" style="color:var(--amber)">Idle</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card tc">
+          <div class="ctitle"><i class="ti ti-chart-bar"></i> Strategy performance comparison</div>
+          <svg viewBox="0 0 220 130" style="width:100%;height:130px;display:block">
+            <text x="0" y="10" fill="#3a4460" font-size="8" font-family="DM Mono,monospace">Ann. Return</text>
+            <!-- bars -->
+            <rect x="10" y="50" width="28" height="55" rx="3" fill="rgba(0,229,204,.3)" stroke="var(--cyan)" stroke-width="1"/>
+            <text x="24" y="46" text-anchor="middle" fill="var(--cyan)" font-size="8" font-family="DM Mono,monospace">+42%</text>
+            <text x="24" y="120" text-anchor="middle" fill="#3a4460" font-size="7" font-family="DM Mono,monospace">Mom+Q</text>
+            <rect x="58" y="65" width="28" height="40" rx="3" fill="rgba(167,139,250,.25)" stroke="var(--purple)" stroke-width="1"/>
+            <text x="72" y="61" text-anchor="middle" fill="var(--purple)" font-size="8" font-family="DM Mono,monospace">+28%</text>
+            <text x="72" y="120" text-anchor="middle" fill="#3a4460" font-size="7" font-family="DM Mono,monospace">Val+LV</text>
+            <rect x="106" y="55" width="28" height="50" rx="3" fill="rgba(184,242,100,.25)" stroke="var(--lime)" stroke-width="1"/>
+            <text x="120" y="51" text-anchor="middle" fill="var(--lime)" font-size="8" font-family="DM Mono,monospace">+36%</text>
+            <text x="120" y="120" text-anchor="middle" fill="#3a4460" font-size="7" font-family="DM Mono,monospace">GARP</text>
+            <rect x="154" y="60" width="28" height="45" rx="3" fill="rgba(255,179,64,.2)" stroke="var(--amber)" stroke-width="1"/>
+            <text x="168" y="56" text-anchor="middle" fill="var(--amber)" font-size="8" font-family="DM Mono,monospace">+31%</text>
+            <text x="168" y="120" text-anchor="middle" fill="#3a4460" font-size="7" font-family="DM Mono,monospace">EPS Rev</text>
+            <!-- benchmark line -->
+            <line x1="0" y1="82" x2="210" y2="82" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3,3"/>
+            <text x="190" y="79" fill="var(--blue)" font-size="7" font-family="DM Mono,monospace">S&amp;P</text>
+          </svg>
+          <div style="padding-top:10px;border-top:1px solid var(--border);font-size:10px;color:var(--txt-m);line-height:1.7">
+            <span style="color:var(--lime)">●</span> Click any card to select &amp; run against Backtester<br>
+            <span style="color:var(--cyan)">●</span> Combine strategies in Portfolio Optimizer (Module 07)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ MODULE 07: PORTFOLIO OPTIMIZER ═══ -->
+    <div class="module-panel" id="m6">
+      <div class="kpi-row">
+        <div class="kpi c"><div class="kpi-lbl">Expected Return</div><div class="kpi-val c">+22.4%</div><div class="kpi-sub up">optimized portfolio</div></div>
+        <div class="kpi l"><div class="kpi-lbl">Portfolio Sharpe</div><div class="kpi-val l">1.94</div><div class="kpi-sub up">vs 1.12 equal-weight</div></div>
+        <div class="kpi b"><div class="kpi-lbl">Portfolio Vol.</div><div class="kpi-val b">18.2%</div><div class="kpi-sub dn">ann. std dev</div></div>
+        <div class="kpi a"><div class="kpi-lbl">Positions</div><div class="kpi-val a">8</div><div class="kpi-sub">max-Sharpe frontier</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card tb">
+          <div class="ctitle"><i class="ti ti-chart-pie"></i> Optimal weights — max Sharpe portfolio</div>
+          <div class="port-bar-wrap" style="margin-bottom:10px">
+            <div class="port-bar-row"><span class="pb-sym">NVDA</span><div class="pb-track"><div class="pb-fill" style="width:28%;background:linear-gradient(90deg,var(--blue),var(--cyan))"></div></div><span class="pb-pct">28.1%</span><span class="pb-ret up2">+61.2%</span></div>
+            <div class="port-bar-row"><span class="pb-sym">META</span><div class="pb-track"><div class="pb-fill" style="width:18%;background:linear-gradient(90deg,var(--cyan),var(--lime))"></div></div><span class="pb-pct">18.4%</span><span class="pb-ret up2">+22.1%</span></div>
+            <div class="port-bar-row"><span class="pb-sym">LLY</span><div class="pb-track"><div class="pb-fill" style="width:16%;background:linear-gradient(90deg,var(--lime),var(--cyan))"></div></div><span class="pb-pct">15.7%</span><span class="pb-ret up2">+38.4%</span></div>
+            <div class="port-bar-row"><span class="pb-sym">AVGO</span><div class="pb-track"><div class="pb-fill" style="width:13%;background:linear-gradient(90deg,var(--amber),var(--blue))"></div></div><span class="pb-pct">12.8%</span><span class="pb-ret up2">+51.0%</span></div>
+            <div class="port-bar-row"><span class="pb-sym">AAPL</span><div class="pb-track"><div class="pb-fill" style="width:10%;background:rgba(79,158,255,.5)"></div></div><span class="pb-pct">10.2%</span><span class="pb-ret up2">+9.1%</span></div>
+            <div class="port-bar-row"><span class="pb-sym">MSFT</span><div class="pb-track"><div class="pb-fill" style="width:8%;background:rgba(79,158,255,.4)"></div></div><span class="pb-pct">8.1%</span><span class="pb-ret up2">+12.4%</span></div>
+            <div class="port-bar-row"><span class="pb-sym">JPM</span><div class="pb-track"><div class="pb-fill" style="width:5%;background:rgba(167,139,250,.5)"></div></div><span class="pb-pct">4.8%</span><span class="pb-ret up2">+18.2%</span></div>
+            <div class="port-bar-row"><span class="pb-sym">UNH</span><div class="pb-track"><div class="pb-fill" style="width:3%;background:rgba(255,179,64,.4)"></div></div><span class="pb-pct">1.9%</span><span class="pb-ret dn2">−3.2%</span></div>
+          </div>
+          <div style="padding-top:10px;border-top:1px solid var(--border);display:flex;gap:10px;font-size:10px">
+            <span style="color:var(--txt-m)">Method: <span style="color:var(--cyan)">Markowitz MVO</span></span>
+            <span style="color:var(--txt-m)">Constraint: <span style="color:var(--txt)">max 30% / stock</span></span>
+          </div>
+        </div>
+        <div class="card tc">
+          <div class="ctitle"><i class="ti ti-chart-dots-3"></i> Efficient frontier</div>
+          <svg viewBox="0 0 230 130" style="width:100%;height:130px;display:block">
+            <defs><linearGradient id="efg" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#4f9eff" stop-opacity=".4"/><stop offset="100%" stop-color="#b8f264" stop-opacity=".6"/></linearGradient></defs>
+            <!-- axes -->
+            <line x1="20" y1="10" x2="20" y2="110" stroke="#3a4460" stroke-width="1"/>
+            <line x1="20" y1="110" x2="220" y2="110" stroke="#3a4460" stroke-width="1"/>
+            <text x="5" y="14" fill="#3a4460" font-size="7" font-family="DM Mono,monospace">Ret</text>
+            <text x="210" y="118" fill="#3a4460" font-size="7" font-family="DM Mono,monospace">Risk</text>
+            <!-- frontier curve -->
+            <path d="M40,100 Q80,40 160,20 L210,18" fill="none" stroke="url(#efg)" stroke-width="2.5"/>
+            <!-- portfolio dots -->
+            <circle cx="40" cy="100" r="3.5" fill="var(--txt-d)"/><text x="44" y="104" fill="#3a4460" font-size="7" font-family="DM Mono,monospace">Min Vol</text>
+            <circle cx="130" cy="32" r="5" fill="var(--lime)"/><text x="134" y="36" fill="var(--lime)" font-size="7" font-family="DM Mono,monospace">★ Max Sharpe</text>
+            <circle cx="200" cy="20" r="3.5" fill="var(--pink)"/><text x="178" y="18" fill="var(--pink)" font-size="7" font-family="DM Mono,monospace">Max Ret</text>
+            <!-- random portfolio cloud -->
+            <circle cx="60" cy="85" r="2" fill="rgba(255,255,255,.1)"/><circle cx="80" cy="70" r="2" fill="rgba(255,255,255,.1)"/>
+            <circle cx="95" cy="58" r="2" fill="rgba(255,255,255,.1)"/><circle cx="50" cy="92" r="2" fill="rgba(255,255,255,.1)"/>
+            <circle cx="110" cy="50" r="2" fill="rgba(255,255,255,.1)"/><circle cx="140" cy="38" r="2" fill="rgba(255,255,255,.1)"/>
+            <circle cx="70" cy="78" r="2" fill="rgba(255,255,255,.1)"/><circle cx="160" cy="30" r="2" fill="rgba(255,255,255,.1)"/>
+            <circle cx="180" cy="26" r="2" fill="rgba(255,255,255,.1)"/>
+          </svg>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+            <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-git-merge"></i> Correlation heatmap (top 4)</div>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px;font-size:8px;text-align:center">
+              <div style="color:var(--txt-d)"></div><div style="color:var(--txt-d)">NVDA</div><div style="color:var(--txt-d)">META</div><div style="color:var(--txt-d)">LLY</div><div style="color:var(--txt-d)">AVGO</div>
+              <div style="color:var(--txt-d)">NVDA</div><div style="height:18px;background:rgba(0,229,204,.6);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--bg-deep)">1.0</div><div style="height:18px;background:rgba(79,158,255,.4);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-m)">.62</div><div style="height:18px;background:rgba(255,179,64,.2);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-d)">.18</div><div style="height:18px;background:rgba(79,158,255,.5);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-m)">.71</div>
+              <div style="color:var(--txt-d)">META</div><div style="height:18px;background:rgba(79,158,255,.4);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-m)">.62</div><div style="height:18px;background:rgba(0,229,204,.6);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--bg-deep)">1.0</div><div style="height:18px;background:rgba(255,179,64,.15);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-d)">.12</div><div style="height:18px;background:rgba(79,158,255,.35);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-d)">.55</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+const modules = [
+  {title:"Screener", sub:"/ composite factor scoring"},
+  {title:"Deep Dive", sub:"/ fundamental + macro memo · NVDA"},
+  {title:"Valuation Engine", sub:"/ DCF + comps · NVDA"},
+  {title:"Backtester", sub:"/ tearsheet + equity curve"},
+  {title:"Monte Carlo", sub:"/ GBM path simulation · NVDA"},
+  {title:"Strategy Library", sub:"/ saved strategies + comparison"},
+  {title:"Portfolio Optimizer", sub:"/ Markowitz MVO · max Sharpe"},
+];
+const navItems = document.querySelectorAll('.nav-item');
+const panels = document.querySelectorAll('.module-panel');
+const chips = document.querySelectorAll('.chip');
+
+function switchModule(idx, navEl) {
+  panels.forEach((p,i) => p.classList.toggle('active', i === idx));
+  navItems.forEach((n,i) => {
+    if(i < 7) n.classList.toggle('active', i === idx);
+  });
+  chips.forEach((c,i) => c.classList.toggle('active', i === idx));
+  document.getElementById('mod-title').textContent = modules[idx].title;
+  document.getElementById('mod-sub').textContent = modules[idx].sub;
+  if(navEl) {
+    navItems.forEach(n => n.classList.remove('active'));
+    navEl.classList.add('active');
+  }
+}
+</script>
+</body>
+</html>
