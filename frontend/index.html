@@ -277,7 +277,7 @@ svg.mc{width:100%;height:140px;display:block;}
 
     <!-- ═══ MODULE 02: DEEP DIVE ═══ -->
     <div class="module-panel" id="m1">
-      <div class="kpi-row">
+      <div class="kpi-row" id="dd-kpis">
         <div class="kpi b"><div class="kpi-lbl">Market Cap</div><div class="kpi-val b">$3.28T</div><div class="kpi-sub">NVDA · Large Cap</div></div>
         <div class="kpi c"><div class="kpi-lbl">Revenue TTM</div><div class="kpi-val c">$130.5B</div><div class="kpi-sub up">↑ 122% YoY</div></div>
         <div class="kpi l"><div class="kpi-lbl">Net Margin</div><div class="kpi-val l">55.7%</div><div class="kpi-sub up">↑ from 26% prior yr</div></div>
@@ -285,8 +285,8 @@ svg.mc{width:100%;height:140px;display:block;}
       </div>
       <div class="two-col">
         <div class="card tb">
-          <div class="ctitle"><i class="ti ti-chart-area"></i> Revenue &amp; EPS trend — NVDA</div>
-          <svg viewBox="0 0 400 120" style="width:100%;height:120px;display:block">
+          <div class="ctitle" id="dd-revtitle"><i class="ti ti-chart-area"></i> Revenue &amp; EPS trend — NVDA</div>
+          <svg id="dd-revsvg" viewBox="0 0 400 120" style="width:100%;height:120px;display:block">
             <defs>
               <linearGradient id="revg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4f9eff" stop-opacity=".3"/><stop offset="100%" stop-color="#4f9eff" stop-opacity="0"/></linearGradient>
               <linearGradient id="epsg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b8f264" stop-opacity=".25"/><stop offset="100%" stop-color="#b8f264" stop-opacity="0"/></linearGradient>
@@ -311,8 +311,8 @@ svg.mc{width:100%;height:140px;display:block;}
             <text x="120" y="16" fill="#6b7a99" font-size="9" font-family="DM Mono,monospace">EPS</text>
           </svg>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-            <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-news"></i> Macro memo highlights</div>
-            <div style="font-size:10px;color:var(--txt-m);line-height:1.7">
+            <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-news"></i> Investment memo (auto)</div>
+            <div id="dd-memo" style="font-size:10px;color:var(--txt-m);line-height:1.7">
               <span style="color:var(--cyan)">●</span> AI infrastructure buildout remains structural tailwind through 2026<br>
               <span style="color:var(--lime)">●</span> Data center segment +270% YoY — still accelerating<br>
               <span style="color:var(--amber)">●</span> Export restrictions to China — ~15% of prior revenue at risk<br>
@@ -323,7 +323,7 @@ svg.mc{width:100%;height:140px;display:block;}
         <div class="card tc">
           <div class="ctitle"><i class="ti ti-building"></i> Fundamentals snapshot</div>
           <table>
-            <tbody>
+            <tbody id="dd-fundamentals">
               <tr><td style="color:var(--txt-d);font-size:10px;text-align:left">P/E (TTM)</td><td style="color:var(--txt)">34.2×</td></tr>
               <tr><td style="color:var(--txt-d);font-size:10px;text-align:left">EV/EBITDA</td><td style="color:var(--txt)">48.1×</td></tr>
               <tr><td style="color:var(--txt-d);font-size:10px;text-align:left">P/S</td><td style="color:var(--txt)">25.1×</td></tr>
