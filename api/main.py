@@ -5,6 +5,8 @@ the vanilla frontend. Run from the project root:
     uvicorn api.main:app --reload --port 8000
 """
 from pathlib import Path
+
+import pandas as pd
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
@@ -157,6 +159,66 @@ def deep_dive(ticker: str):
         "beneish_mscore": float(mscore) if (mscore is not None and mscore == mscore) else None,
     }
     out["memo"] = _build_memo(margins, mscore, {})
+    return JSONResponse(to_jsonable(out))
+
+
+# Recent 10Y government-bond yields (%) used as a risk-free proxy, because the
+# live FRED fetch frequently stalls ~30s. The valuation layer's own fallback is
+# ~4%; these keep WACC sensible per country without the stall.
+_RF_PROXY = {"US": 4.2, "UK": 4.5, "India": 7.0, "Canada": 3.4,
+             "Germany": 2.5, "Japan": 1.1, "Australia": 4.3, "France": 3.1}
+
+
+@app.get("/api/valuation/{ticker}")
+def valuation(ticker: str):
+    """DCF + comps + DDM. Substitutes a recent risk-free proxy for the slow FRED
+    fetch so the endpoint returns in a few seconds."""
+    import layers.valuation as val
+    from data.prices import detect_asset_type, country_from_ticker
+
+    ticker = ticker.upper()
+    if detect_asset_type(ticker) != "equity":
+        return JSONResponse({"ticker": ticker, "error": "Valuation applies to equities only"})
+
+    country = country_from_ticker(ticker)
+    rf_pct = _RF_PROXY.get(country, 4.2)
+    orig = val.fetch_fred_series
+    val.fetch_fred_series = lambda *a, **k: pd.Series([rf_pct])
+    try:
+        v = val.run_valuation(ticker, country=country)
+    except Exception as e:
+        return JSONResponse({"ticker": ticker, "error": str(e)}, status_code=502)
+    finally:
+        val.fetch_fred_series = orig
+
+    if not v.get("applicable"):
+        return JSONResponse({"ticker": ticker, "error": v.get("reason", "not applicable")})
+
+    w = v.get("wacc_inputs", {}) or {}
+    dcf = v.get("dcf_base")
+    cur = v.get("current_price")
+    shares = v.get("shares_outstanding")
+
+    out = {"ticker": ticker, "current_price": cur, "shares_outstanding": shares,
+           "wacc": {k: w.get(k) for k in ("wacc", "ke", "rf", "beta", "kd", "tax_rate")}}
+    out["wacc"]["terminal_growth"] = 0.025
+
+    if dcf:
+        wacc = w.get("wacc") or 0.09
+        fcfs = dcf.get("fcf_series") or []
+        disc = [fcfs[i] / ((1 + wacc) ** (i + 1)) for i in range(len(fcfs))]
+        eqv = ((dcf.get("price_base") or 0) * (shares or 0)) or None
+        out["dcf"] = {
+            "price_base": dcf.get("price_base"), "price_bull": dcf.get("price_bull"),
+            "price_bear": dcf.get("price_bear"), "fcf_series": fcfs, "disc_fcf": disc,
+            "terminal_value": dcf.get("terminal_value"), "equity_value": eqv,
+        }
+    else:
+        out["dcf"] = None
+
+    out["comps"] = v.get("comps")
+    out["comps_implied"] = v.get("comps_implied")
+    out["ddm"] = v.get("ddm")
     return JSONResponse(to_jsonable(out))
 
 

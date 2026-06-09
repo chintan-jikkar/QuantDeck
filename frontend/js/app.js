@@ -120,8 +120,73 @@ async function loadDeepDive() {
   }
 }
 
+// ── Valuation (module 2) ─────────────────────────────────────────────
+const VAL_TICKER = "AAPL";
+function renderRangeSvg(svg, bear, base, bull, cur) {
+  const pts = [bear, base, bull, cur].filter(x => x != null && !isNaN(x));
+  if (pts.length < 2) { svg.innerHTML = `<text x="120" y="38" text-anchor="middle" fill="#3a4460" font-size="9" font-family="DM Mono,monospace">No range</text>`; return; }
+  const lo = Math.min(...pts), hi = Math.max(...pts), span = (hi - lo) || 1;
+  const W = 240, padL = 16, padR = 16, y = 30, h = 14;
+  const X = v => padL + (v - lo) / span * (W - padL - padR);
+  let out = "";
+  if (bear != null && bull != null)
+    out += `<rect x="${X(Math.min(bear, bull)).toFixed(1)}" y="${y}" width="${Math.abs(X(bull) - X(bear)).toFixed(1)}" height="${h}" rx="3" fill="rgba(0,229,204,0.16)" stroke="var(--cyan)" stroke-width="1"/>`;
+  if (base != null)
+    out += `<line x1="${X(base).toFixed(1)}" y1="${y - 4}" x2="${X(base).toFixed(1)}" y2="${y + h + 4}" stroke="var(--lime)" stroke-width="2"/><text x="${X(base).toFixed(1)}" y="${y - 7}" text-anchor="middle" fill="var(--lime)" font-size="8" font-family="DM Mono,monospace">Base $${base.toFixed(0)}</text>`;
+  if (cur != null)
+    out += `<line x1="${X(cur).toFixed(1)}" y1="${y - 9}" x2="${X(cur).toFixed(1)}" y2="${y + h + 9}" stroke="var(--amber)" stroke-width="1" stroke-dasharray="3,2"/><text x="${X(cur).toFixed(1)}" y="${y + h + 18}" text-anchor="middle" fill="var(--amber)" font-size="8" font-family="DM Mono,monospace">Now $${cur.toFixed(0)}</text>`;
+  if (bear != null) out += `<text x="${X(bear).toFixed(1)}" y="${y + h + 18}" text-anchor="middle" fill="var(--pink)" font-size="7" font-family="DM Mono,monospace">Bear $${bear.toFixed(0)}</text>`;
+  if (bull != null) out += `<text x="${X(bull).toFixed(1)}" y="${y - 7}" text-anchor="middle" fill="var(--cyan)" font-size="7" font-family="DM Mono,monospace">Bull $${bull.toFixed(0)}</text>`;
+  svg.innerHTML = out;
+}
+async function loadValuation() {
+  const kp = document.getElementById("val-kpis");
+  const dcfT = document.getElementById("val-dcf");
+  const fields = document.getElementById("val-dcffields");
+  const compsT = document.getElementById("val-comps");
+  const svg = document.getElementById("val-rangesvg");
+  if (dcfT) dcfT.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--txt-m);padding:18px">Valuing ${VAL_TICKER}…</td></tr>`;
+  try {
+    const res = await fetch(`/api/valuation/${VAL_TICKER}`);
+    const d = await res.json();
+    if (!res.ok || (d.error && !d.dcf)) throw new Error(d.error || `API ${res.status}`);
+    const dcf = d.dcf || {}, cur = d.current_price, w = d.wacc || {};
+    const dollar = v => (v != null && !isNaN(v)) ? "$" + Number(v).toFixed(0) : "—";
+    if (kp) {
+      const impl = (dcf.price_base != null && cur) ? (dcf.price_base / cur - 1) : null;
+      kp.innerHTML = `
+        <div class="kpi c"><div class="kpi-lbl">DCF Fair Value</div><div class="kpi-val c">${dcf.price_base != null ? "$" + dcf.price_base.toFixed(2) : "—"}</div><div class="kpi-sub">base case</div></div>
+        <div class="kpi l"><div class="kpi-lbl">Bull / Bear</div><div class="kpi-val l" style="font-size:18px;padding-top:5px">${dollar(dcf.price_bull)} / ${dollar(dcf.price_bear)}</div><div class="kpi-sub">DCF range</div></div>
+        <div class="kpi b"><div class="kpi-lbl">Current Price</div><div class="kpi-val b">${cur != null ? "$" + cur.toFixed(2) : "—"}</div><div class="kpi-sub">${d.ticker}</div></div>
+        <div class="kpi a"><div class="kpi-lbl">Implied Return</div><div class="kpi-val a">${impl != null ? (impl >= 0 ? "+" : "") + (impl * 100).toFixed(1) + "%" : "—"}</div><div class="kpi-sub">DCF base vs price</div></div>`;
+    }
+    if (dcfT) {
+      const fcfs = dcf.fcf_series || [], disc = dcf.disc_fcf || [];
+      const n = Math.min(5, fcfs.length);
+      let rows = "";
+      for (let i = 0; i < n; i++) rows += `<tr><td>Y${i + 1}</td><td>${(fcfs[i] / 1e9).toFixed(1)}</td><td class="up2">${(disc[i] / 1e9).toFixed(1)}</td></tr>`;
+      dcfT.innerHTML = rows || `<tr><td colspan="3" style="text-align:center;color:var(--txt-d)">No projection</td></tr>`;
+    }
+    if (fields) {
+      fields.innerHTML = `
+        <div class="dcf-field"><div class="dcf-lbl">WACC</div><div class="dcf-val" style="font-size:15px;color:var(--blue)">${w.wacc != null ? (w.wacc * 100).toFixed(1) + "%" : "—"}</div></div>
+        <div class="dcf-field"><div class="dcf-lbl">Terminal Growth</div><div class="dcf-val" style="font-size:15px;color:var(--cyan)">${w.terminal_growth != null ? (w.terminal_growth * 100).toFixed(1) + "%" : "—"}</div></div>
+        <div class="dcf-field"><div class="dcf-lbl">Equity Value</div><div class="dcf-val" style="font-size:15px;color:var(--lime)">${money(dcf.equity_value)}</div></div>`;
+    }
+    if (compsT) {
+      const rows = d.comps || [];
+      compsT.innerHTML = rows.length
+        ? rows.map(r => `<tr><td><span class="cn">${r.symbol || "—"}</span></td><td>${fmt(r.evToEbitda)}×</td><td>${fmt(r.peRatio)}×</td><td class="${(r.revenueGrowth || 0) >= 0 ? "up2" : "dn2"}">${pct(r.revenueGrowth, 0)}</td></tr>`).join("")
+        : `<tr><td colspan="4" style="text-align:center;color:var(--txt-d);padding:14px">Comps unavailable (peer API rate limit)</td></tr>`;
+    }
+    if (svg) renderRangeSvg(svg, dcf.price_bear, dcf.price_base, dcf.price_bull, cur);
+  } catch (e) {
+    if (dcfT) dcfT.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--pink);padding:18px">Could not value ${VAL_TICKER}: ${e.message}</td></tr>`;
+  }
+}
+
 // ── Module loader wiring ─────────────────────────────────────────────
-const loaders = { 0: loadScreener, 1: loadDeepDive };
+const loaders = { 0: loadScreener, 1: loadDeepDive, 2: loadValuation };
 const loaded = {};
 function onModule(idx) { if (loaders[idx] && !loaded[idx]) { loaded[idx] = true; loaders[idx](); } }
 
