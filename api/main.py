@@ -222,6 +222,65 @@ def valuation(ticker: str):
     return JSONResponse(to_jsonable(out))
 
 
+@app.get("/api/backtest")
+def backtest(strategy: str = "MA Crossover", ticker: str = "AAPL",
+             start: str = "2021-01-01", end: str = "2024-12-31"):
+    """Run a strategy backtest; return tearsheet + downsampled equity/benchmark
+    curves (normalized to 100), recent trade signals, and monthly returns."""
+    from layers.backtester import run_backtest
+    try:
+        r = run_backtest(strategy, ticker.upper(), start, end)
+    except Exception as e:
+        return JSONResponse({"error": str(e), "strategy": strategy,
+                             "ticker": ticker.upper()}, status_code=502)
+
+    ts = r.get("tearsheet", {}) or {}
+
+    def norm_ds(series, n=110):
+        try:
+            vals = series.dropna().tolist()
+        except Exception:
+            return []
+        if not vals:
+            return []
+        base = vals[0] if vals[0] else 1.0
+        step = max(1, len(vals) // n)
+        return [round(vals[i] / base * 100.0, 2) for i in range(0, len(vals), step)]
+
+    out = {
+        "strategy": strategy, "ticker": ticker.upper(),
+        "benchmark_ticker": r.get("benchmark_ticker"),
+        "tearsheet": {k: ts.get(k) for k in
+                      ("total_return", "sharpe", "sortino", "max_drawdown",
+                       "win_rate", "cagr", "calmar", "profit_factor")},
+        "equity": norm_ds(r.get("equity_curve")),
+        "benchmark": norm_ds(r.get("benchmark_curve")),
+    }
+
+    trades = r.get("trades")
+    tl = []
+    if trades is not None and not trades.empty:
+        for _, row in trades.tail(6).iloc[::-1].iterrows():
+            sig = row.get("signal")
+            action = "Long" if sig == 1 else "Short" if sig == -1 else "Flat"
+            tl.append({"date": str(row.get("date"))[:10], "action": action,
+                       "price": row.get("price")})
+    out["trades"] = tl
+
+    rets = r.get("returns")
+    monthly = []
+    try:
+        if rets is not None and len(rets):
+            m = (1 + rets.dropna()).resample("ME").prod() - 1
+            for idx, val in m.tail(12).items():
+                monthly.append({"month": idx.strftime("%b"), "ret": float(val)})
+    except Exception:
+        pass
+    out["monthly"] = monthly
+
+    return JSONResponse(to_jsonable(out))
+
+
 # Static frontend, mounted last so /api/* routes take precedence.
 # html=True serves index.html at "/".
 app.mount("/", StaticFiles(directory=str(_FRONTEND), html=True), name="frontend")

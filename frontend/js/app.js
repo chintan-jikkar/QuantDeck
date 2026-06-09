@@ -2,6 +2,7 @@
 
 const fmt = (v, d = 1) => (v == null || isNaN(v)) ? "—" : Number(v).toFixed(d);
 const pct = (v, d = 1) => (v == null || isNaN(v)) ? "—" : (Number(v) * 100).toFixed(d) + "%";
+const pctSigned = (v, d = 1) => (v == null || isNaN(v)) ? "—" : ((v >= 0 ? "+" : "") + (Number(v) * 100).toFixed(d) + "%");
 function money(v) {
   if (v == null || isNaN(v)) return "—";
   const a = Math.abs(v);
@@ -185,8 +186,69 @@ async function loadValuation() {
   }
 }
 
+// ── Backtester (module 3) ────────────────────────────────────────────
+const BT = { strategy: "MA Crossover", ticker: "AAPL", start: "2021-01-01", end: "2024-12-31" };
+function renderEquitySvg(svg, strat, bench) {
+  if (!strat || strat.length < 2) { svg.innerHTML = `<text x="210" y="60" text-anchor="middle" fill="#3a4460" font-size="10" font-family="DM Mono,monospace">No data</text>`; return; }
+  const W = 420, H = 120, pad = 10;
+  const all = [...strat, ...(bench || [])].filter(x => x != null && !isNaN(x));
+  const lo = Math.min(...all), hi = Math.max(...all), span = (hi - lo) || 1;
+  const pts = arr => arr.map((v, i) => `${(pad + i / (arr.length - 1) * (W - 2 * pad)).toFixed(1)},${(H - 10 - (v - lo) / span * (H - 26)).toFixed(1)}`).join(" ");
+  let out = "";
+  if (bench && bench.length > 1) out += `<polyline points="${pts(bench)}" fill="none" stroke="var(--blue)" stroke-width="1.2" stroke-dasharray="3,3"/>`;
+  out += `<polyline points="${pts(strat)}" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linejoin="round"/>`;
+  out += `<line x1="14" y1="12" x2="30" y2="12" stroke="var(--lime)" stroke-width="2"/><text x="34" y="15" fill="#6b7a99" font-size="9" font-family="DM Mono,monospace">Strategy</text>`;
+  out += `<line x1="104" y1="12" x2="120" y2="12" stroke="var(--blue)" stroke-width="1.5" stroke-dasharray="3,2"/><text x="124" y="15" fill="#6b7a99" font-size="9" font-family="DM Mono,monospace">Benchmark</text>`;
+  svg.innerHTML = out;
+}
+function renderHeatmap(el, monthly) {
+  if (!monthly || !monthly.length) { el.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--txt-d);font-size:9px">No monthly data</div>`; return; }
+  let labels = "", cells = "";
+  monthly.forEach(m => {
+    labels += `<div style="font-size:7px;color:var(--txt-d);text-align:center">${(m.month || "")[0] || ""}</div>`;
+    const r = m.ret || 0;
+    const a = Math.min(0.85, 0.18 + Math.abs(r) * 7);
+    const col = r >= 0 ? `rgba(184,242,100,${a.toFixed(2)})` : `rgba(255,95,160,${a.toFixed(2)})`;
+    cells += `<div title="${m.month}: ${(r * 100).toFixed(1)}%" style="height:16px;background:${col};border-radius:2px"></div>`;
+  });
+  el.innerHTML = labels + cells;
+}
+async function loadBacktester() {
+  const stats = document.getElementById("bt-stats");
+  const svg = document.getElementById("bt-eqsvg");
+  const trades = document.getElementById("bt-trades");
+  const heat = document.getElementById("bt-heatmap");
+  if (stats) stats.innerHTML = `<div class="ts-stat" style="grid-column:1/-1;text-align:center;color:var(--txt-m)">Running backtest…</div>`;
+  try {
+    const res = await fetch(`/api/backtest?${new URLSearchParams(BT)}`);
+    const d = await res.json();
+    if (!res.ok || d.error) throw new Error(d.error || `API ${res.status}`);
+    const t = d.tearsheet || {};
+    if (stats) {
+      const stat = (lbl, val, col) => `<div class="ts-stat"><div class="ts-lbl">${lbl}</div><div class="ts-val" style="color:${col}">${val}</div></div>`;
+      stats.innerHTML =
+        stat("Total Return", pctSigned(t.total_return), "var(--lime)") +
+        stat("Ann. Sharpe", fmt(t.sharpe, 2), "var(--cyan)") +
+        stat("Max Drawdown", pct(t.max_drawdown, 1), "var(--pink)") +
+        stat("Win Rate", pct(t.win_rate, 1), "var(--blue)") +
+        stat("Sortino", fmt(t.sortino, 2), "var(--amber)") +
+        stat("CAGR", pctSigned(t.cagr), "var(--lime)");
+    }
+    if (svg) renderEquitySvg(svg, d.equity || [], d.benchmark || []);
+    if (trades) {
+      const rows = d.trades || [];
+      trades.innerHTML = rows.length
+        ? rows.map(r => `<tr><td><span class="cn">${r.date || "—"}</span></td><td>${r.action || "—"}</td><td>${r.price != null ? "$" + Number(r.price).toFixed(2) : "—"}</td></tr>`).join("")
+        : `<tr><td colspan="3" style="text-align:center;color:var(--txt-d)">No trades</td></tr>`;
+    }
+    if (heat) renderHeatmap(heat, d.monthly || []);
+  } catch (e) {
+    if (stats) stats.innerHTML = `<div class="ts-stat" style="grid-column:1/-1;text-align:center;color:var(--pink)">Backtest failed: ${e.message}</div>`;
+  }
+}
+
 // ── Module loader wiring ─────────────────────────────────────────────
-const loaders = { 0: loadScreener, 1: loadDeepDive, 2: loadValuation };
+const loaders = { 0: loadScreener, 1: loadDeepDive, 2: loadValuation, 3: loadBacktester };
 const loaded = {};
 function onModule(idx) { if (loaders[idx] && !loaded[idx]) { loaded[idx] = true; loaders[idx](); } }
 

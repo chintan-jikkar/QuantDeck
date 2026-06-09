@@ -418,7 +418,7 @@ svg.mc{width:100%;height:140px;display:block;}
 
     <!-- ═══ MODULE 04: BACKTESTER ═══ -->
     <div class="module-panel" id="m3">
-      <div class="tearsheet-row">
+      <div class="tearsheet-row" id="bt-stats">
         <div class="ts-stat"><div class="ts-lbl">Total Return</div><div class="ts-val" style="color:var(--lime)">+214.3%</div></div>
         <div class="ts-stat"><div class="ts-lbl">Ann. Sharpe</div><div class="ts-val" style="color:var(--cyan)">1.87</div></div>
         <div class="ts-stat"><div class="ts-lbl">Max Drawdown</div><div class="ts-val" style="color:var(--pink)">−18.4%</div></div>
@@ -429,7 +429,7 @@ svg.mc{width:100%;height:140px;display:block;}
       <div class="two-col">
         <div class="card tb">
           <div class="ctitle"><i class="ti ti-chart-line"></i> Equity curve — 2020–2025 (Momentum factor)</div>
-          <svg viewBox="0 0 420 120" style="width:100%;height:120px;display:block">
+          <svg id="bt-eqsvg" viewBox="0 0 420 120" style="width:100%;height:120px;display:block">
             <defs>
               <linearGradient id="ecg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b8f264" stop-opacity=".3"/><stop offset="100%" stop-color="#b8f264" stop-opacity="0"/></linearGradient>
               <linearGradient id="bmg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4f9eff" stop-opacity=".1"/><stop offset="100%" stop-color="#4f9eff" stop-opacity="0"/></linearGradient>
@@ -467,8 +467,8 @@ svg.mc{width:100%;height:140px;display:block;}
         <div class="card tc">
           <div class="ctitle"><i class="ti ti-list-details"></i> Trade log — last 5</div>
           <table>
-            <thead><tr><th>Ticker</th><th>Entry</th><th>Exit</th><th>P&amp;L</th></tr></thead>
-            <tbody>
+            <thead><tr><th>Date</th><th>Action</th><th>Price</th></tr></thead>
+            <tbody id="bt-trades">
               <tr><td><span class="cn">NVDA</span></td><td>$98.40</td><td>$142.50</td><td class="up2">+44.8%</td></tr>
               <tr><td><span class="cn">META</span></td><td>$310.20</td><td>$480.80</td><td class="up2">+54.9%</td></tr>
               <tr><td><span class="cn">LLY</span></td><td>$620.10</td><td>$795.40</td><td class="up2">+28.3%</td></tr>
@@ -478,7 +478,7 @@ svg.mc{width:100%;height:140px;display:block;}
           </table>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
             <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-chart-bar"></i> Monthly returns heatmap</div>
-            <div style="display:grid;grid-template-columns:repeat(12,1fr);gap:3px">
+            <div id="bt-heatmap" style="display:grid;grid-template-columns:repeat(12,1fr);gap:3px">
               <div style="font-size:7px;color:var(--txt-d);text-align:center">J</div><div style="font-size:7px;color:var(--txt-d);text-align:center">F</div><div style="font-size:7px;color:var(--txt-d);text-align:center">M</div><div style="font-size:7px;color:var(--txt-d);text-align:center">A</div><div style="font-size:7px;color:var(--txt-d);text-align:center">M</div><div style="font-size:7px;color:var(--txt-d);text-align:center">J</div><div style="font-size:7px;color:var(--txt-d);text-align:center">J</div><div style="font-size:7px;color:var(--txt-d);text-align:center">A</div><div style="font-size:7px;color:var(--txt-d);text-align:center">S</div><div style="font-size:7px;color:var(--txt-d);text-align:center">O</div><div style="font-size:7px;color:var(--txt-d);text-align:center">N</div><div style="font-size:7px;color:var(--txt-d);text-align:center">D</div>
               <div style="height:16px;background:rgba(184,242,100,.5);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.3);border-radius:2px"></div><div style="height:16px;background:rgba(255,95,160,.4);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.6);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.8);border-radius:2px"></div><div style="height:16px;background:rgba(255,95,160,.2);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.7);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.4);border-radius:2px"></div><div style="height:16px;background:rgba(255,95,160,.5);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.5);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.9);border-radius:2px"></div><div style="height:16px;background:rgba(184,242,100,.6);border-radius:2px"></div>
             </div>
