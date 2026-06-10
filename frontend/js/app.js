@@ -66,25 +66,39 @@ async function loadScreener() {
 let DD_TICKER = "AAPL";
 let ddInterval = "1d";
 let ddIndicators = new Set();
-function renderRevChart(svg, series) {
-  if (!series || !series.length) { svg.innerHTML = `<text x="200" y="60" text-anchor="middle" fill="#b4bdd4" font-size="10" font-family="DM Mono,monospace">No revenue data</text>`; return; }
-  const W = 400, H = 120, pad = 22;
-  const maxR = Math.max(...series.map(s => s.revenue || 0), 1);
-  const n = series.length;
-  const bw = Math.max(6, (W - 2 * pad) / n * 0.55);
-  let out = "", line = [];
-  series.forEach((s, i) => {
-    const x = pad + (W - 2 * pad) * (i + 0.5) / n;
-    const h = Math.max(0, (s.revenue || 0) / maxR * (H - 32));
-    out += `<rect x="${(x - bw / 2).toFixed(1)}" y="${(H - 16 - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="rgba(79,158,255,0.32)" stroke="var(--blue)" stroke-width="1"/>`;
-    out += `<text x="${x.toFixed(1)}" y="${H - 3}" text-anchor="middle" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">${(s.date || "").slice(0, 4)}</text>`;
-    const nm = s.net_margin;
-    if (nm != null && !isNaN(nm)) line.push(`${x.toFixed(1)},${(H - 16 - nm * (H - 32)).toFixed(1)}`);
-  });
-  if (line.length > 1) out += `<polyline points="${line.join(" ")}" fill="none" stroke="var(--lime)" stroke-width="1.5" stroke-dasharray="4,2"/>`;
-  out += `<line x1="14" y1="11" x2="30" y2="11" stroke="var(--blue)" stroke-width="2"/><text x="34" y="14" fill="var(--txt-m)" font-size="9" font-family="DM Mono,monospace">Revenue</text>`;
-  out += `<line x1="96" y1="11" x2="112" y2="11" stroke="var(--lime)" stroke-width="1.5" stroke-dasharray="3,2"/><text x="116" y="14" fill="var(--txt-m)" font-size="9" font-family="DM Mono,monospace">Net mgn</text>`;
-  svg.innerHTML = out;
+function renderRevPlotly(divId, series) {
+  const div = document.getElementById(divId);
+  if (!div) return;
+  if (!series || !series.length) {
+    div.innerHTML = `<div style="height:230px;display:flex;align-items:center;justify-content:center;color:#b4bdd4;font-family:'DM Mono',monospace;font-size:11px">No revenue data</div>`;
+    return;
+  }
+  const labels = series.map(s => (s.date || "").slice(0, 4));
+  const revs = series.map(s => +((s.revenue || 0) / 1e9).toFixed(2));
+  const margins = series.map(s => s.net_margin != null ? +((s.net_margin) * 100).toFixed(1) : null);
+  const traces = [
+    { x: labels, y: revs, name: "Revenue ($B)", type: "bar",
+      marker: { color: "rgba(79,158,255,0.4)", line: { color: "rgba(79,158,255,0.85)", width: 1 } },
+      hovertemplate: "%{x}<br>Revenue: $%{y:.1f}B<extra></extra>" },
+    { x: labels, y: margins, name: "Net Margin", type: "scatter", mode: "lines+markers",
+      yaxis: "y2", line: { color: "#b8f264", width: 2, dash: "dot" },
+      marker: { color: "#b8f264", size: 6 },
+      hovertemplate: "%{x}<br>Net Margin: %{y:.1f}%<extra></extra>" },
+  ];
+  const layout = {
+    paper_bgcolor: "transparent", plot_bgcolor: "transparent",
+    margin: { l: 40, r: 44, t: 8, b: 30 },
+    xaxis: { gridcolor: "rgba(255,255,255,0.04)", tickfont: { color: "#6b7a99", size: 9, family: "DM Mono" } },
+    yaxis: { gridcolor: "rgba(255,255,255,0.04)", tickfont: { color: "#6b7a99", size: 9, family: "DM Mono" },
+             tickformat: ".0f", title: { text: "$B", font: { color: "#6b7a99", size: 9 } }, zeroline: false },
+    yaxis2: { overlaying: "y", side: "right", tickformat: ".0f", ticksuffix: "%",
+               tickfont: { color: "#b8f264", size: 9, family: "DM Mono" }, zeroline: false, showgrid: false },
+    legend: { font: { color: "#b4bdd4", size: 9, family: "DM Mono" }, x: 0.01, y: 0.99,
+               bgcolor: "rgba(8,11,18,0.6)", bordercolor: "rgba(255,255,255,0.06)", borderwidth: 1 },
+    bargap: 0.38, hovermode: "x unified",
+    hoverlabel: { bgcolor: "#131929", bordercolor: "#243559", font: { color: "#e2e8f7", size: 10, family: "DM Mono" } },
+  };
+  Plotly.react(div, traces, layout, { responsive: true, displayModeBar: false });
 }
 function _sma(a, n) { const o = a.map(() => null); let s = 0; for (let i = 0; i < a.length; i++) { s += a[i]; if (i >= n) s -= a[i - n]; if (i >= n - 1) o[i] = s / n; } return o; }
 function _ema(a, n) { const o = a.map(() => null); const k = 2 / (n + 1); let e = a[0]; for (let i = 0; i < a.length; i++) { e = (i === 0) ? a[0] : a[i] * k + e * (1 - k); if (i >= n - 1) o[i] = e; } return o; }
@@ -142,7 +156,6 @@ async function loadDeepDive() {
   const kp = document.getElementById("dd-kpis");
   const fund = document.getElementById("dd-fundamentals");
   const memo = document.getElementById("dd-memo");
-  const svg = document.getElementById("dd-revsvg");
   const title = document.getElementById("dd-revtitle");
   if (memo) memo.innerHTML = `<span style="color:var(--txt-m)">Loading ${DD_TICKER}…</span>`;
   loadCandles();  // price candlestick (independent of the fundamentals call)
@@ -174,7 +187,7 @@ async function loadDeepDive() {
                  + (m.bear || []).map(p => `<span style="color:var(--pink)">●</span> ${p}<br>`).join("");
       memo.innerHTML = html || `<span style="color:var(--txt-d)">Not enough data for a memo</span>`;
     }
-    if (svg) renderRevChart(svg, d.revenue_series || []);
+    renderRevPlotly("dd-revchart", d.revenue_series || []);
   } catch (e) {
     if (memo) memo.innerHTML = `<span style="color:var(--pink)">Could not load ${DD_TICKER}: ${e.message}</span>`;
   }
@@ -355,50 +368,97 @@ async function loadBacktester() {
 // ── Monte Carlo (module 4) ───────────────────────────────────────────
 let MC_TICKER = "AAPL";
 let _mcAnim = null;
-function renderCone(svg, bands, samples, upto) {
-  const p10 = bands.p10 || [], p25 = bands.p25 || [], p50 = bands.p50 || [], p75 = bands.p75 || [], p90 = bands.p90 || [];
+function renderConePlotly(divId, bands, samples, upto) {
+  const div = document.getElementById(divId);
+  if (!div) return;
+  const p10 = bands.p10 || [], p25 = bands.p25 || [], p50 = bands.p50 || [],
+        p75 = bands.p75 || [], p90 = bands.p90 || [];
   const Nfull = p50.length;
-  if (Nfull < 2) { svg.innerHTML = `<text x="200" y="70" text-anchor="middle" fill="#b4bdd4" font-size="11" font-family="DM Mono,monospace">No data</text>`; return; }
-  const n = (upto && upto < Nfull) ? Math.max(2, upto) : Nfull;
-  const W = 420, H = 140, padL = 8, padR = 30;
-  const all = [...p10, ...p90].filter(x => x != null && !isNaN(x));
-  const lo = Math.min(...all), hi = Math.max(...all), span = (hi - lo) || 1;
-  const X = i => padL + i / (Nfull - 1) * (W - padL - padR);
-  const Y = v => H - 10 - (v - lo) / span * (H - 22);
-  const up = a => Array.from({ length: n }, (_, i) => `${X(i).toFixed(1)},${Y(a[i]).toFixed(1)}`).join(" ");
-  const down = a => Array.from({ length: n }, (_, i) => `${X(n - 1 - i).toFixed(1)},${Y(a[n - 1 - i]).toFixed(1)}`).join(" ");
-  let out = `<polygon points="${up(p90)} ${down(p10)}" fill="rgba(79,158,255,0.08)"/>`;
-  out += `<polygon points="${up(p75)} ${down(p25)}" fill="rgba(0,229,204,0.10)"/>`;
-  (samples || []).slice(0, 10).forEach(p => { out += `<polyline points="${up(p)}" fill="none" stroke="rgba(167,139,250,0.22)" stroke-width="0.8"/>`; });
-  out += `<polyline points="${up(p50)}" fill="none" stroke="var(--cyan)" stroke-width="2"/>`;
-  if (n >= Nfull) {
-    out += `<text x="${W - 26}" y="${Y(p90[Nfull - 1]).toFixed(1)}" fill="var(--lime)" font-size="9" font-family="DM Mono,monospace">P90</text>`;
-    out += `<text x="${W - 26}" y="${Y(p50[Nfull - 1]).toFixed(1)}" fill="var(--cyan)" font-size="9" font-family="DM Mono,monospace">Med</text>`;
-    out += `<text x="${W - 26}" y="${Y(p10[Nfull - 1]).toFixed(1)}" fill="var(--pink)" font-size="9" font-family="DM Mono,monospace">P10</text>`;
+  if (Nfull < 2) {
+    div.innerHTML = `<div style="height:280px;display:flex;align-items:center;justify-content:center;color:#b4bdd4;font-family:'DM Mono',monospace;font-size:11px">No simulation data</div>`;
+    return;
   }
-  svg.innerHTML = out;
+  const n = (upto && upto < Nfull) ? Math.max(2, upto) : Nfull;
+  const xs = Array.from({ length: n }, (_, i) => i);
+  const traces = [
+    { x: [...xs, ...xs.slice().reverse()], y: [...p90.slice(0, n), ...p10.slice(0, n).reverse()],
+      fill: "toself", fillcolor: "rgba(79,158,255,0.07)", line: { color: "transparent" },
+      name: "P10–P90", hoverinfo: "skip" },
+    { x: [...xs, ...xs.slice().reverse()], y: [...p75.slice(0, n), ...p25.slice(0, n).reverse()],
+      fill: "toself", fillcolor: "rgba(0,229,204,0.10)", line: { color: "transparent" },
+      name: "P25–P75", hoverinfo: "skip" },
+    ...(samples || []).slice(0, 8).map((s, i) => ({
+      x: xs, y: s.slice(0, n), mode: "lines", line: { color: "rgba(167,139,250,0.20)", width: 0.8 },
+      showlegend: false, hoverinfo: "skip"
+    })),
+    { x: xs, y: p50.slice(0, n), mode: "lines", name: "Median",
+      line: { color: "#00e5cc", width: 2 },
+      hovertemplate: "Day %{x}<br>Median: $%{y:.2f}<extra></extra>" },
+    ...(n >= Nfull ? [
+      { x: [n-1], y: [p90[Nfull-1]], mode: "markers+text", text: ["P90"], textposition: "middle right",
+        marker: { color: "#b8f264", size: 6 }, showlegend: false, hoverinfo: "skip",
+        textfont: { color: "#b8f264", size: 9, family: "DM Mono" } },
+      { x: [n-1], y: [p10[Nfull-1]], mode: "markers+text", text: ["P10"], textposition: "middle right",
+        marker: { color: "#ff5fa0", size: 6 }, showlegend: false, hoverinfo: "skip",
+        textfont: { color: "#ff5fa0", size: 9, family: "DM Mono" } },
+    ] : []),
+  ];
+  const layout = {
+    paper_bgcolor: "transparent", plot_bgcolor: "transparent",
+    margin: { l: 38, r: 36, t: 6, b: 28 },
+    xaxis: { gridcolor: "rgba(255,255,255,0.04)", tickfont: { color: "#6b7a99", size: 9, family: "DM Mono" },
+             title: { text: "days", font: { color: "#6b7a99", size: 9 } }, zeroline: false },
+    yaxis: { gridcolor: "rgba(255,255,255,0.04)", tickfont: { color: "#6b7a99", size: 9, family: "DM Mono" },
+             tickprefix: "$", zeroline: false },
+    legend: { font: { color: "#b4bdd4", size: 9, family: "DM Mono" }, x: 0.01, y: 0.99,
+               bgcolor: "rgba(8,11,18,0.6)", bordercolor: "rgba(255,255,255,0.06)", borderwidth: 1 },
+    hovermode: "x unified",
+    hoverlabel: { bgcolor: "#131929", bordercolor: "#243559", font: { color: "#e2e8f7", size: 10, family: "DM Mono" } },
+  };
+  Plotly.react(div, traces, layout, { responsive: true, displayModeBar: false });
 }
-function renderHist(svg, hist, start) {
-  if (!hist || !hist.length) { svg.innerHTML = `<text x="110" y="50" text-anchor="middle" fill="#b4bdd4" font-size="9" font-family="DM Mono,monospace">No data</text>`; return; }
-  const W = 220, H = 100, pad = 6;
-  const maxC = Math.max(...hist.map(h => h.count), 1);
-  const bw = (W - 2 * pad) / hist.length;
-  let out = "";
-  hist.forEach((h, i) => {
-    const ht = h.count / maxC * (H - 16);
-    const col = h.x >= start ? "rgba(184,242,100,0.5)" : "rgba(255,95,160,0.4)";
-    out += `<rect x="${(pad + i * bw).toFixed(1)}" y="${(H - 10 - ht).toFixed(1)}" width="${(bw - 1).toFixed(1)}" height="${ht.toFixed(1)}" rx="1.5" fill="${col}"/>`;
-  });
-  let si = hist.findIndex(h => h.x >= start); if (si < 0) si = hist.length - 1;
-  const sx = pad + (si + 0.5) * bw;
-  out += `<line x1="${sx.toFixed(1)}" y1="6" x2="${sx.toFixed(1)}" y2="${H - 8}" stroke="var(--amber)" stroke-width="1.2" stroke-dasharray="3,2"/><text x="${(sx + 2).toFixed(1)}" y="12" fill="var(--amber)" font-size="7" font-family="DM Mono,monospace">Start</text>`;
-  svg.innerHTML = out;
+
+function renderHistPlotly(divId, hist, start) {
+  const div = document.getElementById(divId);
+  if (!div) return;
+  if (!hist || !hist.length) {
+    div.innerHTML = `<div style="height:210px;display:flex;align-items:center;justify-content:center;color:#b4bdd4;font-family:'DM Mono',monospace;font-size:11px">No histogram data</div>`;
+    return;
+  }
+  const xs = hist.map(h => h.x);
+  const colors = hist.map(h => h.x >= start ? "rgba(184,242,100,0.55)" : "rgba(255,95,160,0.45)");
+  const traces = [
+    { x: xs, y: hist.map(h => h.count), type: "bar", marker: { color: colors },
+      hovertemplate: "Price: $%{x:.1f}<br>Count: %{y}<extra></extra>" },
+  ];
+  const shapes = [{
+    type: "line", x0: start, x1: start, y0: 0, y1: 1, yref: "paper",
+    line: { color: "#f59e0b", width: 1.5, dash: "dot" }
+  }];
+  const annotations = [{
+    x: start, y: 1, yref: "paper", text: "Start", showarrow: false,
+    font: { color: "#f59e0b", size: 9, family: "DM Mono" }, xanchor: "left", yanchor: "top"
+  }];
+  const layout = {
+    paper_bgcolor: "transparent", plot_bgcolor: "transparent",
+    margin: { l: 36, r: 10, t: 6, b: 28 },
+    xaxis: { gridcolor: "rgba(255,255,255,0.04)", tickfont: { color: "#6b7a99", size: 9, family: "DM Mono" },
+             tickprefix: "$", zeroline: false },
+    yaxis: { gridcolor: "rgba(255,255,255,0.04)", tickfont: { color: "#6b7a99", size: 9, family: "DM Mono" }, zeroline: false },
+    bargap: 0.05, shapes, annotations,
+    hovermode: "x", showlegend: false,
+    hoverlabel: { bgcolor: "#131929", bordercolor: "#243559", font: { color: "#e2e8f7", size: 10, family: "DM Mono" } },
+  };
+  Plotly.react(div, traces, layout, { responsive: true, displayModeBar: false });
 }
+
 async function loadMonteCarlo() {
-  const kp = document.getElementById("mc-kpis"), cone = document.getElementById("mc-conesvg"),
-        hs = document.getElementById("mc-histsvg"), risk = document.getElementById("mc-risk");
+  const kp = document.getElementById("mc-kpis"),
+        coneDiv = document.getElementById("mc-conechart"),
+        histDiv = document.getElementById("mc-histchart"),
+        risk = document.getElementById("mc-risk");
   if (kp) kp.innerHTML = `<div class="kpi c" style="grid-column:1/-1;text-align:center;color:var(--txt-m)">Simulating ${MC_TICKER}…</div>`;
-  if (cone) cone.innerHTML = `<text x="200" y="70" text-anchor="middle" fill="#b4bdd4" font-size="11" font-family="DM Mono,monospace">running…</text>`;
+  if (coneDiv) { Plotly.purge(coneDiv); coneDiv.innerHTML = `<div style="height:280px;display:flex;align-items:center;justify-content:center;color:#b4bdd4;font-family:'DM Mono',monospace;font-size:11px">running…</div>`; }
   try {
     const _model = (document.getElementById("mc-model") || {}).value || "gbm";
     const res = await fetch(`/api/simulation/${MC_TICKER}?model=${_model}`);
@@ -412,18 +472,18 @@ async function loadMonteCarlo() {
       <div class="kpi l"><div class="kpi-lbl">95th Percentile</div><div class="kpi-val l">${pctSigned(rp.p95)}</div><div class="kpi-sub">bull scenario</div></div>
       <div class="kpi p"><div class="kpi-lbl">5th Percentile</div><div class="kpi-val p">${pctSigned(rp.p5)}</div><div class="kpi-sub">bear scenario</div></div>
       <div class="kpi a"><div class="kpi-lbl">Prob. of Profit</div><div class="kpi-val a">${pct(d.prob_profit, 1)}</div><div class="kpi-sub">above start price</div></div>`;
-    if (cone) {
+    if (coneDiv) {
       if (_mcAnim) { clearInterval(_mcAnim); _mcAnim = null; }
       const _N = ((d.bands && d.bands.p50) || []).length;
       let _k = 2;
-      renderCone(cone, d.bands || {}, d.sample_paths || [], _k);
+      renderConePlotly("mc-conechart", d.bands || {}, d.sample_paths || [], _k);
       _mcAnim = setInterval(() => {
         _k += Math.max(1, Math.floor(_N / 40));
         if (_k >= _N) { _k = _N; clearInterval(_mcAnim); _mcAnim = null; }
-        renderCone(cone, d.bands || {}, d.sample_paths || [], _k);
+        renderConePlotly("mc-conechart", d.bands || {}, d.sample_paths || [], _k);
       }, 40);
     }
-    if (hs) renderHist(hs, d.histogram || [], d.start_price);
+    renderHistPlotly("mc-histchart", d.histogram || [], d.start_price);
     if (risk) {
       const rf = (lbl, val, col) => `<div class="dcf-field"><div class="dcf-lbl">${lbl}</div><div style="font-size:14px;font-weight:700;color:${col};font-family:'Syne',sans-serif;margin-top:3px">${val}</div></div>`;
       risk.innerHTML = rf("VaR (95%)", pct(rm.var_95, 1), "var(--pink)") + rf("CVaR (95%)", pct(rm.cvar_95, 1), "var(--pink)") +
@@ -438,17 +498,38 @@ async function loadMonteCarlo() {
 }
 
 // ── Strategy Library (module 5) ──────────────────────────────────────
-function renderPerfBars(svg, strats) {
-  if (!strats.length) { svg.innerHTML = `<text x="110" y="65" text-anchor="middle" fill="#b4bdd4" font-size="9" font-family="DM Mono,monospace">No data</text>`; return; }
-  const W = 220, H = 130, maxA = Math.max(...strats.map(s => Math.abs(s.total_return || 0)), 0.01), n = strats.length, bw = (W - 20) / n * 0.6, zero = H - 30;
-  let out = `<line x1="0" y1="${zero}" x2="${W}" y2="${zero}" stroke="#b4bdd4" stroke-width="0.5" stroke-dasharray="2,2"/>`;
-  strats.forEach((s, i) => {
-    const x = 10 + (W - 20) * (i + 0.5) / n, r = s.total_return || 0, h = Math.abs(r) / maxA * (H - 52), y = r >= 0 ? zero - h : zero, col = r >= 0 ? "var(--lime)" : "var(--pink)";
-    out += `<rect x="${(x - bw / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${col}" opacity="0.35" stroke="${col}" stroke-width="1"/>`;
-    out += `<text x="${x.toFixed(1)}" y="${(r >= 0 ? y - 3 : y + h + 9).toFixed(1)}" text-anchor="middle" fill="${col}" font-size="7" font-family="DM Mono,monospace">${(r * 100).toFixed(0)}%</text>`;
-    out += `<text x="${x.toFixed(1)}" y="${H - 3}" text-anchor="middle" fill="#b4bdd4" font-size="6" font-family="DM Mono,monospace">${(s.name || "").slice(0, 6)}</text>`;
-  });
-  svg.innerHTML = out;
+function renderPerfBarsPlotly(divId, strats) {
+  const div = document.getElementById(divId);
+  if (!div) return;
+  if (!strats.length) {
+    div.innerHTML = `<div style="height:240px;display:flex;align-items:center;justify-content:center;color:#b4bdd4;font-family:'DM Mono',monospace;font-size:11px">No strategy data</div>`;
+    return;
+  }
+  const names = strats.map(s => (s.name || "").replace(/ /g, "<br>"));
+  const rets = strats.map(s => +((s.total_return || 0) * 100).toFixed(1));
+  const sharpes = strats.map(s => +(s.sharpe || 0).toFixed(2));
+  const colors = rets.map(r => r >= 0 ? "rgba(184,242,100,0.5)" : "rgba(255,95,160,0.45)");
+  const borderColors = rets.map(r => r >= 0 ? "#b8f264" : "#ff5fa0");
+  const traces = [{
+    x: strats.map(s => s.name || ""),
+    y: rets,
+    type: "bar",
+    marker: { color: colors, line: { color: borderColors, width: 1 } },
+    customdata: sharpes,
+    hovertemplate: "<b>%{x}</b><br>Return: %{y:.1f}%<br>Sharpe: %{customdata:.2f}<extra></extra>",
+  }];
+  const layout = {
+    paper_bgcolor: "transparent", plot_bgcolor: "transparent",
+    margin: { l: 36, r: 10, t: 6, b: 70 },
+    xaxis: { gridcolor: "rgba(255,255,255,0.04)", tickfont: { color: "#6b7a99", size: 8, family: "DM Mono" },
+             tickangle: -30, zeroline: false },
+    yaxis: { gridcolor: "rgba(255,255,255,0.04)", tickfont: { color: "#6b7a99", size: 9, family: "DM Mono" },
+             ticksuffix: "%", zeroline: true, zerolinecolor: "rgba(180,189,212,0.25)", zerolinewidth: 1 },
+    bargap: 0.4, showlegend: false,
+    hovermode: "closest",
+    hoverlabel: { bgcolor: "#131929", bordercolor: "#243559", font: { color: "#e2e8f7", size: 10, family: "DM Mono" } },
+  };
+  Plotly.react(div, traces, layout, { responsive: true, displayModeBar: false });
 }
 function stratDecision(s) {
   if (!s || s.error) return { label: "N/A", color: "var(--txt-d)", note: "Could not backtest on this ticker." };
@@ -460,7 +541,7 @@ function stratDecision(s) {
 
 async function loadStrategies() {
   const kp = document.getElementById("sl-kpis"), cards = document.getElementById("sl-cards"),
-        svg = document.getElementById("sl-perfsvg"), rec = document.getElementById("sl-recommended"),
+        rec = document.getElementById("sl-recommended"),
         recName = document.getElementById("sl-rec-name"), recNote = document.getElementById("sl-rec-note");
   if (cards) cards.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--txt-m);padding:20px">Backtesting strategies…</div>`;
   if (rec) rec.style.display = "none";
@@ -499,7 +580,7 @@ async function loadStrategies() {
         <div style="font-size:9px;color:var(--blue);margin-top:6px;opacity:0.7">▶ Click to backtest →</div>
       </div>`;
     }).join("");
-    if (svg) renderPerfBars(svg, valid);
+    renderPerfBarsPlotly("sl-perfchart", valid);
   } catch (e) {
     if (cards) cards.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--pink);padding:20px">Could not load strategies: ${e.message}</div>`;
   }
@@ -514,44 +595,102 @@ window.sendToBacktester = function(stratName) {
 };
 
 // ── Portfolio Optimizer (module 6) ───────────────────────────────────
-function renderFrontier(svg, frontier, maxSharpe, minVol) {
-  if (!frontier || !frontier.length) { svg.innerHTML = `<text x="115" y="65" text-anchor="middle" fill="#b4bdd4" font-size="9" font-family="DM Mono,monospace">No data</text>`; return; }
-  const W = 230, H = 130, padL = 24, padB = 20;
-  const vols = frontier.map(p => p[0]).concat([maxSharpe[0], minVol[0]]);
-  const rets = frontier.map(p => p[1]).concat([maxSharpe[1], minVol[1]]);
-  const vlo = Math.min(...vols), vhi = Math.max(...vols), rlo = Math.min(...rets), rhi = Math.max(...rets);
-  const X = v => padL + (v - vlo) / ((vhi - vlo) || 1) * (W - padL - 8);
-  const Y = r => H - padB - (r - rlo) / ((rhi - rlo) || 1) * (H - padB - 12);
-  let out = `<line x1="${padL}" y1="10" x2="${padL}" y2="${H - padB}" stroke="#b4bdd4" stroke-width="1"/><line x1="${padL}" y1="${H - padB}" x2="${W - 4}" y2="${H - padB}" stroke="#b4bdd4" stroke-width="1"/>`;
-  out += `<text x="6" y="14" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Ret</text><text x="${W - 26}" y="${H - 8}" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Risk</text>`;
-  frontier.forEach(p => { out += `<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="1.6" fill="rgba(255,255,255,0.14)"/>`; });
-  out += `<circle cx="${X(minVol[0]).toFixed(1)}" cy="${Y(minVol[1]).toFixed(1)}" r="3.5" fill="#b4bdd4"/><text x="${(X(minVol[0]) + 5).toFixed(1)}" y="${(Y(minVol[1]) + 3).toFixed(1)}" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Min Vol</text>`;
-  out += `<circle cx="${X(maxSharpe[0]).toFixed(1)}" cy="${Y(maxSharpe[1]).toFixed(1)}" r="5" fill="var(--lime)"/><text x="${(X(maxSharpe[0]) + 6).toFixed(1)}" y="${(Y(maxSharpe[1]) + 3).toFixed(1)}" fill="var(--lime)" font-size="7" font-family="DM Mono,monospace">★ Max Sharpe</text>`;
-  svg.innerHTML = out;
+let PO_BASKET = ["NVDA", "META", "LLY", "AVGO", "AAPL", "MSFT", "JPM", "UNH"];
+
+function renderPoChips() {
+  const el = document.getElementById("po-chips");
+  if (!el) return;
+  el.innerHTML = PO_BASKET.map(sym =>
+    `<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(79,158,255,0.12);border:1px solid rgba(79,158,255,0.3);border-radius:4px;padding:2px 6px;font-size:10px;font-family:'DM Mono',monospace;color:var(--blue)">
+      ${sym}
+      <span data-rm="${sym}" style="cursor:pointer;color:#6b7a99;font-size:11px;line-height:1;margin-left:1px" title="Remove">✕</span>
+    </span>`
+  ).join("");
+  el.querySelectorAll("[data-rm]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      PO_BASKET = PO_BASKET.filter(s => s !== btn.dataset.rm);
+      renderPoChips();
+    });
+  });
 }
-function renderCorr(el, corr) {
-  const syms = corr.symbols || [], m = corr.matrix || [];
-  if (!syms.length) { el.innerHTML = `<div style="grid-column:1/-1;color:#fff;font-size:8px">No data</div>`; return; }
-  const k = syms.length;
-  el.style.gridTemplateColumns = `repeat(${k + 1},1fr)`;
-  let out = `<div></div>`;
-  syms.forEach(s => out += `<div style="color:#fff;font-size:8px">${s}</div>`);
-  for (let i = 0; i < k; i++) {
-    out += `<div style="color:#fff;font-size:8px">${syms[i]}</div>`;
-    for (let j = 0; j < k; j++) {
-      const v = m[i][j], a = Math.abs(v);
-      const col = v >= 0 ? `rgba(0,229,204,${(0.14 + a * 0.5).toFixed(2)})` : `rgba(255,95,160,${(0.14 + a * 0.5).toFixed(2)})`;
-      out += `<div style="height:18px;background:${col};border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff">${v.toFixed(2)}</div>`;
-    }
+
+function renderFrontierPlotly(divId, frontier, maxSharpe, minVol) {
+  const div = document.getElementById(divId);
+  if (!div) return;
+  if (!frontier || !frontier.length) {
+    div.innerHTML = `<div style="height:230px;display:flex;align-items:center;justify-content:center;color:#b4bdd4;font-family:'DM Mono',monospace;font-size:11px">No frontier data</div>`;
+    return;
   }
-  el.innerHTML = out;
+  const fVols = frontier.map(p => +(p[0] * 100).toFixed(2));
+  const fRets = frontier.map(p => +(p[1] * 100).toFixed(2));
+  const traces = [
+    { x: fVols, y: fRets, mode: "markers", name: "Portfolios",
+      marker: { color: "rgba(255,255,255,0.12)", size: 3 },
+      hovertemplate: "Vol: %{x:.1f}%<br>Ret: %{y:.1f}%<extra></extra>" },
+    { x: [+(minVol[0] * 100).toFixed(2)], y: [+(minVol[1] * 100).toFixed(2)],
+      mode: "markers+text", name: "Min Vol", text: ["Min Vol"],
+      textposition: "top right", textfont: { color: "#b4bdd4", size: 9, family: "DM Mono" },
+      marker: { color: "#b4bdd4", size: 9, symbol: "diamond" },
+      hovertemplate: "Min Vol<br>Vol: %{x:.1f}%<br>Ret: %{y:.1f}%<extra></extra>" },
+    { x: [+(maxSharpe[0] * 100).toFixed(2)], y: [+(maxSharpe[1] * 100).toFixed(2)],
+      mode: "markers+text", name: "★ Max Sharpe", text: ["★ Max Sharpe"],
+      textposition: "top right", textfont: { color: "#b8f264", size: 9, family: "DM Mono" },
+      marker: { color: "#b8f264", size: 11, symbol: "star" },
+      hovertemplate: "Max Sharpe<br>Vol: %{x:.1f}%<br>Ret: %{y:.1f}%<extra></extra>" },
+  ];
+  const layout = {
+    paper_bgcolor: "transparent", plot_bgcolor: "transparent",
+    margin: { l: 40, r: 10, t: 6, b: 30 },
+    xaxis: { gridcolor: "rgba(255,255,255,0.04)", tickfont: { color: "#6b7a99", size: 9, family: "DM Mono" },
+             ticksuffix: "%", title: { text: "Volatility", font: { color: "#6b7a99", size: 9 } }, zeroline: false },
+    yaxis: { gridcolor: "rgba(255,255,255,0.04)", tickfont: { color: "#6b7a99", size: 9, family: "DM Mono" },
+             ticksuffix: "%", title: { text: "Return", font: { color: "#6b7a99", size: 9 } }, zeroline: false },
+    legend: { font: { color: "#b4bdd4", size: 9, family: "DM Mono" }, x: 0.01, y: 0.01,
+               bgcolor: "rgba(8,11,18,0.6)", bordercolor: "rgba(255,255,255,0.06)", borderwidth: 1 },
+    hovermode: "closest",
+    hoverlabel: { bgcolor: "#131929", bordercolor: "#243559", font: { color: "#e2e8f7", size: 10, family: "DM Mono" } },
+  };
+  Plotly.react(div, traces, layout, { responsive: true, displayModeBar: false });
 }
+
+function renderCorrPlotly(divId, corr) {
+  const div = document.getElementById(divId);
+  if (!div) return;
+  const syms = corr.symbols || [], m = corr.matrix || [];
+  if (!syms.length) {
+    div.innerHTML = `<div style="height:200px;display:flex;align-items:center;justify-content:center;color:#b4bdd4;font-family:'DM Mono',monospace;font-size:11px">No correlation data</div>`;
+    return;
+  }
+  const zVals = m;
+  const traces = [{
+    z: zVals, x: syms, y: syms, type: "heatmap",
+    colorscale: [
+      [0, "rgba(255,95,160,0.85)"], [0.5, "rgba(20,28,46,0.9)"], [1, "rgba(0,229,204,0.85)"]
+    ],
+    zmin: -1, zmax: 1,
+    text: zVals.map(row => row.map(v => v.toFixed(2))),
+    texttemplate: "%{text}",
+    textfont: { color: "#e2e8f7", size: 10, family: "DM Mono" },
+    hovertemplate: "%{y} / %{x}<br>Correlation: %{z:.3f}<extra></extra>",
+    showscale: false,
+  }];
+  const layout = {
+    paper_bgcolor: "transparent", plot_bgcolor: "transparent",
+    margin: { l: 54, r: 10, t: 6, b: 54 },
+    xaxis: { tickfont: { color: "#b4bdd4", size: 11, family: "DM Mono" }, side: "bottom" },
+    yaxis: { tickfont: { color: "#b4bdd4", size: 11, family: "DM Mono" }, autorange: "reversed" },
+    hovermode: "closest",
+    hoverlabel: { bgcolor: "#131929", bordercolor: "#243559", font: { color: "#e2e8f7", size: 10, family: "DM Mono" } },
+  };
+  Plotly.react(div, traces, layout, { responsive: true, displayModeBar: false });
+}
+
 async function loadPortfolio() {
-  const kp = document.getElementById("po-kpis"), wts = document.getElementById("po-weights"),
-        fr = document.getElementById("po-frontier"), cr = document.getElementById("po-corr");
+  const kp = document.getElementById("po-kpis"), wts = document.getElementById("po-weights");
   if (wts) wts.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:14px">Optimizing portfolio…</div>`;
   try {
-    const res = await fetch(`/api/portfolio`);
+    const tickerParam = PO_BASKET.join(",");
+    const res = await fetch(`/api/portfolio?tickers=${encodeURIComponent(tickerParam)}`);
     const d = await res.json();
     if (!res.ok || (d.error && !d.weights)) throw new Error(d.error || `API ${res.status}`);
     if (kp) kp.innerHTML = `
@@ -564,8 +703,8 @@ async function loadPortfolio() {
       const maxW = Math.max(...d.weights.map(w => w.weight), 0.01);
       wts.innerHTML = d.weights.map((w, i) => `<div class="port-bar-row"><span class="pb-sym">${w.symbol}</span><div class="pb-track"><div class="pb-fill" style="width:${(w.weight / maxW * 100).toFixed(0)}%;background:${cols[i % cols.length]}"></div></div><span class="pb-pct">${(w.weight * 100).toFixed(1)}%</span><span class="pb-ret ${w.ret >= 0 ? "up2" : "dn2"}">${pctSigned(w.ret)}</span></div>`).join("");
     }
-    if (fr) renderFrontier(fr, d.frontier || [], d.max_sharpe || [0, 0], d.min_vol || [0, 0]);
-    if (cr) renderCorr(cr, d.correlation || {});
+    renderFrontierPlotly("po-frontierchart", d.frontier || [], d.max_sharpe || [0, 0], d.min_vol || [0, 0]);
+    renderCorrPlotly("po-corr", d.correlation || {});
   } catch (e) {
     if (wts) wts.innerHTML = `<div style="text-align:center;color:var(--pink);padding:14px">Optimization failed: ${e.message}</div>`;
   }
@@ -729,6 +868,25 @@ document.addEventListener("DOMContentLoaded", () => {
   if (mcRun) mcRun.addEventListener("click", () => loadMonteCarlo());
   const mcModel = document.getElementById("mc-model");
   if (mcModel) mcModel.addEventListener("change", () => loadMonteCarlo());
+
+  // Portfolio basket editor
+  renderPoChips();
+  const poAddBtn = document.getElementById("po-add-btn");
+  const poAddInput = document.getElementById("po-add-input");
+  const poRunBtn = document.getElementById("po-run-btn");
+  function poAddTicker() {
+    const sym = (poAddInput ? poAddInput.value.trim().toUpperCase() : "");
+    if (!sym || PO_BASKET.includes(sym)) return;
+    PO_BASKET.push(sym);
+    renderPoChips();
+    if (poAddInput) poAddInput.value = "";
+  }
+  if (poAddBtn) poAddBtn.addEventListener("click", poAddTicker);
+  if (poAddInput) poAddInput.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); poAddTicker(); } });
+  if (poRunBtn) poRunBtn.addEventListener("click", () => {
+    delete loaded[6];
+    loadPortfolio();
+  });
 
   onModule(0);  // Screener active on load
 });

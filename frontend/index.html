@@ -313,30 +313,7 @@ svg.mc{width:100%;height:140px;display:block;}
       <div class="two-col">
         <div class="card tb">
           <div class="ctitle" id="dd-revtitle"><i class="ti ti-chart-area"></i> Revenue &amp; EPS trend — NVDA</div>
-          <svg id="dd-revsvg" viewBox="0 0 400 120" style="width:100%;height:230px;display:block">
-            <defs>
-              <linearGradient id="revg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4f9eff" stop-opacity=".3"/><stop offset="100%" stop-color="#4f9eff" stop-opacity="0"/></linearGradient>
-              <linearGradient id="epsg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b8f264" stop-opacity=".25"/><stop offset="100%" stop-color="#b8f264" stop-opacity="0"/></linearGradient>
-            </defs>
-            <!-- x labels -->
-            <text x="20" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Q1'23</text>
-            <text x="80" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Q2'23</text>
-            <text x="140" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Q3'23</text>
-            <text x="200" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Q4'23</text>
-            <text x="260" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Q1'24</text>
-            <text x="320" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Q2'24</text>
-            <text x="365" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Q3'24</text>
-            <!-- Revenue area -->
-            <polygon points="20,100 80,90 140,70 200,48 260,30 320,15 380,8 380,105 20,105" fill="url(#revg)"/>
-            <polyline points="20,100 80,90 140,70 200,48 260,30 320,15 380,8" fill="none" stroke="var(--blue)" stroke-width="1.8" stroke-linejoin="round"/>
-            <!-- EPS line -->
-            <polyline points="20,104 80,100 140,88 200,72 260,54 320,38 380,22" fill="none" stroke="var(--lime)" stroke-width="1.5" stroke-linejoin="round" stroke-dasharray="4,2"/>
-            <!-- legend -->
-            <line x1="20" y1="12" x2="36" y2="12" stroke="var(--blue)" stroke-width="2"/>
-            <text x="40" y="16" fill="#6b7a99" font-size="9" font-family="DM Mono,monospace">Revenue</text>
-            <line x1="100" y1="12" x2="116" y2="12" stroke="var(--lime)" stroke-width="2" stroke-dasharray="4,2"/>
-            <text x="120" y="16" fill="#6b7a99" font-size="9" font-family="DM Mono,monospace">EPS</text>
-          </svg>
+          <div id="dd-revchart" style="width:100%;height:230px"></div>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
             <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-news"></i> Investment memo (auto)</div>
             <div id="dd-memo" style="font-size:10px;color:var(--txt-m);line-height:1.7">
@@ -518,25 +495,7 @@ svg.mc{width:100%;height:140px;display:block;}
               <button id="mc-run" class="ind-btn on" style="font-size:11px;padding:4px 12px">▶ Run</button>
             </span>
           </div>
-          <svg id="mc-conesvg" viewBox="0 0 420 140" style="width:100%;height:280px;display:block">
-            <!-- cone -->
-            <polygon points="10,70 420,20 420,115" fill="rgba(79,158,255,0.04)"/>
-            <!-- many paths -->
-            <polyline points="10,70 60,62 110,55 160,48 210,40 260,32 310,26 360,20 420,14" fill="none" stroke="var(--lime)" stroke-width="1.5" opacity=".9"/>
-            <polyline points="10,70 60,68 110,72 160,60 210,65 260,55 310,48 360,52 420,44" fill="none" stroke="var(--cyan)" stroke-width="1" opacity=".6"/>
-            <polyline points="10,70 60,75 110,80 160,74 210,82 260,88 310,80 360,84 420,78" fill="none" stroke="var(--blue)" stroke-width="1" opacity=".5"/>
-            <polyline points="10,70 60,72 110,65 160,70 210,78 260,70 310,80 360,75 420,88" fill="none" stroke="rgba(167,139,250,.5)" stroke-width="1" opacity=".5"/>
-            <polyline points="10,70 60,78 110,88 160,96 210,100 260,108 310,112 360,108 420,115" fill="none" stroke="var(--pink)" stroke-width="1.5" opacity=".9"/>
-            <!-- cone borders -->
-            <polyline points="10,70 420,14" fill="none" stroke="rgba(184,242,100,.25)" stroke-width="1" stroke-dasharray="4,3"/>
-            <polyline points="10,70 420,115" fill="none" stroke="rgba(255,95,160,.25)" stroke-width="1" stroke-dasharray="4,3"/>
-            <!-- current price -->
-            <circle cx="10" cy="70" r="4" fill="var(--blue)"/>
-            <!-- labels -->
-            <text x="425" y="17" fill="var(--lime)" font-size="8" font-family="DM Mono,monospace">P95</text>
-            <text x="425" y="70" fill="var(--cyan)" font-size="8" font-family="DM Mono,monospace">Med</text>
-            <text x="425" y="117" fill="var(--pink)" font-size="8" font-family="DM Mono,monospace">P5</text>
-          </svg>
+          <div id="mc-conechart" style="width:100%;height:280px"></div>
           <div id="mc-meta" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;gap:14px;font-size:10px">
             <span style="color:var(--txt-m)">Model: <span style="color:var(--cyan)">GBM</span></span>
             <span style="color:var(--txt-m)">μ: <span style="color:var(--txt)">0.18</span></span>
@@ -547,25 +506,7 @@ svg.mc{width:100%;height:140px;display:block;}
         </div>
         <div class="card tc">
           <div class="ctitle"><i class="ti ti-chart-histogram"></i> Return distribution</div>
-          <svg id="mc-histsvg" viewBox="0 0 220 100" style="width:100%;height:210px;display:block">
-            <defs><linearGradient id="histg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00e5cc" stop-opacity=".6"/><stop offset="100%" stop-color="#00e5cc" stop-opacity=".1"/></linearGradient></defs>
-            <!-- bell-ish bars -->
-            <rect x="5"  y="80" width="14" height="14" rx="2" fill="rgba(255,95,160,.3)"/>
-            <rect x="22" y="72" width="14" height="22" rx="2" fill="rgba(255,95,160,.2)"/>
-            <rect x="39" y="60" width="14" height="34" rx="2" fill="url(#histg)"/>
-            <rect x="56" y="44" width="14" height="50" rx="2" fill="url(#histg)"/>
-            <rect x="73" y="30" width="14" height="64" rx="2" fill="url(#histg)"/>
-            <rect x="90" y="18" width="14" height="76" rx="2" fill="url(#histg)"/>
-            <rect x="107" y="22" width="14" height="72" rx="2" fill="url(#histg)"/>
-            <rect x="124" y="38" width="14" height="56" rx="2" fill="url(#histg)"/>
-            <rect x="141" y="55" width="14" height="39" rx="2" fill="url(#histg)"/>
-            <rect x="158" y="68" width="14" height="26" rx="2" fill="url(#histg)"/>
-            <rect x="175" y="78" width="14" height="16" rx="2" fill="rgba(184,242,100,.25)"/>
-            <rect x="192" y="84" width="14" height="10" rx="2" fill="rgba(184,242,100,.2)"/>
-            <!-- median line -->
-            <line x1="97" y1="8" x2="97" y2="95" stroke="var(--amber)" stroke-width="1.2" stroke-dasharray="3,2"/>
-            <text x="99" y="12" fill="var(--amber)" font-size="7" font-family="DM Mono,monospace">Med +18%</text>
-          </svg>
+          <div id="mc-histchart" style="width:100%;height:210px"></div>
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
             <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-alert-triangle"></i> Risk metrics</div>
             <div id="mc-risk" style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
@@ -636,25 +577,7 @@ svg.mc{width:100%;height:140px;display:block;}
         </div>
         <div class="card tc">
           <div class="ctitle"><i class="ti ti-chart-bar"></i> Strategy performance comparison</div>
-          <svg id="sl-perfsvg" viewBox="0 0 220 130" style="width:100%;height:240px;display:block">
-            <text x="0" y="10" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Ann. Return</text>
-            <!-- bars -->
-            <rect x="10" y="50" width="28" height="55" rx="3" fill="rgba(0,229,204,.3)" stroke="var(--cyan)" stroke-width="1"/>
-            <text x="24" y="46" text-anchor="middle" fill="var(--cyan)" font-size="8" font-family="DM Mono,monospace">+42%</text>
-            <text x="24" y="120" text-anchor="middle" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Mom+Q</text>
-            <rect x="58" y="65" width="28" height="40" rx="3" fill="rgba(167,139,250,.25)" stroke="var(--purple)" stroke-width="1"/>
-            <text x="72" y="61" text-anchor="middle" fill="var(--purple)" font-size="8" font-family="DM Mono,monospace">+28%</text>
-            <text x="72" y="120" text-anchor="middle" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Val+LV</text>
-            <rect x="106" y="55" width="28" height="50" rx="3" fill="rgba(184,242,100,.25)" stroke="var(--lime)" stroke-width="1"/>
-            <text x="120" y="51" text-anchor="middle" fill="var(--lime)" font-size="8" font-family="DM Mono,monospace">+36%</text>
-            <text x="120" y="120" text-anchor="middle" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">GARP</text>
-            <rect x="154" y="60" width="28" height="45" rx="3" fill="rgba(255,179,64,.2)" stroke="var(--amber)" stroke-width="1"/>
-            <text x="168" y="56" text-anchor="middle" fill="var(--amber)" font-size="8" font-family="DM Mono,monospace">+31%</text>
-            <text x="168" y="120" text-anchor="middle" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">EPS Rev</text>
-            <!-- benchmark line -->
-            <line x1="0" y1="82" x2="210" y2="82" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3,3"/>
-            <text x="190" y="79" fill="var(--blue)" font-size="7" font-family="DM Mono,monospace">S&amp;P</text>
-          </svg>
+          <div id="sl-perfchart" style="width:100%;height:240px"></div>
           <div style="padding-top:10px;border-top:1px solid var(--border);font-size:10px;color:var(--txt-m);line-height:1.7">
             <span style="color:var(--lime)">●</span> Click any card to select &amp; run against Backtester<br>
             <span style="color:var(--cyan)">●</span> Combine strategies in Portfolio Optimizer (Module 07)
@@ -665,6 +588,14 @@ svg.mc{width:100%;height:140px;display:block;}
 
     <!-- ═══ MODULE 07: PORTFOLIO OPTIMIZER ═══ -->
     <div class="module-panel" id="m6">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:10px;color:var(--txt-m)">Basket:</span>
+        <div id="po-chips" style="display:flex;flex-wrap:wrap;gap:5px;flex:1"></div>
+        <input id="po-add-input" placeholder="Add ticker…" autocomplete="off"
+          style="background:var(--bg-card);border:1px solid var(--border-b);border-radius:6px;color:var(--txt);font-family:'DM Mono',monospace;font-size:10px;padding:4px 8px;width:100px;outline:none"/>
+        <button id="po-add-btn" class="ind-btn on" style="font-size:10px;padding:4px 12px">+ Add</button>
+        <button id="po-run-btn" class="ind-btn on" style="font-size:10px;padding:4px 12px">▶ Optimize</button>
+      </div>
       <div class="kpi-row" id="po-kpis">
         <div class="kpi c"><div class="kpi-lbl">Expected Return</div><div class="kpi-val c">+22.4%</div><div class="kpi-sub up">optimized portfolio</div></div>
         <div class="kpi l"><div class="kpi-lbl">Portfolio Sharpe</div><div class="kpi-val l">1.94</div><div class="kpi-sub up">vs 1.12 equal-weight</div></div>
@@ -691,33 +622,10 @@ svg.mc{width:100%;height:140px;display:block;}
         </div>
         <div class="card tc">
           <div class="ctitle"><i class="ti ti-chart-dots-3"></i> Efficient frontier</div>
-          <svg id="po-frontier" viewBox="0 0 230 130" style="width:100%;height:230px;display:block">
-            <defs><linearGradient id="efg" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#4f9eff" stop-opacity=".4"/><stop offset="100%" stop-color="#b8f264" stop-opacity=".6"/></linearGradient></defs>
-            <!-- axes -->
-            <line x1="20" y1="10" x2="20" y2="110" stroke="#b4bdd4" stroke-width="1"/>
-            <line x1="20" y1="110" x2="220" y2="110" stroke="#b4bdd4" stroke-width="1"/>
-            <text x="5" y="14" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Ret</text>
-            <text x="210" y="118" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Risk</text>
-            <!-- frontier curve -->
-            <path d="M40,100 Q80,40 160,20 L210,18" fill="none" stroke="url(#efg)" stroke-width="2.5"/>
-            <!-- portfolio dots -->
-            <circle cx="40" cy="100" r="3.5" fill="var(--txt-d)"/><text x="44" y="104" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Min Vol</text>
-            <circle cx="130" cy="32" r="5" fill="var(--lime)"/><text x="134" y="36" fill="var(--lime)" font-size="7" font-family="DM Mono,monospace">★ Max Sharpe</text>
-            <circle cx="200" cy="20" r="3.5" fill="var(--pink)"/><text x="178" y="18" fill="var(--pink)" font-size="7" font-family="DM Mono,monospace">Max Ret</text>
-            <!-- random portfolio cloud -->
-            <circle cx="60" cy="85" r="2" fill="rgba(255,255,255,.1)"/><circle cx="80" cy="70" r="2" fill="rgba(255,255,255,.1)"/>
-            <circle cx="95" cy="58" r="2" fill="rgba(255,255,255,.1)"/><circle cx="50" cy="92" r="2" fill="rgba(255,255,255,.1)"/>
-            <circle cx="110" cy="50" r="2" fill="rgba(255,255,255,.1)"/><circle cx="140" cy="38" r="2" fill="rgba(255,255,255,.1)"/>
-            <circle cx="70" cy="78" r="2" fill="rgba(255,255,255,.1)"/><circle cx="160" cy="30" r="2" fill="rgba(255,255,255,.1)"/>
-            <circle cx="180" cy="26" r="2" fill="rgba(255,255,255,.1)"/>
-          </svg>
+          <div id="po-frontierchart" style="width:100%;height:230px"></div>
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-            <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-git-merge"></i> Correlation heatmap (top 4)</div>
-            <div id="po-corr" style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px;font-size:8px;text-align:center">
-              <div style="color:var(--txt-d)"></div><div style="color:var(--txt-d)">NVDA</div><div style="color:var(--txt-d)">META</div><div style="color:var(--txt-d)">LLY</div><div style="color:var(--txt-d)">AVGO</div>
-              <div style="color:var(--txt-d)">NVDA</div><div style="height:18px;background:rgba(0,229,204,.6);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--bg-deep)">1.0</div><div style="height:18px;background:rgba(79,158,255,.4);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-m)">.62</div><div style="height:18px;background:rgba(255,179,64,.2);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-d)">.18</div><div style="height:18px;background:rgba(79,158,255,.5);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-m)">.71</div>
-              <div style="color:var(--txt-d)">META</div><div style="height:18px;background:rgba(79,158,255,.4);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-m)">.62</div><div style="height:18px;background:rgba(0,229,204,.6);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--bg-deep)">1.0</div><div style="height:18px;background:rgba(255,179,64,.15);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-d)">.12</div><div style="height:18px;background:rgba(79,158,255,.35);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-d)">.55</div>
-            </div>
+            <div class="ctitle" style="font-size:10px;margin-bottom:6px"><i class="ti ti-git-merge"></i> Correlation heatmap</div>
+            <div id="po-corr" style="width:100%;height:200px"></div>
           </div>
         </div>
       </div>
