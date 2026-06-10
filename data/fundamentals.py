@@ -181,7 +181,7 @@ def fetch_sector_info(ticker: str) -> dict:
         "exchange": info.get("exchange", ""),
         "currency": info.get("currency", ""),
         "beta": info.get("beta"),
-        "dividend_yield": info.get("dividendYield"),
+        "dividend_yield": info.get("trailingAnnualDividendYield"),
         "short_ratio": info.get("shortRatio"),
         "employees": info.get("fullTimeEmployees"),
         "macro": {

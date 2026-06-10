@@ -196,7 +196,9 @@ function renderCandles(divId, candles, ticker, indicators) {
               font: { size: 9, family: "DM Mono, monospace", color: "#b4bdd4" },
               bgcolor: "rgba(0,0,0,0)", borderwidth: 0 },
   };
-  window.Plotly.react(el, traces, layout, { responsive: true, displayModeBar: false, scrollZoom: true });
+  window.Plotly.purge(el);
+  el.innerHTML = "";
+  window.Plotly.newPlot(el, traces, layout, { responsive: true, displayModeBar: false, scrollZoom: true });
 }
 async function loadCandles() {
   const el = document.getElementById("dd-candles"), pt = document.getElementById("dd-pricetitle");
