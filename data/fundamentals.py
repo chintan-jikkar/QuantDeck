@@ -1,129 +1,138 @@
 # data/fundamentals.py
-import os
+"""Fundamentals via yfinance (no API key, no rate limit, global coverage).
+
+yfinance returns each statement as a DataFrame of line-items (rows) x periods
+(columns, newest-first). We transpose into QuantDeck's legacy per-period schema
+(rows = periods newest-first, columns = the FMP-style field names the rest of the
+app already expects) so Valuation / Screener / Deep Dive need no changes.
+"""
 import time
-import requests
 import pandas as pd
+import yfinance as yf
 
-# FMP retired the legacy /api/v3/ endpoints (HTTP 403 on current keys).
-# Everything now lives under /stable/ with the ticker passed as a `symbol`
-# query parameter instead of a path segment.
-FMP_BASE = "https://financialmodelingprep.com/stable"
-
-
-# In-process response cache: FMP's free tier rate-limits aggressively (HTTP 429),
-# and fundamentals don't change intraday, so cache successful responses. On a 429
-# we serve stale cache rather than failing. Tests use the literal "test_key" and
-# bypass the cache so their request mocks behave normally.
+# In-process cache: each (ticker, statement) is fetched once per hour. yfinance is
+# free and lenient, but caching keeps repeated module loads instant.
 _CACHE: dict = {}
-_CACHE_TTL = 3600  # seconds
+_CACHE_TTL = 3600
+
+# legacy field -> candidate yfinance row labels (first present wins)
+_INCOME_MAP = {
+    "revenue": ["Total Revenue", "Operating Revenue"],
+    "costOfRevenue": ["Cost Of Revenue", "Reconciled Cost Of Revenue"],
+    "grossProfit": ["Gross Profit"],
+    "operatingIncome": ["Operating Income", "Total Operating Income As Reported"],
+    "netIncome": ["Net Income", "Net Income Common Stockholders", "Net Income Continuous Operations"],
+    "sellingGeneralAndAdministrativeExpenses": ["Selling General And Administration", "Selling General And Administrative Expense"],
+    "depreciationAndAmortization": ["Reconciled Depreciation", "Depreciation And Amortization In Income Statement"],
+    "interestExpense": ["Interest Expense", "Interest Expense Non Operating"],
+    "incomeTaxExpense": ["Tax Provision", "Income Tax Expense"],
+    "incomeBeforeTax": ["Pretax Income", "Income Before Tax"],
+    "eps": ["Diluted EPS", "Basic EPS"],
+    "weightedAverageShsOut": ["Diluted Average Shares", "Basic Average Shares"],
+}
+_BALANCE_MAP = {
+    "totalAssets": ["Total Assets"],
+    "totalCurrentAssets": ["Current Assets", "Total Current Assets"],
+    "propertyPlantEquipmentNet": ["Net PPE", "Net Property Plant And Equipment"],
+    "netReceivables": ["Receivables", "Accounts Receivable", "Net Receivables"],
+    "totalCurrentLiabilities": ["Current Liabilities", "Total Current Liabilities"],
+    "longTermDebt": ["Long Term Debt"],
+    "totalDebt": ["Total Debt"],
+    "totalEquity": ["Stockholders Equity", "Common Stock Equity", "Total Equity Gross Minority Interest"],
+    "cashAndCashEquivalents": ["Cash And Cash Equivalents", "Cash Cash Equivalents And Short Term Investments"],
+}
+_CASHFLOW_MAP = {
+    "operatingCashFlow": ["Operating Cash Flow", "Cash Flow From Continuing Operating Activities"],
+    "capitalExpenditure": ["Capital Expenditure", "Purchase Of PPE"],
+    "dividendsPaid": ["Cash Dividends Paid", "Common Stock Dividend Paid"],
+    "commonStockRepurchased": ["Repurchase Of Capital Stock", "Common Stock Payments"],
+    "freeCashFlow": ["Free Cash Flow"],
+    "depreciationAndAmortization": ["Depreciation And Amortization", "Depreciation Amortization Depletion"],
+}
 
 
-def _get(endpoint: str, params: dict | None = None) -> list | dict:
-    api_key = os.getenv("FMP_API_KEY", "")
-    if not api_key:
-        raise EnvironmentError(
-            "FMP_API_KEY is not set. Get a free key at https://financialmodelingprep.com/"
-        )
-    use_cache = api_key != "test_key"
-    key = (endpoint, tuple(sorted((params or {}).items())))
+def _cached(ticker: str, attr: str):
+    key = (ticker, attr)
     now = time.time()
-    if use_cache:
-        hit = _CACHE.get(key)
-        if hit is not None and now - hit[0] < _CACHE_TTL:
-            return hit[1]
-    p = {"apikey": api_key, **(params or {})}
-    resp = requests.get(f"{FMP_BASE}/{endpoint}", params=p, timeout=10)
-    if resp.status_code == 429 and use_cache:
-        stale = _CACHE.get(key)
-        if stale is not None:
-            return stale[1]
-    resp.raise_for_status()
-    data = resp.json()
-    if use_cache:
-        _CACHE[key] = (now, data)
-    return data
+    hit = _CACHE.get(key)
+    if hit is not None and now - hit[0] < _CACHE_TTL:
+        return hit[1]
+    try:
+        val = getattr(yf.Ticker(ticker), attr)
+    except Exception:
+        val = None
+    _CACHE[key] = (now, val)
+    return val
+
+
+def _pick(df: pd.DataFrame, candidates: list, col) -> float:
+    for label in candidates:
+        if label in df.index:
+            try:
+                return float(df.loc[label, col])
+            except Exception:
+                return float("nan")
+    return float("nan")
+
+
+def _statement(ticker: str, attr: str, mapping: dict, limit: int) -> pd.DataFrame:
+    raw = _cached(ticker, attr)
+    if raw is None or getattr(raw, "empty", True):
+        return pd.DataFrame()
+    raw = raw.iloc[:, :limit]  # most-recent `limit` periods (yfinance is newest-first)
+    rows = []
+    for col in raw.columns:
+        rec = {"date": str(col)[:10]}
+        for field, cands in mapping.items():
+            rec[field] = _pick(raw, cands, col)
+        rows.append(rec)
+    return pd.DataFrame(rows)
 
 
 def fetch_income_statement(ticker: str, limit: int = 5) -> pd.DataFrame:
-    return pd.DataFrame(_get("income-statement", {"symbol": ticker, "limit": limit}))
-
-
-def fetch_balance_sheet(ticker: str, limit: int = 5) -> pd.DataFrame:
-    return pd.DataFrame(_get("balance-sheet-statement", {"symbol": ticker, "limit": limit}))
-
-
-def fetch_cash_flow(ticker: str, limit: int = 5) -> pd.DataFrame:
-    df = pd.DataFrame(_get("cash-flow-statement", {"symbol": ticker, "limit": limit}))
-    # /stable/ renamed dividendsPaid → netDividendsPaid. Expose the legacy name
-    # so downstream consumers (capital allocation, DDM) need no changes.
-    if not df.empty and "dividendsPaid" not in df.columns:
-        for alt in ("netDividendsPaid", "commonDividendsPaid"):
-            if alt in df.columns:
-                df["dividendsPaid"] = df[alt]
-                break
+    ticker = ticker.upper()
+    df = _statement(ticker, "income_stmt", _INCOME_MAP, limit)
+    # yfinance often omits D&A from the income statement; backfill from cash flow.
+    if not df.empty and df["depreciationAndAmortization"].isna().all():
+        cf = _statement(ticker, "cashflow",
+                        {"depreciationAndAmortization": _CASHFLOW_MAP["depreciationAndAmortization"]}, limit)
+        if not cf.empty and len(cf) == len(df):
+            df["depreciationAndAmortization"] = cf["depreciationAndAmortization"].values
     return df
 
 
+def fetch_balance_sheet(ticker: str, limit: int = 5) -> pd.DataFrame:
+    return _statement(ticker.upper(), "balance_sheet", _BALANCE_MAP, limit)
+
+
+def fetch_cash_flow(ticker: str, limit: int = 5) -> pd.DataFrame:
+    # capex / dividends come back negative (outflows); consumers use .abs() already.
+    return _statement(ticker.upper(), "cashflow", _CASHFLOW_MAP, limit)
+
+
 def fetch_key_metrics(ticker: str, limit: int = 5) -> pd.DataFrame:
-    """Per-ticker metrics normalized to QuantDeck's legacy schema.
-
-    The /stable/ migration split valuation/profitability ratios out of
-    key-metrics into separate /ratios and /financial-growth endpoints. This
-    merges all three (aligned by period order) and re-exposes the legacy
-    column names the rest of the app already expects — peRatio, pbRatio,
-    evToEbitda, roe, debtToEquity, netProfitMargin, revenueGrowth,
-    currentRatio — so the Screener, Valuation and Deep Dive layers are
-    untouched by the API change.
-    """
-    km = pd.DataFrame(_get("key-metrics", {"symbol": ticker, "limit": limit}))
-    if km.empty:
-        return km
-
-    # Fields native to /stable/key-metrics, under their new names.
-    if "evToEBITDA" in km.columns:
-        km["evToEbitda"] = km["evToEBITDA"]
-    if "returnOnEquity" in km.columns:
-        km["roe"] = km["returnOnEquity"]
-    # currentRatio is already present under the same name on /stable/key-metrics.
-
-    def _merge_aliases(endpoint: str, mapping: dict) -> None:
-        try:
-            other = pd.DataFrame(_get(endpoint, {"symbol": ticker, "limit": limit}))
-        except Exception:
-            return
-        # Same ticker + limit returns the same periods in the same order, so a
-        # positional copy is safe; bail if the shapes disagree.
-        if other.empty or len(other) != len(km):
-            return
-        for src, alias in mapping.items():
-            if src in other.columns:
-                km[alias] = other[src].values
-
-    _merge_aliases("ratios", {
-        "priceToEarningsRatio": "peRatio",
-        "priceToBookRatio":     "pbRatio",
-        "debtToEquityRatio":    "debtToEquity",
-        "netProfitMargin":      "netProfitMargin",
-        "currentRatio":         "currentRatio",
-    })
-    _merge_aliases("financial-growth", {"revenueGrowth": "revenueGrowth"})
-
-    return km
+    """Current-snapshot metrics from yfinance .info, in the legacy schema."""
+    info = _cached(ticker.upper(), "info") or {}
+    if not info:
+        return pd.DataFrame()
+    de = info.get("debtToEquity")
+    if de is not None and de > 10:  # yfinance reports D/E as a percentage
+        de = de / 100.0
+    row = {
+        "peRatio": info.get("trailingPE"),
+        "pbRatio": info.get("priceToBook"),
+        "evToEbitda": info.get("enterpriseToEbitda"),
+        "roe": info.get("returnOnEquity"),
+        "debtToEquity": de,
+        "netProfitMargin": info.get("profitMargins"),
+        "revenueGrowth": info.get("revenueGrowth"),
+        "currentRatio": info.get("currentRatio"),
+        "marketCap": info.get("marketCap"),
+        "sharesOutstanding": info.get("sharesOutstanding"),
+    }
+    return pd.DataFrame([row])
 
 
 def fetch_peers(ticker: str) -> list[str]:
-    """Peer tickers from /stable/stock-peers.
-
-    The endpoint returns a flat list of {symbol, companyName, price, mktCap}
-    rows (the old /api/v3/ shape nested them under a `peersList` key).
-    """
-    data = _get("stock-peers", {"symbol": ticker})
-    if not isinstance(data, list):
-        return []
-    peers = []
-    for row in data:
-        if isinstance(row, dict):
-            sym = row.get("symbol")
-            if sym and sym != ticker:
-                peers.append(sym)
-    return peers
+    """yfinance has no reliable peer endpoint; comps are unavailable for now."""
+    return []

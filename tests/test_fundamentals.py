@@ -1,89 +1,95 @@
 # tests/test_fundamentals.py
-from unittest.mock import patch, MagicMock
 import pandas as pd
-import pytest
+from unittest.mock import patch, MagicMock
+import data.fundamentals as fund
 
 
-def _mock_get(json_data):
+def _mk(income=None, balance=None, cashflow=None, info=None):
     m = MagicMock()
-    m.json.return_value = json_data
-    m.raise_for_status = MagicMock()
+    m.income_stmt = income if income is not None else pd.DataFrame()
+    m.balance_sheet = balance if balance is not None else pd.DataFrame()
+    m.cashflow = cashflow if cashflow is not None else pd.DataFrame()
+    m.info = info if info is not None else {}
     return m
 
 
-def test_fetch_income_statement_returns_dataframe(sample_income_statement, monkeypatch):
-    monkeypatch.setenv("FMP_API_KEY", "test_key")
-    with patch("data.fundamentals.requests.get") as mock_get:
-        mock_get.return_value = _mock_get(sample_income_statement)
-        from data.fundamentals import fetch_income_statement
-        df = fetch_income_statement("AAPL")
-    assert not df.empty
-    assert "revenue" in df.columns
-    assert "netIncome" in df.columns
-    assert len(df) == 2
+def _income():
+    # yfinance shape: rows = line-item labels, columns = period timestamps (newest first)
+    return pd.DataFrame({
+        pd.Timestamp("2023-12-31"): {
+            "Total Revenue": 100.0, "Cost Of Revenue": 60.0, "Gross Profit": 40.0,
+            "Operating Income": 20.0, "Net Income": 15.0, "Pretax Income": 18.0,
+            "Tax Provision": 3.0, "Diluted Average Shares": 1000.0,
+            "Reconciled Depreciation": 5.0,
+        },
+        pd.Timestamp("2022-12-31"): {"Total Revenue": 90.0, "Net Income": 12.0},
+    })
 
 
-def test_fetch_income_statement_raises_without_api_key(monkeypatch):
-    monkeypatch.delenv("FMP_API_KEY", raising=False)
-    from data.fundamentals import fetch_income_statement
-    with pytest.raises(EnvironmentError, match="FMP_API_KEY"):
-        fetch_income_statement("AAPL")
+def test_income_statement_maps_yf_labels():
+    fund._CACHE.clear()
+    with patch.object(fund.yf, "Ticker", return_value=_mk(income=_income())):
+        df = fund.fetch_income_statement("AAPL")
+    assert not df.empty and len(df) == 2
+    assert df.loc[0, "revenue"] == 100.0
+    assert df.loc[0, "netIncome"] == 15.0
+    assert df.loc[0, "operatingIncome"] == 20.0
+    assert df.loc[0, "weightedAverageShsOut"] == 1000.0
+    assert df.loc[0, "depreciationAndAmortization"] == 5.0
 
 
-def test_fetch_balance_sheet_returns_dataframe(monkeypatch):
-    monkeypatch.setenv("FMP_API_KEY", "test_key")
-    payload = [{"date": "2023-12-31", "totalDebt": 50_000_000, "totalEquity": 100_000_000}]
-    with patch("data.fundamentals.requests.get") as mock_get:
-        mock_get.return_value = _mock_get(payload)
-        from data.fundamentals import fetch_balance_sheet
-        df = fetch_balance_sheet("AAPL")
-    assert "totalDebt" in df.columns
-    assert "totalEquity" in df.columns
+def test_income_da_backfilled_from_cashflow():
+    fund._CACHE.clear()
+    inc = pd.DataFrame({pd.Timestamp("2023-12-31"): {"Total Revenue": 100.0}})  # no D&A
+    cf = pd.DataFrame({pd.Timestamp("2023-12-31"): {"Operating Cash Flow": 30.0,
+                                                    "Depreciation And Amortization": 7.0}})
+    with patch.object(fund.yf, "Ticker", return_value=_mk(income=inc, cashflow=cf)):
+        df = fund.fetch_income_statement("AAPL")
+    assert df.loc[0, "depreciationAndAmortization"] == 7.0
 
 
-def test_fetch_cash_flow_returns_dataframe(monkeypatch):
-    monkeypatch.setenv("FMP_API_KEY", "test_key")
-    payload = [{"date": "2023-12-31", "operatingCashFlow": 30_000_000, "capitalExpenditure": -5_000_000}]
-    with patch("data.fundamentals.requests.get") as mock_get:
-        mock_get.return_value = _mock_get(payload)
-        from data.fundamentals import fetch_cash_flow
-        df = fetch_cash_flow("AAPL")
-    assert "operatingCashFlow" in df.columns
+def test_balance_sheet_maps():
+    fund._CACHE.clear()
+    bal = pd.DataFrame({pd.Timestamp("2023-12-31"): {
+        "Total Assets": 500.0, "Stockholders Equity": 200.0, "Total Debt": 100.0}})
+    with patch.object(fund.yf, "Ticker", return_value=_mk(balance=bal)):
+        df = fund.fetch_balance_sheet("AAPL")
+    assert df.loc[0, "totalAssets"] == 500.0
+    assert df.loc[0, "totalEquity"] == 200.0
+    assert df.loc[0, "totalDebt"] == 100.0
 
 
-def test_fetch_key_metrics_returns_dataframe(monkeypatch):
-    monkeypatch.setenv("FMP_API_KEY", "test_key")
-    payload = [{"date": "2023-12-31", "peRatio": 28.5, "pbRatio": 4.2, "roe": 0.18}]
-    with patch("data.fundamentals.requests.get") as mock_get:
-        mock_get.return_value = _mock_get(payload)
-        from data.fundamentals import fetch_key_metrics
-        df = fetch_key_metrics("AAPL")
-    assert "peRatio" in df.columns
+def test_cash_flow_maps():
+    fund._CACHE.clear()
+    cf = pd.DataFrame({pd.Timestamp("2023-12-31"): {
+        "Operating Cash Flow": 30.0, "Capital Expenditure": -5.0, "Free Cash Flow": 25.0}})
+    with patch.object(fund.yf, "Ticker", return_value=_mk(cashflow=cf)):
+        df = fund.fetch_cash_flow("AAPL")
+    assert df.loc[0, "operatingCashFlow"] == 30.0
+    assert df.loc[0, "capitalExpenditure"] == -5.0
+    assert df.loc[0, "freeCashFlow"] == 25.0
 
 
-def test_fetch_peers_returns_list(monkeypatch):
-    monkeypatch.setenv("FMP_API_KEY", "test_key")
-    # /stable/stock-peers returns a flat list of peer rows (not a nested peersList),
-    # and the queried symbol itself is excluded from the result.
-    payload = [
-        {"symbol": "AAPL", "companyName": "Apple Inc.", "price": 307.0, "mktCap": 4.6e12},
-        {"symbol": "MSFT", "companyName": "Microsoft", "price": 400.0, "mktCap": 3.0e12},
-        {"symbol": "GOOG", "companyName": "Alphabet", "price": 150.0, "mktCap": 2.0e12},
-        {"symbol": "META", "companyName": "Meta Platforms", "price": 500.0, "mktCap": 1.3e12},
-    ]
-    with patch("data.fundamentals.requests.get") as mock_get:
-        mock_get.return_value = _mock_get(payload)
-        from data.fundamentals import fetch_peers
-        peers = fetch_peers("AAPL")
-    assert isinstance(peers, list)
-    assert "MSFT" in peers
-    assert "AAPL" not in peers  # queried symbol excluded
+def test_key_metrics_from_info_normalizes_debt_equity():
+    fund._CACHE.clear()
+    info = {"trailingPE": 28.5, "priceToBook": 4.2, "returnOnEquity": 0.18,
+            "debtToEquity": 154.0, "profitMargins": 0.25, "marketCap": 3e12,
+            "currentRatio": 1.1, "enterpriseToEbitda": 22.0, "revenueGrowth": 0.08,
+            "sharesOutstanding": 1.5e10}
+    with patch.object(fund.yf, "Ticker", return_value=_mk(info=info)):
+        df = fund.fetch_key_metrics("AAPL")
+    assert df.loc[0, "peRatio"] == 28.5
+    assert df.loc[0, "roe"] == 0.18
+    assert df.loc[0, "debtToEquity"] == 1.54   # 154% -> 1.54x
+    assert df.loc[0, "marketCap"] == 3e12
 
 
-def test_fetch_peers_returns_empty_list_when_no_data(monkeypatch):
-    monkeypatch.setenv("FMP_API_KEY", "test_key")
-    with patch("data.fundamentals.requests.get") as mock_get:
-        mock_get.return_value = _mock_get([])
-        from data.fundamentals import fetch_peers
-        peers = fetch_peers("UNKNOWN")
-    assert peers == []
+def test_key_metrics_empty_info_returns_empty():
+    fund._CACHE.clear()
+    with patch.object(fund.yf, "Ticker", return_value=_mk(info={})):
+        df = fund.fetch_key_metrics("AAPL")
+    assert df.empty
+
+
+def test_fetch_peers_returns_empty_list():
+    assert fund.fetch_peers("AAPL") == []
