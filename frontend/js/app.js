@@ -785,6 +785,33 @@ async function loadPortfolio() {
     }
     renderFrontierPlotly("po-frontierchart", d.frontier || [], d.max_sharpe || [0, 0], d.min_vol || [0, 0]);
     renderCorrPlotly("po-corr", d.correlation || {});
+
+    // Position summary table
+    const poSummary = document.getElementById("po-position-summary");
+    if (poSummary && d.weights && d.weights.length) {
+      const n = d.weights.length;
+      const eqWt = 100 / n;
+      const maxW = Math.max(...d.weights.map(w => w.weight));
+      poSummary.innerHTML = d.weights.map(w => {
+        const wPct = (w.weight * 100).toFixed(1);
+        const barW = Math.round(w.weight / maxW * 100);
+        const retCol = (w.ret || 0) >= 0 ? "var(--lime)" : "var(--pink)";
+        const diffW = (w.weight * 100 - eqWt);
+        const diffStr = (diffW >= 0 ? "+" : "") + diffW.toFixed(1) + "pp";
+        const diffCol = diffW >= 0 ? "var(--cyan)" : "var(--txt-d)";
+        return `<tr>
+          <td style="font-weight:600;color:var(--txt);font-size:11px">${w.symbol}</td>
+          <td style="text-align:center;color:var(--cyan)">${wPct}%</td>
+          <td style="text-align:center;color:${diffCol};font-size:10px">${eqWt.toFixed(1)}% <span style="font-size:9px">(${diffStr})</span></td>
+          <td style="text-align:center;color:${retCol}">${pctSigned(w.ret)}</td>
+          <td style="padding-left:12px">
+            <div style="height:7px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden">
+              <div style="width:${barW}%;height:100%;background:var(--blue);border-radius:4px"></div>
+            </div>
+          </td>
+        </tr>`;
+      }).join("");
+    }
   } catch (e) {
     if (wts) wts.innerHTML = `<div style="text-align:center;color:var(--pink);padding:14px">Optimization failed: ${e.message}</div>`;
   }
