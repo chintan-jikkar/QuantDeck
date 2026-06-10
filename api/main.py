@@ -281,6 +281,77 @@ def backtest(strategy: str = "MA Crossover", ticker: str = "AAPL",
     return JSONResponse(to_jsonable(out))
 
 
+@app.get("/api/simulation/{ticker}")
+def simulation(ticker: str, model: str = "gbm", horizon: int = 252):
+    """Monte Carlo: percentile cone, sample paths, terminal histogram, risk metrics."""
+    import numpy as np
+    from layers.simulation import run_simulation
+    try:
+        s = run_simulation(ticker.upper(), model=model.lower(), n_paths=2000,
+                           horizon=int(horizon), seed=42)
+    except Exception as e:
+        return JSONResponse({"ticker": ticker.upper(), "error": str(e)}, status_code=502)
+
+    bands = s["bands"]; paths = s["paths"]; start = float(s["start_price"]); rm = s["risk_metrics"]
+    n = len(bands); step = max(1, n // 80)
+    idx = list(range(0, n, step))
+    if idx[-1] != n - 1:
+        idx.append(n - 1)
+    band_out = {col: [round(float(bands[col].iloc[i]), 2) for i in idx]
+                for col in ("p10", "p25", "p50", "p75", "p90") if col in bands.columns}
+    sample = [[round(float(paths[i, j]), 2) for i in idx]
+              for j in range(min(14, paths.shape[1]))]
+
+    terminal = paths[-1, :]
+    returns = terminal / start - 1.0
+    hist, edges = np.histogram(terminal, bins=22)
+    histogram = [{"x": round(float((edges[i] + edges[i + 1]) / 2), 2), "count": int(hist[i])}
+                 for i in range(len(hist))]
+
+    return JSONResponse(to_jsonable({
+        "ticker": ticker.upper(), "model": s["model"], "horizon": s["horizon"],
+        "start_price": start,
+        "returns_pct": {"p5": float(np.percentile(returns, 5)),
+                        "p50": float(np.percentile(returns, 50)),
+                        "p95": float(np.percentile(returns, 95))},
+        "prob_profit": rm.get("prob_profit"),
+        "risk_metrics": {k: rm.get(k) for k in
+                         ("var_95", "cvar_95", "expected_return", "median_return",
+                          "p50_price", "mean_price")},
+        "bands": band_out, "sample_paths": sample, "histogram": histogram,
+    }))
+
+
+@app.get("/api/strategies")
+def strategies(ticker: str = "AAPL"):
+    """Strategy library: each registered strategy backtested on one ticker
+    (prices fetched once) for its Sharpe and total return."""
+    from strategies import list_strategies, get_strategy
+    from layers.backtester import run_engine, compute_tearsheet
+    from data.prices import fetch_prices
+    ticker = ticker.upper()
+    try:
+        prices_df = fetch_prices(ticker, period="5y").loc["2021-01-01":"2024-12-31"]
+    except Exception as e:
+        return JSONResponse({"ticker": ticker, "error": f"prices: {e}", "strategies": []})
+    close = prices_df["Close"]
+    items = []
+    for meta in list_strategies():
+        name = meta.get("name")
+        item = {"name": name, "description": meta.get("description", "")}
+        try:
+            signals = get_strategy(name).generate_signals(prices_df)
+            res = run_engine(close, signals)
+            ts = compute_tearsheet(res["equity_curve"], res["returns"])
+            item["sharpe"] = ts.get("sharpe")
+            item["total_return"] = ts.get("total_return")
+            item["cagr"] = ts.get("cagr")
+        except Exception as e:
+            item["error"] = str(e)
+        items.append(item)
+    return JSONResponse(to_jsonable({"ticker": ticker, "strategies": items}))
+
+
 # Static frontend, mounted last so /api/* routes take precedence.
 # html=True serves index.html at "/".
 app.mount("/", StaticFiles(directory=str(_FRONTEND), html=True), name="frontend")

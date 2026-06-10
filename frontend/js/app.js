@@ -247,8 +247,115 @@ async function loadBacktester() {
   }
 }
 
+// ── Monte Carlo (module 4) ───────────────────────────────────────────
+const MC_TICKER = "AAPL";
+function renderCone(svg, bands, samples) {
+  const p10 = bands.p10 || [], p25 = bands.p25 || [], p50 = bands.p50 || [], p75 = bands.p75 || [], p90 = bands.p90 || [];
+  if (p50.length < 2) { svg.innerHTML = `<text x="200" y="70" text-anchor="middle" fill="#9aa6c2" font-size="10" font-family="DM Mono,monospace">No data</text>`; return; }
+  const W = 420, H = 140, padL = 8, padR = 30;
+  const all = [...p10, ...p90].filter(x => x != null && !isNaN(x));
+  const lo = Math.min(...all), hi = Math.max(...all), span = (hi - lo) || 1;
+  const n = p50.length;
+  const X = i => padL + i / (n - 1) * (W - padL - padR);
+  const Y = v => H - 10 - (v - lo) / span * (H - 22);
+  const poly = arr => arr.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
+  let out = `<polygon points="${poly(p90)} ${p10.map((v, i) => `${X(n - 1 - i).toFixed(1)},${Y(p10[n - 1 - i]).toFixed(1)}`).join(" ")}" fill="rgba(79,158,255,0.08)"/>`;
+  out += `<polygon points="${poly(p75)} ${p25.map((v, i) => `${X(n - 1 - i).toFixed(1)},${Y(p25[n - 1 - i]).toFixed(1)}`).join(" ")}" fill="rgba(0,229,204,0.10)"/>`;
+  (samples || []).slice(0, 10).forEach(p => { out += `<polyline points="${poly(p)}" fill="none" stroke="rgba(167,139,250,0.22)" stroke-width="0.8"/>`; });
+  out += `<polyline points="${poly(p50)}" fill="none" stroke="var(--cyan)" stroke-width="1.8"/>`;
+  out += `<text x="${W - 26}" y="${Y(p90[n - 1]).toFixed(1)}" fill="var(--lime)" font-size="8" font-family="DM Mono,monospace">P90</text>`;
+  out += `<text x="${W - 26}" y="${Y(p50[n - 1]).toFixed(1)}" fill="var(--cyan)" font-size="8" font-family="DM Mono,monospace">Med</text>`;
+  out += `<text x="${W - 26}" y="${Y(p10[n - 1]).toFixed(1)}" fill="var(--pink)" font-size="8" font-family="DM Mono,monospace">P10</text>`;
+  svg.innerHTML = out;
+}
+function renderHist(svg, hist, start) {
+  if (!hist || !hist.length) { svg.innerHTML = `<text x="110" y="50" text-anchor="middle" fill="#9aa6c2" font-size="9" font-family="DM Mono,monospace">No data</text>`; return; }
+  const W = 220, H = 100, pad = 6;
+  const maxC = Math.max(...hist.map(h => h.count), 1);
+  const bw = (W - 2 * pad) / hist.length;
+  let out = "";
+  hist.forEach((h, i) => {
+    const ht = h.count / maxC * (H - 16);
+    const col = h.x >= start ? "rgba(184,242,100,0.5)" : "rgba(255,95,160,0.4)";
+    out += `<rect x="${(pad + i * bw).toFixed(1)}" y="${(H - 10 - ht).toFixed(1)}" width="${(bw - 1).toFixed(1)}" height="${ht.toFixed(1)}" rx="1.5" fill="${col}"/>`;
+  });
+  let si = hist.findIndex(h => h.x >= start); if (si < 0) si = hist.length - 1;
+  const sx = pad + (si + 0.5) * bw;
+  out += `<line x1="${sx.toFixed(1)}" y1="6" x2="${sx.toFixed(1)}" y2="${H - 8}" stroke="var(--amber)" stroke-width="1.2" stroke-dasharray="3,2"/><text x="${(sx + 2).toFixed(1)}" y="12" fill="var(--amber)" font-size="7" font-family="DM Mono,monospace">Start</text>`;
+  svg.innerHTML = out;
+}
+async function loadMonteCarlo() {
+  const kp = document.getElementById("mc-kpis"), cone = document.getElementById("mc-conesvg"),
+        hs = document.getElementById("mc-histsvg"), risk = document.getElementById("mc-risk");
+  if (kp) kp.innerHTML = `<div class="kpi c" style="grid-column:1/-1;text-align:center;color:var(--txt-m)">Simulating ${MC_TICKER}…</div>`;
+  try {
+    const res = await fetch(`/api/simulation/${MC_TICKER}`);
+    const d = await res.json();
+    if (!res.ok || (d.error && !d.bands)) throw new Error(d.error || `API ${res.status}`);
+    const rp = d.returns_pct || {}, rm = d.risk_metrics || {};
+    if (kp) kp.innerHTML = `
+      <div class="kpi c"><div class="kpi-lbl">Median Return</div><div class="kpi-val c">${pctSigned(rp.p50)}</div><div class="kpi-sub">2,000 sims · ${d.horizon}d</div></div>
+      <div class="kpi l"><div class="kpi-lbl">95th Percentile</div><div class="kpi-val l">${pctSigned(rp.p95)}</div><div class="kpi-sub">bull scenario</div></div>
+      <div class="kpi p"><div class="kpi-lbl">5th Percentile</div><div class="kpi-val p">${pctSigned(rp.p5)}</div><div class="kpi-sub">bear scenario</div></div>
+      <div class="kpi a"><div class="kpi-lbl">Prob. of Profit</div><div class="kpi-val a">${pct(d.prob_profit, 1)}</div><div class="kpi-sub">above start price</div></div>`;
+    if (cone) renderCone(cone, d.bands || {}, d.sample_paths || []);
+    if (hs) renderHist(hs, d.histogram || [], d.start_price);
+    if (risk) {
+      const rf = (lbl, val, col) => `<div class="dcf-field"><div class="dcf-lbl">${lbl}</div><div style="font-size:14px;font-weight:700;color:${col};font-family:'Syne',sans-serif;margin-top:3px">${val}</div></div>`;
+      risk.innerHTML = rf("VaR (95%)", pct(rm.var_95, 1), "var(--pink)") + rf("CVaR (95%)", pct(rm.cvar_95, 1), "var(--pink)") +
+        rf("Expected Ret", pctSigned(rm.expected_return), "var(--cyan)") +
+        rf("Median Price", rm.p50_price != null ? "$" + Number(rm.p50_price).toFixed(0) : "—", "var(--blue)");
+    }
+  } catch (e) {
+    if (kp) kp.innerHTML = `<div class="kpi c" style="grid-column:1/-1;text-align:center;color:var(--pink)">Simulation failed: ${e.message}</div>`;
+  }
+}
+
+// ── Strategy Library (module 5) ──────────────────────────────────────
+function renderPerfBars(svg, strats) {
+  if (!strats.length) { svg.innerHTML = `<text x="110" y="65" text-anchor="middle" fill="#9aa6c2" font-size="9" font-family="DM Mono,monospace">No data</text>`; return; }
+  const W = 220, H = 130, maxA = Math.max(...strats.map(s => Math.abs(s.total_return || 0)), 0.01), n = strats.length, bw = (W - 20) / n * 0.6, zero = H - 30;
+  let out = `<line x1="0" y1="${zero}" x2="${W}" y2="${zero}" stroke="#9aa6c2" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+  strats.forEach((s, i) => {
+    const x = 10 + (W - 20) * (i + 0.5) / n, r = s.total_return || 0, h = Math.abs(r) / maxA * (H - 52), y = r >= 0 ? zero - h : zero, col = r >= 0 ? "var(--lime)" : "var(--pink)";
+    out += `<rect x="${(x - bw / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${col}" opacity="0.35" stroke="${col}" stroke-width="1"/>`;
+    out += `<text x="${x.toFixed(1)}" y="${(r >= 0 ? y - 3 : y + h + 9).toFixed(1)}" text-anchor="middle" fill="${col}" font-size="7" font-family="DM Mono,monospace">${(r * 100).toFixed(0)}%</text>`;
+    out += `<text x="${x.toFixed(1)}" y="${H - 3}" text-anchor="middle" fill="#9aa6c2" font-size="6" font-family="DM Mono,monospace">${(s.name || "").slice(0, 6)}</text>`;
+  });
+  svg.innerHTML = out;
+}
+async function loadStrategies() {
+  const kp = document.getElementById("sl-kpis"), cards = document.getElementById("sl-cards"), svg = document.getElementById("sl-perfsvg");
+  if (cards) cards.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--txt-m);padding:20px">Backtesting strategies…</div>`;
+  try {
+    const res = await fetch(`/api/strategies`);
+    const d = await res.json();
+    if (!res.ok || (d.error && !(d.strategies || []).length)) throw new Error(d.error || `API ${res.status}`);
+    const list = d.strategies || [], valid = list.filter(s => !s.error && s.sharpe != null);
+    if (kp) {
+      const sharpes = valid.map(s => s.sharpe), rets = valid.map(s => s.total_return);
+      const best = valid.reduce((a, b) => ((b.sharpe || -99) > (a.sharpe || -99) ? b : a), valid[0] || {});
+      const avgRet = rets.length ? rets.reduce((a, b) => a + b, 0) / rets.length : null;
+      kp.innerHTML = `
+        <div class="kpi b"><div class="kpi-lbl">Strategies</div><div class="kpi-val b">${list.length}</div><div class="kpi-sub">on ${d.ticker}</div></div>
+        <div class="kpi l"><div class="kpi-lbl">Best Sharpe</div><div class="kpi-val l">${fmt(best.sharpe, 2)}</div><div class="kpi-sub">${(best.name || "").slice(0, 18)}</div></div>
+        <div class="kpi c"><div class="kpi-lbl">Avg Total Return</div><div class="kpi-val c">${pctSigned(avgRet)}</div><div class="kpi-sub">2021–24 on ${d.ticker}</div></div>
+        <div class="kpi a"><div class="kpi-lbl">Reference</div><div class="kpi-val w" style="font-size:16px;padding-top:5px">${d.ticker}</div><div class="kpi-sub">single-name test</div></div>`;
+    }
+    if (cards) cards.innerHTML = list.map(s => {
+      const tag = s.error
+        ? `<span class="strat-tag" style="color:var(--pink)">n/a here</span>`
+        : `<span class="strat-tag">Sharpe ${fmt(s.sharpe, 2)}</span><span class="strat-tag" style="color:${(s.total_return || 0) >= 0 ? "var(--lime)" : "var(--pink)"}">${pctSigned(s.total_return)}</span>`;
+      return `<div class="strat-card" onclick="this.classList.toggle('sel')"><div class="strat-name">${s.name}</div><div class="strat-desc">${s.description || ""}</div><div class="strat-meta">${tag}</div></div>`;
+    }).join("");
+    if (svg) renderPerfBars(svg, valid);
+  } catch (e) {
+    if (cards) cards.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--pink);padding:20px">Could not load strategies: ${e.message}</div>`;
+  }
+}
+
 // ── Module loader wiring ─────────────────────────────────────────────
-const loaders = { 0: loadScreener, 1: loadDeepDive, 2: loadValuation, 3: loadBacktester };
+const loaders = { 0: loadScreener, 1: loadDeepDive, 2: loadValuation, 3: loadBacktester, 4: loadMonteCarlo, 5: loadStrategies };
 const loaded = {};
 function onModule(idx) { if (loaders[idx] && !loaded[idx]) { loaded[idx] = true; loaders[idx](); } }
 
