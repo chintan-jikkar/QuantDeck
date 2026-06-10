@@ -12,7 +12,7 @@
 :root{
   --bg-deep:#080b12;--bg-surface:#0d1220;--bg-card:rgba(255,255,255,0.035);
   --border:rgba(255,255,255,0.07);--border-b:rgba(255,255,255,0.13);
-  --txt:#f0f4ff;--txt-m:#6b7a99;--txt-d:#9aa6c2;
+  --txt:#f0f4ff;--txt-m:#8c97b0;--txt-d:#b4bdd4;
   --blue:#4f9eff;--cyan:#00e5cc;--lime:#b8f264;--pink:#ff5fa0;--amber:#ffb340;--purple:#a78bfa;
   --gblue:rgba(79,158,255,0.15);--gcyan:rgba(0,229,204,0.12);
 }
@@ -187,8 +187,8 @@ svg.mc{width:100%;height:140px;display:block;}
     <div class="nav-item" onclick="switchModule(5,this)"><i class="ti ti-books"></i> Strategy Lib <span class="nav-num">06</span></div>
     <div class="nav-item" onclick="switchModule(6,this)"><i class="ti ti-chart-pie"></i> Portfolio Opt <span class="nav-num">07</span></div>
     <div class="nav-lbl" style="margin-top:10px">Tools</div>
-    <div class="nav-item"><i class="ti ti-bell"></i> Alerts</div>
-    <div class="nav-item"><i class="ti ti-settings"></i> Settings</div>
+    <div class="nav-item"><i class="ti ti-bell"></i> Alerts <span class="nav-num">soon</span></div>
+    <div class="nav-item"><i class="ti ti-settings"></i> Settings <span class="nav-num">soon</span></div>
   </div>
   <div class="sb-bottom">
     <div class="wl-lbl">Watchlist</div>
@@ -198,8 +198,8 @@ svg.mc{width:100%;height:140px;display:block;}
     <div class="wl-row"><span class="wl-sym">AAPL</span><span class="wl-up">+0.84%</span></div>
     <div class="wl-row"><span class="wl-sym">MSFT</span><span class="wl-dn">−0.47%</span></div>
     <div class="av">
-      <div class="av-circle">CK</div>
-      <div><div class="av-name">Chintan K.</div><div class="av-role">Research Analyst</div></div>
+      <div class="av-circle">CJ</div>
+      <div><div class="av-name">Chintan Jikkar</div><div class="av-role">Research Analyst</div></div>
     </div>
   </div>
 </div>
@@ -211,7 +211,7 @@ svg.mc{width:100%;height:140px;display:block;}
       <span class="topbar-title" id="mod-title">Screener</span>
       <span id="mod-sub" style="font-size:10px;color:var(--txt-m);font-family:'DM Mono',monospace;margin-left:8px">/ composite factor scoring</span>
     </div>
-    <div class="search"><i class="ti ti-search" style="font-size:12px"></i> Search ticker…</div>
+    <div class="search"><i class="ti ti-search" style="font-size:12px"></i><input id="ticker-search" placeholder="Search ticker…" autocomplete="off" style="background:none;border:0;outline:0;color:var(--txt);font-family:'DM Mono',monospace;font-size:11px;width:100%"/></div>
     <span class="pill pill-blue">S&amp;P 500</span>
     <span class="pill-live">Live</span>
     <i class="ti ti-refresh" style="font-size:16px;color:var(--txt-d);cursor:pointer"></i>
@@ -247,7 +247,7 @@ svg.mc{width:100%;height:140px;display:block;}
           <div class="fr"><span class="fn">Quality</span><div class="ft"><div class="ff" style="width:71%;background:linear-gradient(90deg,var(--cyan),var(--blue))"></div></div><span class="fv">0.71</span></div>
           <div class="fr"><span class="fn">Growth</span><div class="ft"><div class="ff" style="width:65%;background:linear-gradient(90deg,var(--lime),var(--cyan))"></div></div><span class="fv">0.65</span></div>
           <div class="fr"><span class="fn">Value</span><div class="ft"><div class="ff" style="width:58%;background:linear-gradient(90deg,var(--amber),var(--pink))"></div></div><span class="fv">0.58</span></div>
-          <div class="fr"><span class="fn">Low Vol</span><div class="ft"><div class="ff" style="width:34%;background:#9aa6c2"></div></div><span class="fv">0.34</span></div>
+          <div class="fr"><span class="fn">Low Vol</span><div class="ft"><div class="ff" style="width:34%;background:#b4bdd4"></div></div><span class="fv">0.34</span></div>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
               <span style="font-size:10px;color:var(--txt-m)">NVDA — score trend</span><span style="font-size:10px;color:var(--lime)">↑ 91pts · 90d</span>
@@ -286,19 +286,19 @@ svg.mc{width:100%;height:140px;display:block;}
       <div class="two-col">
         <div class="card tb">
           <div class="ctitle" id="dd-revtitle"><i class="ti ti-chart-area"></i> Revenue &amp; EPS trend — NVDA</div>
-          <svg id="dd-revsvg" viewBox="0 0 400 120" style="width:100%;height:120px;display:block">
+          <svg id="dd-revsvg" viewBox="0 0 400 120" style="width:100%;height:230px;display:block">
             <defs>
               <linearGradient id="revg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4f9eff" stop-opacity=".3"/><stop offset="100%" stop-color="#4f9eff" stop-opacity="0"/></linearGradient>
               <linearGradient id="epsg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b8f264" stop-opacity=".25"/><stop offset="100%" stop-color="#b8f264" stop-opacity="0"/></linearGradient>
             </defs>
             <!-- x labels -->
-            <text x="20" y="115" fill="#9aa6c2" font-size="8" font-family="DM Mono,monospace">Q1'23</text>
-            <text x="80" y="115" fill="#9aa6c2" font-size="8" font-family="DM Mono,monospace">Q2'23</text>
-            <text x="140" y="115" fill="#9aa6c2" font-size="8" font-family="DM Mono,monospace">Q3'23</text>
-            <text x="200" y="115" fill="#9aa6c2" font-size="8" font-family="DM Mono,monospace">Q4'23</text>
-            <text x="260" y="115" fill="#9aa6c2" font-size="8" font-family="DM Mono,monospace">Q1'24</text>
-            <text x="320" y="115" fill="#9aa6c2" font-size="8" font-family="DM Mono,monospace">Q2'24</text>
-            <text x="365" y="115" fill="#9aa6c2" font-size="8" font-family="DM Mono,monospace">Q3'24</text>
+            <text x="20" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Q1'23</text>
+            <text x="80" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Q2'23</text>
+            <text x="140" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Q3'23</text>
+            <text x="200" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Q4'23</text>
+            <text x="260" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Q1'24</text>
+            <text x="320" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Q2'24</text>
+            <text x="365" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Q3'24</text>
             <!-- Revenue area -->
             <polygon points="20,100 80,90 140,70 200,48 260,30 320,15 380,8 380,105 20,105" fill="url(#revg)"/>
             <polyline points="20,100 80,90 140,70 200,48 260,30 320,15 380,8" fill="none" stroke="var(--blue)" stroke-width="1.8" stroke-linejoin="round"/>
@@ -396,17 +396,17 @@ svg.mc{width:100%;height:140px;display:block;}
           </table>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
             <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-target"></i> Valuation range (waterfall)</div>
-            <svg id="val-rangesvg" viewBox="0 0 240 70" style="width:100%;height:70px;display:block">
+            <svg id="val-rangesvg" viewBox="0 0 360 150" style="width:100%;height:170px;display:block">
               <!-- bars -->
               <rect x="10" y="20" width="40" height="35" rx="3" fill="rgba(79,158,255,0.2)" stroke="var(--blue)" stroke-width="1"/>
               <text x="30" y="14" text-anchor="middle" fill="var(--blue)" font-size="8" font-family="DM Mono,monospace">$148</text>
-              <text x="30" y="65" text-anchor="middle" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">Bear</text>
+              <text x="30" y="65" text-anchor="middle" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Bear</text>
               <rect x="70" y="10" width="40" height="45" rx="3" fill="rgba(0,229,204,0.2)" stroke="var(--cyan)" stroke-width="1"/>
               <text x="90" y="6" text-anchor="middle" fill="var(--cyan)" font-size="8" font-family="DM Mono,monospace">$161</text>
-              <text x="90" y="65" text-anchor="middle" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">Base</text>
+              <text x="90" y="65" text-anchor="middle" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Base</text>
               <rect x="130" y="4" width="40" height="51" rx="3" fill="rgba(184,242,100,0.15)" stroke="var(--lime)" stroke-width="1"/>
               <text x="150" y="0" text-anchor="middle" fill="var(--lime)" font-size="8" font-family="DM Mono,monospace" dy="8">$181</text>
-              <text x="150" y="65" text-anchor="middle" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">Bull</text>
+              <text x="150" y="65" text-anchor="middle" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Bull</text>
               <!-- current price line -->
               <line x1="5" y1="32" x2="235" y2="32" stroke="var(--amber)" stroke-width="1" stroke-dasharray="3,3"/>
               <text x="238" y="35" fill="var(--amber)" font-size="7" font-family="DM Mono,monospace">Now</text>
@@ -429,7 +429,7 @@ svg.mc{width:100%;height:140px;display:block;}
       <div class="two-col">
         <div class="card tb">
           <div class="ctitle"><i class="ti ti-chart-line"></i> Equity curve — 2020–2025 (Momentum factor)</div>
-          <svg id="bt-eqsvg" viewBox="0 0 420 120" style="width:100%;height:120px;display:block">
+          <svg id="bt-eqsvg" viewBox="0 0 420 120" style="width:100%;height:250px;display:block">
             <defs>
               <linearGradient id="ecg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b8f264" stop-opacity=".3"/><stop offset="100%" stop-color="#b8f264" stop-opacity="0"/></linearGradient>
               <linearGradient id="bmg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4f9eff" stop-opacity=".1"/><stop offset="100%" stop-color="#4f9eff" stop-opacity="0"/></linearGradient>
@@ -449,11 +449,11 @@ svg.mc{width:100%;height:140px;display:block;}
             <line x1="100" y1="12" x2="116" y2="12" stroke="var(--blue)" stroke-width="1.5" stroke-dasharray="3,2"/>
             <text x="120" y="16" fill="#6b7a99" font-size="9" font-family="DM Mono,monospace">S&amp;P 500</text>
             <!-- year labels -->
-            <text x="10" y="115" fill="#9aa6c2" font-size="8" font-family="DM Mono,monospace">2020</text>
-            <text x="90" y="115" fill="#9aa6c2" font-size="8" font-family="DM Mono,monospace">2021</text>
-            <text x="170" y="115" fill="#9aa6c2" font-size="8" font-family="DM Mono,monospace">2022</text>
-            <text x="250" y="115" fill="#9aa6c2" font-size="8" font-family="DM Mono,monospace">2023</text>
-            <text x="330" y="115" fill="#9aa6c2" font-size="8" font-family="DM Mono,monospace">2024</text>
+            <text x="10" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">2020</text>
+            <text x="90" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">2021</text>
+            <text x="170" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">2022</text>
+            <text x="250" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">2023</text>
+            <text x="330" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">2024</text>
           </svg>
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
             <div style="display:flex;gap:6px">
@@ -498,7 +498,7 @@ svg.mc{width:100%;height:140px;display:block;}
       <div class="two-col">
         <div class="card tb">
           <div class="ctitle"><i class="ti ti-chart-dots"></i> GBM path simulation — NVDA · 252-day horizon</div>
-          <svg id="mc-conesvg" viewBox="0 0 420 140" style="width:100%;height:140px;display:block">
+          <svg id="mc-conesvg" viewBox="0 0 420 140" style="width:100%;height:280px;display:block">
             <!-- cone -->
             <polygon points="10,70 420,20 420,115" fill="rgba(79,158,255,0.04)"/>
             <!-- many paths -->
@@ -517,7 +517,7 @@ svg.mc{width:100%;height:140px;display:block;}
             <text x="425" y="70" fill="var(--cyan)" font-size="8" font-family="DM Mono,monospace">Med</text>
             <text x="425" y="117" fill="var(--pink)" font-size="8" font-family="DM Mono,monospace">P5</text>
           </svg>
-          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;gap:14px;font-size:10px">
+          <div id="mc-meta" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;gap:14px;font-size:10px">
             <span style="color:var(--txt-m)">Model: <span style="color:var(--cyan)">GBM</span></span>
             <span style="color:var(--txt-m)">μ: <span style="color:var(--txt)">0.18</span></span>
             <span style="color:var(--txt-m)">σ: <span style="color:var(--txt)">0.42</span></span>
@@ -527,7 +527,7 @@ svg.mc{width:100%;height:140px;display:block;}
         </div>
         <div class="card tc">
           <div class="ctitle"><i class="ti ti-chart-histogram"></i> Return distribution</div>
-          <svg id="mc-histsvg" viewBox="0 0 220 100" style="width:100%;height:100px;display:block">
+          <svg id="mc-histsvg" viewBox="0 0 220 100" style="width:100%;height:210px;display:block">
             <defs><linearGradient id="histg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00e5cc" stop-opacity=".6"/><stop offset="100%" stop-color="#00e5cc" stop-opacity=".1"/></linearGradient></defs>
             <!-- bell-ish bars -->
             <rect x="5"  y="80" width="14" height="14" rx="2" fill="rgba(255,95,160,.3)"/>
@@ -611,21 +611,21 @@ svg.mc{width:100%;height:140px;display:block;}
         </div>
         <div class="card tc">
           <div class="ctitle"><i class="ti ti-chart-bar"></i> Strategy performance comparison</div>
-          <svg id="sl-perfsvg" viewBox="0 0 220 130" style="width:100%;height:130px;display:block">
-            <text x="0" y="10" fill="#9aa6c2" font-size="8" font-family="DM Mono,monospace">Ann. Return</text>
+          <svg id="sl-perfsvg" viewBox="0 0 220 130" style="width:100%;height:240px;display:block">
+            <text x="0" y="10" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">Ann. Return</text>
             <!-- bars -->
             <rect x="10" y="50" width="28" height="55" rx="3" fill="rgba(0,229,204,.3)" stroke="var(--cyan)" stroke-width="1"/>
             <text x="24" y="46" text-anchor="middle" fill="var(--cyan)" font-size="8" font-family="DM Mono,monospace">+42%</text>
-            <text x="24" y="120" text-anchor="middle" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">Mom+Q</text>
+            <text x="24" y="120" text-anchor="middle" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Mom+Q</text>
             <rect x="58" y="65" width="28" height="40" rx="3" fill="rgba(167,139,250,.25)" stroke="var(--purple)" stroke-width="1"/>
             <text x="72" y="61" text-anchor="middle" fill="var(--purple)" font-size="8" font-family="DM Mono,monospace">+28%</text>
-            <text x="72" y="120" text-anchor="middle" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">Val+LV</text>
+            <text x="72" y="120" text-anchor="middle" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Val+LV</text>
             <rect x="106" y="55" width="28" height="50" rx="3" fill="rgba(184,242,100,.25)" stroke="var(--lime)" stroke-width="1"/>
             <text x="120" y="51" text-anchor="middle" fill="var(--lime)" font-size="8" font-family="DM Mono,monospace">+36%</text>
-            <text x="120" y="120" text-anchor="middle" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">GARP</text>
+            <text x="120" y="120" text-anchor="middle" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">GARP</text>
             <rect x="154" y="60" width="28" height="45" rx="3" fill="rgba(255,179,64,.2)" stroke="var(--amber)" stroke-width="1"/>
             <text x="168" y="56" text-anchor="middle" fill="var(--amber)" font-size="8" font-family="DM Mono,monospace">+31%</text>
-            <text x="168" y="120" text-anchor="middle" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">EPS Rev</text>
+            <text x="168" y="120" text-anchor="middle" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">EPS Rev</text>
             <!-- benchmark line -->
             <line x1="0" y1="82" x2="210" y2="82" stroke="var(--blue)" stroke-width="1" stroke-dasharray="3,3"/>
             <text x="190" y="79" fill="var(--blue)" font-size="7" font-family="DM Mono,monospace">S&amp;P</text>
@@ -666,17 +666,17 @@ svg.mc{width:100%;height:140px;display:block;}
         </div>
         <div class="card tc">
           <div class="ctitle"><i class="ti ti-chart-dots-3"></i> Efficient frontier</div>
-          <svg id="po-frontier" viewBox="0 0 230 130" style="width:100%;height:130px;display:block">
+          <svg id="po-frontier" viewBox="0 0 230 130" style="width:100%;height:230px;display:block">
             <defs><linearGradient id="efg" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#4f9eff" stop-opacity=".4"/><stop offset="100%" stop-color="#b8f264" stop-opacity=".6"/></linearGradient></defs>
             <!-- axes -->
-            <line x1="20" y1="10" x2="20" y2="110" stroke="#9aa6c2" stroke-width="1"/>
-            <line x1="20" y1="110" x2="220" y2="110" stroke="#9aa6c2" stroke-width="1"/>
-            <text x="5" y="14" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">Ret</text>
-            <text x="210" y="118" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">Risk</text>
+            <line x1="20" y1="10" x2="20" y2="110" stroke="#b4bdd4" stroke-width="1"/>
+            <line x1="20" y1="110" x2="220" y2="110" stroke="#b4bdd4" stroke-width="1"/>
+            <text x="5" y="14" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Ret</text>
+            <text x="210" y="118" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Risk</text>
             <!-- frontier curve -->
             <path d="M40,100 Q80,40 160,20 L210,18" fill="none" stroke="url(#efg)" stroke-width="2.5"/>
             <!-- portfolio dots -->
-            <circle cx="40" cy="100" r="3.5" fill="var(--txt-d)"/><text x="44" y="104" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">Min Vol</text>
+            <circle cx="40" cy="100" r="3.5" fill="var(--txt-d)"/><text x="44" y="104" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Min Vol</text>
             <circle cx="130" cy="32" r="5" fill="var(--lime)"/><text x="134" y="36" fill="var(--lime)" font-size="7" font-family="DM Mono,monospace">★ Max Sharpe</text>
             <circle cx="200" cy="20" r="3.5" fill="var(--pink)"/><text x="178" y="18" fill="var(--pink)" font-size="7" font-family="DM Mono,monospace">Max Ret</text>
             <!-- random portfolio cloud -->

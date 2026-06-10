@@ -43,7 +43,7 @@ async function loadScreener() {
     if (tbody) {
       tbody.innerHTML = rows.map(r => {
         const s = signal(r.composite_score || 0);
-        return `<tr>
+        return `<tr onclick="selectTicker('${r.symbol}')" style="cursor:pointer">
           <td><span class="cn">${r.symbol || "—"}</span><span class="cs">Equity</span></td>
           <td><span class="sp ${s.sp}">${fmt(r.composite_score, 0)}</span></td>
           <td>${fmt(r.peRatio)}</td>
@@ -59,9 +59,9 @@ async function loadScreener() {
 }
 
 // ── Deep Dive (module 1) ─────────────────────────────────────────────
-const DD_TICKER = "AAPL";
+let DD_TICKER = "AAPL";
 function renderRevChart(svg, series) {
-  if (!series || !series.length) { svg.innerHTML = `<text x="200" y="60" text-anchor="middle" fill="#3a4460" font-size="10" font-family="DM Mono,monospace">No revenue data</text>`; return; }
+  if (!series || !series.length) { svg.innerHTML = `<text x="200" y="60" text-anchor="middle" fill="#b4bdd4" font-size="10" font-family="DM Mono,monospace">No revenue data</text>`; return; }
   const W = 400, H = 120, pad = 22;
   const maxR = Math.max(...series.map(s => s.revenue || 0), 1);
   const n = series.length;
@@ -71,13 +71,13 @@ function renderRevChart(svg, series) {
     const x = pad + (W - 2 * pad) * (i + 0.5) / n;
     const h = Math.max(0, (s.revenue || 0) / maxR * (H - 32));
     out += `<rect x="${(x - bw / 2).toFixed(1)}" y="${(H - 16 - h).toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="rgba(79,158,255,0.32)" stroke="var(--blue)" stroke-width="1"/>`;
-    out += `<text x="${x.toFixed(1)}" y="${H - 3}" text-anchor="middle" fill="#3a4460" font-size="7" font-family="DM Mono,monospace">${(s.date || "").slice(0, 4)}</text>`;
+    out += `<text x="${x.toFixed(1)}" y="${H - 3}" text-anchor="middle" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">${(s.date || "").slice(0, 4)}</text>`;
     const nm = s.net_margin;
     if (nm != null && !isNaN(nm)) line.push(`${x.toFixed(1)},${(H - 16 - nm * (H - 32)).toFixed(1)}`);
   });
   if (line.length > 1) out += `<polyline points="${line.join(" ")}" fill="none" stroke="var(--lime)" stroke-width="1.5" stroke-dasharray="4,2"/>`;
-  out += `<line x1="${W-92}" y1="10" x2="${W-78}" y2="10" stroke="var(--blue)" stroke-width="2"/><text x="${W-74}" y="13" fill="#6b7a99" font-size="8" font-family="DM Mono,monospace">Revenue</text>`;
-  out += `<line x1="${W-92}" y1="22" x2="${W-78}" y2="22" stroke="var(--lime)" stroke-width="1.5" stroke-dasharray="3,2"/><text x="${W-74}" y="25" fill="#6b7a99" font-size="8" font-family="DM Mono,monospace">Net mgn</text>`;
+  out += `<line x1="14" y1="11" x2="30" y2="11" stroke="var(--blue)" stroke-width="2"/><text x="34" y="14" fill="var(--txt-m)" font-size="9" font-family="DM Mono,monospace">Revenue</text>`;
+  out += `<line x1="96" y1="11" x2="112" y2="11" stroke="var(--lime)" stroke-width="1.5" stroke-dasharray="3,2"/><text x="116" y="14" fill="var(--txt-m)" font-size="9" font-family="DM Mono,monospace">Net mgn</text>`;
   svg.innerHTML = out;
 }
 async function loadDeepDive() {
@@ -122,22 +122,26 @@ async function loadDeepDive() {
 }
 
 // ── Valuation (module 2) ─────────────────────────────────────────────
-const VAL_TICKER = "AAPL";
+let VAL_TICKER = "AAPL";
 function renderRangeSvg(svg, bear, base, bull, cur) {
-  const pts = [bear, base, bull, cur].filter(x => x != null && !isNaN(x));
-  if (pts.length < 2) { svg.innerHTML = `<text x="120" y="38" text-anchor="middle" fill="#3a4460" font-size="9" font-family="DM Mono,monospace">No range</text>`; return; }
-  const lo = Math.min(...pts), hi = Math.max(...pts), span = (hi - lo) || 1;
-  const W = 240, padL = 16, padR = 16, y = 30, h = 14;
-  const X = v => padL + (v - lo) / span * (W - padL - padR);
+  const vals = [bear, base, bull, cur].filter(x => x != null && !isNaN(x));
+  if (vals.length < 2) { svg.innerHTML = `<text x="180" y="75" text-anchor="middle" fill="#b4bdd4" font-size="11" font-family="DM Mono,monospace">No range</text>`; return; }
+  const W = 360, H = 150, padB = 26, padT = 22;
+  const hi = Math.max(...vals) * 1.05, lo = Math.min(...vals) * 0.9, span = (hi - lo) || 1;
+  const Y = v => H - padB - (v - lo) / span * (H - padB - padT);
+  const bars = [["Bear", bear, "var(--pink)"], ["Base", base, "var(--cyan)"], ["Bull", bull, "var(--lime)"]].filter(b => b[1] != null);
+  const n = bars.length, slot = (W - 80) / n, bw = Math.min(54, slot * 0.6);
   let out = "";
-  if (bear != null && bull != null)
-    out += `<rect x="${X(Math.min(bear, bull)).toFixed(1)}" y="${y}" width="${Math.abs(X(bull) - X(bear)).toFixed(1)}" height="${h}" rx="3" fill="rgba(0,229,204,0.16)" stroke="var(--cyan)" stroke-width="1"/>`;
-  if (base != null)
-    out += `<line x1="${X(base).toFixed(1)}" y1="${y - 4}" x2="${X(base).toFixed(1)}" y2="${y + h + 4}" stroke="var(--lime)" stroke-width="2"/><text x="${X(base).toFixed(1)}" y="${y - 7}" text-anchor="middle" fill="var(--lime)" font-size="8" font-family="DM Mono,monospace">Base $${base.toFixed(0)}</text>`;
-  if (cur != null)
-    out += `<line x1="${X(cur).toFixed(1)}" y1="${y - 9}" x2="${X(cur).toFixed(1)}" y2="${y + h + 9}" stroke="var(--amber)" stroke-width="1" stroke-dasharray="3,2"/><text x="${X(cur).toFixed(1)}" y="${y + h + 18}" text-anchor="middle" fill="var(--amber)" font-size="8" font-family="DM Mono,monospace">Now $${cur.toFixed(0)}</text>`;
-  if (bear != null) out += `<text x="${X(bear).toFixed(1)}" y="${y + h + 18}" text-anchor="middle" fill="var(--pink)" font-size="7" font-family="DM Mono,monospace">Bear $${bear.toFixed(0)}</text>`;
-  if (bull != null) out += `<text x="${X(bull).toFixed(1)}" y="${y - 7}" text-anchor="middle" fill="var(--cyan)" font-size="7" font-family="DM Mono,monospace">Bull $${bull.toFixed(0)}</text>`;
+  bars.forEach((b, i) => {
+    const cx = 60 + slot * (i + 0.5), x = cx - bw / 2, yy = Y(b[1]);
+    out += `<rect x="${x.toFixed(0)}" y="${yy.toFixed(0)}" width="${bw.toFixed(0)}" height="${(H - padB - yy).toFixed(0)}" rx="4" fill="${b[2]}" opacity="0.2" stroke="${b[2]}" stroke-width="1.2"/>`;
+    out += `<text x="${cx.toFixed(0)}" y="${(yy - 7).toFixed(0)}" text-anchor="middle" fill="${b[2]}" font-size="12" font-family="DM Mono,monospace">$${b[1].toFixed(0)}</text>`;
+    out += `<text x="${cx.toFixed(0)}" y="${(H - 9).toFixed(0)}" text-anchor="middle" fill="#b4bdd4" font-size="11" font-family="DM Mono,monospace">${b[0]}</text>`;
+  });
+  if (cur != null) {
+    const cy = Y(cur);
+    out += `<line x1="24" y1="${cy.toFixed(0)}" x2="${(W - 24).toFixed(0)}" y2="${cy.toFixed(0)}" stroke="var(--amber)" stroke-width="1.4" stroke-dasharray="5,3"/><text x="${(W - 26).toFixed(0)}" y="${(cy - 6).toFixed(0)}" text-anchor="end" fill="var(--amber)" font-size="11" font-family="DM Mono,monospace">Now $${cur.toFixed(0)}</text>`;
+  }
   svg.innerHTML = out;
 }
 async function loadValuation() {
@@ -189,7 +193,7 @@ async function loadValuation() {
 // ── Backtester (module 3) ────────────────────────────────────────────
 const BT = { strategy: "MA Crossover", ticker: "AAPL", start: "2021-01-01", end: "2024-12-31" };
 function renderEquitySvg(svg, strat, bench) {
-  if (!strat || strat.length < 2) { svg.innerHTML = `<text x="210" y="60" text-anchor="middle" fill="#3a4460" font-size="10" font-family="DM Mono,monospace">No data</text>`; return; }
+  if (!strat || strat.length < 2) { svg.innerHTML = `<text x="210" y="60" text-anchor="middle" fill="#b4bdd4" font-size="10" font-family="DM Mono,monospace">No data</text>`; return; }
   const W = 420, H = 120, pad = 10;
   const all = [...strat, ...(bench || [])].filter(x => x != null && !isNaN(x));
   const lo = Math.min(...all), hi = Math.max(...all), span = (hi - lo) || 1;
@@ -248,10 +252,10 @@ async function loadBacktester() {
 }
 
 // ── Monte Carlo (module 4) ───────────────────────────────────────────
-const MC_TICKER = "AAPL";
+let MC_TICKER = "AAPL";
 function renderCone(svg, bands, samples) {
   const p10 = bands.p10 || [], p25 = bands.p25 || [], p50 = bands.p50 || [], p75 = bands.p75 || [], p90 = bands.p90 || [];
-  if (p50.length < 2) { svg.innerHTML = `<text x="200" y="70" text-anchor="middle" fill="#9aa6c2" font-size="10" font-family="DM Mono,monospace">No data</text>`; return; }
+  if (p50.length < 2) { svg.innerHTML = `<text x="200" y="70" text-anchor="middle" fill="#b4bdd4" font-size="10" font-family="DM Mono,monospace">No data</text>`; return; }
   const W = 420, H = 140, padL = 8, padR = 30;
   const all = [...p10, ...p90].filter(x => x != null && !isNaN(x));
   const lo = Math.min(...all), hi = Math.max(...all), span = (hi - lo) || 1;
@@ -269,7 +273,7 @@ function renderCone(svg, bands, samples) {
   svg.innerHTML = out;
 }
 function renderHist(svg, hist, start) {
-  if (!hist || !hist.length) { svg.innerHTML = `<text x="110" y="50" text-anchor="middle" fill="#9aa6c2" font-size="9" font-family="DM Mono,monospace">No data</text>`; return; }
+  if (!hist || !hist.length) { svg.innerHTML = `<text x="110" y="50" text-anchor="middle" fill="#b4bdd4" font-size="9" font-family="DM Mono,monospace">No data</text>`; return; }
   const W = 220, H = 100, pad = 6;
   const maxC = Math.max(...hist.map(h => h.count), 1);
   const bw = (W - 2 * pad) / hist.length;
@@ -306,6 +310,8 @@ async function loadMonteCarlo() {
         rf("Expected Ret", pctSigned(rm.expected_return), "var(--cyan)") +
         rf("Median Price", rm.p50_price != null ? "$" + Number(rm.p50_price).toFixed(0) : "—", "var(--blue)");
     }
+    const meta = document.getElementById("mc-meta");
+    if (meta) meta.innerHTML = `<span style="color:var(--txt-m)">Model: <span style="color:var(--cyan)">${(d.model || "gbm").toUpperCase()}</span></span><span style="color:var(--txt-m)">Horizon: <span style="color:var(--txt)">${d.horizon}d</span></span><span style="color:var(--txt-m)">Paths: <span style="color:var(--txt)">2,000</span></span><span style="color:var(--txt-m)">Start: <span style="color:var(--txt)">$${Number(d.start_price).toFixed(0)}</span></span>`;
   } catch (e) {
     if (kp) kp.innerHTML = `<div class="kpi c" style="grid-column:1/-1;text-align:center;color:var(--pink)">Simulation failed: ${e.message}</div>`;
   }
@@ -313,14 +319,14 @@ async function loadMonteCarlo() {
 
 // ── Strategy Library (module 5) ──────────────────────────────────────
 function renderPerfBars(svg, strats) {
-  if (!strats.length) { svg.innerHTML = `<text x="110" y="65" text-anchor="middle" fill="#9aa6c2" font-size="9" font-family="DM Mono,monospace">No data</text>`; return; }
+  if (!strats.length) { svg.innerHTML = `<text x="110" y="65" text-anchor="middle" fill="#b4bdd4" font-size="9" font-family="DM Mono,monospace">No data</text>`; return; }
   const W = 220, H = 130, maxA = Math.max(...strats.map(s => Math.abs(s.total_return || 0)), 0.01), n = strats.length, bw = (W - 20) / n * 0.6, zero = H - 30;
-  let out = `<line x1="0" y1="${zero}" x2="${W}" y2="${zero}" stroke="#9aa6c2" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+  let out = `<line x1="0" y1="${zero}" x2="${W}" y2="${zero}" stroke="#b4bdd4" stroke-width="0.5" stroke-dasharray="2,2"/>`;
   strats.forEach((s, i) => {
     const x = 10 + (W - 20) * (i + 0.5) / n, r = s.total_return || 0, h = Math.abs(r) / maxA * (H - 52), y = r >= 0 ? zero - h : zero, col = r >= 0 ? "var(--lime)" : "var(--pink)";
     out += `<rect x="${(x - bw / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${col}" opacity="0.35" stroke="${col}" stroke-width="1"/>`;
     out += `<text x="${x.toFixed(1)}" y="${(r >= 0 ? y - 3 : y + h + 9).toFixed(1)}" text-anchor="middle" fill="${col}" font-size="7" font-family="DM Mono,monospace">${(r * 100).toFixed(0)}%</text>`;
-    out += `<text x="${x.toFixed(1)}" y="${H - 3}" text-anchor="middle" fill="#9aa6c2" font-size="6" font-family="DM Mono,monospace">${(s.name || "").slice(0, 6)}</text>`;
+    out += `<text x="${x.toFixed(1)}" y="${H - 3}" text-anchor="middle" fill="#b4bdd4" font-size="6" font-family="DM Mono,monospace">${(s.name || "").slice(0, 6)}</text>`;
   });
   svg.innerHTML = out;
 }
@@ -356,17 +362,17 @@ async function loadStrategies() {
 
 // ── Portfolio Optimizer (module 6) ───────────────────────────────────
 function renderFrontier(svg, frontier, maxSharpe, minVol) {
-  if (!frontier || !frontier.length) { svg.innerHTML = `<text x="115" y="65" text-anchor="middle" fill="#9aa6c2" font-size="9" font-family="DM Mono,monospace">No data</text>`; return; }
+  if (!frontier || !frontier.length) { svg.innerHTML = `<text x="115" y="65" text-anchor="middle" fill="#b4bdd4" font-size="9" font-family="DM Mono,monospace">No data</text>`; return; }
   const W = 230, H = 130, padL = 24, padB = 20;
   const vols = frontier.map(p => p[0]).concat([maxSharpe[0], minVol[0]]);
   const rets = frontier.map(p => p[1]).concat([maxSharpe[1], minVol[1]]);
   const vlo = Math.min(...vols), vhi = Math.max(...vols), rlo = Math.min(...rets), rhi = Math.max(...rets);
   const X = v => padL + (v - vlo) / ((vhi - vlo) || 1) * (W - padL - 8);
   const Y = r => H - padB - (r - rlo) / ((rhi - rlo) || 1) * (H - padB - 12);
-  let out = `<line x1="${padL}" y1="10" x2="${padL}" y2="${H - padB}" stroke="#9aa6c2" stroke-width="1"/><line x1="${padL}" y1="${H - padB}" x2="${W - 4}" y2="${H - padB}" stroke="#9aa6c2" stroke-width="1"/>`;
-  out += `<text x="6" y="14" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">Ret</text><text x="${W - 26}" y="${H - 8}" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">Risk</text>`;
+  let out = `<line x1="${padL}" y1="10" x2="${padL}" y2="${H - padB}" stroke="#b4bdd4" stroke-width="1"/><line x1="${padL}" y1="${H - padB}" x2="${W - 4}" y2="${H - padB}" stroke="#b4bdd4" stroke-width="1"/>`;
+  out += `<text x="6" y="14" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Ret</text><text x="${W - 26}" y="${H - 8}" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Risk</text>`;
   frontier.forEach(p => { out += `<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="1.6" fill="rgba(255,255,255,0.14)"/>`; });
-  out += `<circle cx="${X(minVol[0]).toFixed(1)}" cy="${Y(minVol[1]).toFixed(1)}" r="3.5" fill="#9aa6c2"/><text x="${(X(minVol[0]) + 5).toFixed(1)}" y="${(Y(minVol[1]) + 3).toFixed(1)}" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">Min Vol</text>`;
+  out += `<circle cx="${X(minVol[0]).toFixed(1)}" cy="${Y(minVol[1]).toFixed(1)}" r="3.5" fill="#b4bdd4"/><text x="${(X(minVol[0]) + 5).toFixed(1)}" y="${(Y(minVol[1]) + 3).toFixed(1)}" fill="#b4bdd4" font-size="7" font-family="DM Mono,monospace">Min Vol</text>`;
   out += `<circle cx="${X(maxSharpe[0]).toFixed(1)}" cy="${Y(maxSharpe[1]).toFixed(1)}" r="5" fill="var(--lime)"/><text x="${(X(maxSharpe[0]) + 6).toFixed(1)}" y="${(Y(maxSharpe[1]) + 3).toFixed(1)}" fill="var(--lime)" font-size="7" font-family="DM Mono,monospace">★ Max Sharpe</text>`;
   svg.innerHTML = out;
 }
@@ -412,13 +418,38 @@ async function loadPortfolio() {
   }
 }
 
-// ── Module loader wiring ─────────────────────────────────────────────
+// ── Module loader wiring + shared ticker flow ────────────────────────
 const loaders = { 0: loadScreener, 1: loadDeepDive, 2: loadValuation, 3: loadBacktester, 4: loadMonteCarlo, 5: loadStrategies, 6: loadPortfolio };
+const TICKER_MODULES = new Set([1, 2, 3, 4]);  // deep dive, valuation, backtester, monte carlo
 const loaded = {};
-function onModule(idx) { if (loaders[idx] && !loaded[idx]) { loaded[idx] = true; loaders[idx](); } }
+function onModule(idx) {
+  if (!loaders[idx]) return;
+  const key = TICKER_MODULES.has(idx) ? DD_TICKER : "once";
+  if (loaded[idx] === key) return;
+  loaded[idx] = key;
+  loaders[idx]();
+}
+function selectTicker(t) {
+  t = (t || "").toUpperCase().trim();
+  if (!t) return;
+  DD_TICKER = VAL_TICKER = MC_TICKER = t;
+  BT.ticker = t;
+  TICKER_MODULES.forEach(i => delete loaded[i]);   // force reload for the new ticker
+  window.switchModule(1, null);                     // jump to Deep Dive
+}
+window.selectTicker = selectTicker;
 
 document.addEventListener("DOMContentLoaded", () => {
   const orig = window.switchModule;
-  window.switchModule = function (idx, el) { if (orig) orig(idx, el); onModule(idx); };
-  onModule(0);  // Screener is the active module on load
+  window.switchModule = function (idx, el) {
+    if (orig) orig(idx, el);
+    const sub = document.getElementById("mod-sub");
+    if (sub && TICKER_MODULES.has(idx)) sub.textContent = "/ " + DD_TICKER;
+    onModule(idx);
+  };
+  const search = document.getElementById("ticker-search");
+  if (search) search.addEventListener("keydown", e => {
+    if (e.key === "Enter") { selectTicker(search.value); search.value = ""; search.blur(); }
+  });
+  onModule(0);  // Screener active on load
 });
