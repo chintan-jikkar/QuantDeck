@@ -17,6 +17,17 @@ load_dotenv()
 from api.serialize import to_jsonable
 
 app = FastAPI(title="QuantDeck API")
+
+
+@app.middleware("http")
+async def _no_cache(request, call_next):
+    """Dev convenience: never let the browser cache the frontend, so edits show
+    up on a normal refresh instead of a hard-reload."""
+    resp = await call_next(request)
+    resp.headers["Cache-Control"] = "no-store, must-revalidate"
+    return resp
+
+
 _FRONTEND = Path(__file__).resolve().parent.parent / "frontend"
 
 
@@ -433,6 +444,31 @@ def prices(ticker: str, interval: str = "1d"):
         "v": (float(r["Volume"]) if have_vol and r["Volume"] == r["Volume"] else None),
     } for idx, r in df.iterrows()]
     return JSONResponse(to_jsonable({"ticker": ticker, "interval": interval, "candles": candles}))
+
+
+@app.get("/api/search")
+def search(q: str):
+    """Resolve a company name or ticker to symbols via Yahoo Finance search."""
+    import requests
+    q = (q or "").strip()
+    if not q:
+        return JSONResponse({"q": q, "results": []})
+    try:
+        r = requests.get(
+            "https://query2.finance.yahoo.com/v1/finance/search",
+            params={"q": q, "quotesCount": 7, "newsCount": 0},
+            headers={"User-Agent": "Mozilla/5.0 (QuantDeck)"}, timeout=8,
+        )
+        r.raise_for_status()
+        results = [{
+            "symbol": x.get("symbol"),
+            "name": x.get("shortname") or x.get("longname") or "",
+            "exch": x.get("exchDisp") or "",
+            "type": x.get("quoteType") or "",
+        } for x in r.json().get("quotes", []) if x.get("symbol")]
+        return JSONResponse({"q": q, "results": results})
+    except Exception as e:
+        return JSONResponse({"q": q, "results": [], "error": str(e)})
 
 
 # Static frontend, mounted last so /api/* routes take precedence.

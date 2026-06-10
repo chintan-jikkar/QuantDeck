@@ -116,6 +116,9 @@ tbody td:first-child{text-align:left;color:var(--txt);}
 .chip:hover{border-color:var(--border-b);color:var(--txt-m);}
 .chip.active{background:rgba(79,158,255,.12);color:var(--blue);border-color:rgba(79,158,255,.35);box-shadow:0 0 10px rgba(79,158,255,.1);}
 
+.ind-btn{background:var(--bg-card);border:1px solid var(--border);border-radius:6px;color:var(--txt-m);font-family:'DM Mono',monospace;font-size:10px;padding:3px 7px;cursor:pointer;transition:all .15s;}
+.ind-btn:hover{color:var(--txt);border-color:var(--border-b);}
+.ind-btn.on{background:rgba(79,158,255,.15);color:var(--blue);border-color:rgba(79,158,255,.4);}
 /* scrollbar */
 ::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:transparent;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
 
@@ -214,7 +217,7 @@ svg.mc{width:100%;height:140px;display:block;}
     <div class="search"><i class="ti ti-search" style="font-size:12px"></i><input id="ticker-search" placeholder="Search ticker…" autocomplete="off" style="background:none;border:0;outline:0;color:var(--txt);font-family:'DM Mono',monospace;font-size:11px;width:100%"/></div>
     <span class="pill pill-blue">S&amp;P 500</span>
     <span class="pill-live">Live</span>
-    <i class="ti ti-refresh" style="font-size:16px;color:var(--txt-d);cursor:pointer"></i>
+    <i class="ti ti-refresh" id="topbar-refresh" style="font-size:16px;color:var(--txt-m);cursor:pointer"></i>
   </div>
 
   <div class="content">
@@ -288,7 +291,14 @@ svg.mc{width:100%;height:140px;display:block;}
           <span id="dd-pricetitle"><i class="ti ti-chart-candle"></i> Price</span>
           <span style="display:flex;gap:6px">
             <select id="dd-interval" style="background:var(--bg-card);border:1px solid var(--border-b);border-radius:6px;color:var(--txt);font-family:'DM Mono',monospace;font-size:10px;padding:3px 6px;cursor:pointer"><option value="1m">1m</option><option value="5m">5m</option><option value="15m">15m</option><option value="1h">1h</option><option value="1d" selected>1D</option><option value="1wk">1W</option><option value="1mo">1M</option></select>
-            <select id="dd-indicator" style="background:var(--bg-card);border:1px solid var(--border-b);border-radius:6px;color:var(--txt);font-family:'DM Mono',monospace;font-size:10px;padding:3px 6px;cursor:pointer"><option value="none">Indicator</option><option value="sma20">SMA 20</option><option value="sma50">SMA 50</option><option value="sma200">SMA 200</option><option value="ema20">EMA 20</option><option value="bb">Bollinger</option><option value="trend">Trendline</option></select>
+            <span id="dd-indicators" style="display:flex;gap:4px;flex-wrap:wrap">
+              <button class="ind-btn" data-ind="sma20">SMA20</button>
+              <button class="ind-btn" data-ind="sma50">SMA50</button>
+              <button class="ind-btn" data-ind="sma200">SMA200</button>
+              <button class="ind-btn" data-ind="ema20">EMA20</button>
+              <button class="ind-btn" data-ind="bb">BB</button>
+              <button class="ind-btn" data-ind="trend">Trend</button>
+            </span>
           </span>
         </div>
         <div id="dd-candles" style="width:100%;height:360px"></div>
@@ -507,7 +517,7 @@ svg.mc{width:100%;height:140px;display:block;}
       </div>
       <div class="two-col">
         <div class="card tb">
-          <div class="ctitle"><i class="ti ti-chart-dots"></i> GBM path simulation — NVDA · 252-day horizon</div>
+          <div class="ctitle" id="mc-conetitle"><i class="ti ti-chart-dots"></i> GBM path simulation — NVDA · 252-day horizon</div>
           <svg id="mc-conesvg" viewBox="0 0 420 140" style="width:100%;height:280px;display:block">
             <!-- cone -->
             <polygon points="10,70 420,20 420,115" fill="rgba(79,158,255,0.04)"/>

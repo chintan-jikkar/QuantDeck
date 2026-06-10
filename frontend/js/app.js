@@ -28,7 +28,11 @@ async function loadScreener() {
     if (!res.ok) throw new Error(`API ${res.status}`);
     const data = await res.json();
     const rows = (data.rows || []).slice().sort((a, b) => (b.composite_score || 0) - (a.composite_score || 0));
-    if (!rows.length) { if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--amber);padding:22px">No data returned</td></tr>`; return; }
+    if (!rows.length) {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--amber);padding:22px">No data — the free data tier may be rate-limited. Tap the ↻ refresh (top-right) in a few seconds.</td></tr>`;
+      if (kpis) kpis.innerHTML = `<div class="kpi b" style="grid-column:1/-1;text-align:center;color:var(--txt-m);padding:16px">No results yet</div>`;
+      return;
+    }
     if (kpis) {
       const buys = rows.filter(r => (r.composite_score || 0) >= 70).length;
       const pes = rows.map(r => r.peRatio).filter(x => x != null && !isNaN(x));
@@ -60,7 +64,8 @@ async function loadScreener() {
 
 // ── Deep Dive (module 1) ─────────────────────────────────────────────
 let DD_TICKER = "AAPL";
-let ddInterval = "1d", ddIndicator = "none";
+let ddInterval = "1d";
+let ddIndicators = new Set();
 function renderRevChart(svg, series) {
   if (!series || !series.length) { svg.innerHTML = `<text x="200" y="60" text-anchor="middle" fill="#b4bdd4" font-size="10" font-family="DM Mono,monospace">No revenue data</text>`; return; }
   const W = 400, H = 120, pad = 22;
@@ -86,26 +91,32 @@ function _ema(a, n) { const o = a.map(() => null); const k = 2 / (n + 1); let e 
 function _bb(a, n, k) { const mid = _sma(a, n), up = a.map(() => null), lo = a.map(() => null); for (let i = n - 1; i < a.length; i++) { let s = 0; for (let j = i - n + 1; j <= i; j++) s += (a[j] - mid[i]) ** 2; const sd = Math.sqrt(s / n); up[i] = mid[i] + k * sd; lo[i] = mid[i] - k * sd; } return { mid, up, lo }; }
 function _trend(a) { const n = a.length, mx = (n - 1) / 2, my = a.reduce((p, c) => p + c, 0) / n; let num = 0, den = 0; for (let i = 0; i < n; i++) { num += (i - mx) * (a[i] - my); den += (i - mx) ** 2; } const b = den ? num / den : 0, aa = my - b * mx; return a.map((_, i) => aa + b * i); }
 
-function renderCandles(divId, candles, ticker, indicator) {
+function _indTraces(key, x, closes) {
+  const ln = (y, name, color, dash) => ({ type: "scatter", mode: "lines", x, y, name, line: { color, width: 1.4, dash: dash || "solid" } });
+  if (key === "sma20") return [ln(_sma(closes, 20), "SMA 20", "#4f9eff")];
+  if (key === "sma50") return [ln(_sma(closes, 50), "SMA 50", "#ffb340")];
+  if (key === "sma200") return [ln(_sma(closes, 200), "SMA 200", "#a78bfa")];
+  if (key === "ema20") return [ln(_ema(closes, 20), "EMA 20", "#00e5cc")];
+  if (key === "bb") { const b = _bb(closes, 20, 2); return [ln(b.up, "BB Upper", "rgba(124,92,255,0.7)", "dot"), ln(b.mid, "BB Mid", "rgba(180,189,212,0.5)"), ln(b.lo, "BB Lower", "rgba(124,92,255,0.7)", "dot")]; }
+  if (key === "trend") return [ln(_trend(closes), "Trendline", "#b8f264", "dash")];
+  return [];
+}
+function renderCandles(divId, candles, ticker, indicators) {
   const el = document.getElementById(divId);
   if (!el) return;
   if (!window.Plotly) { el.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:48px">chart engine not loaded</div>`; return; }
   if (!candles || !candles.length) { el.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:48px">No price data</div>`; return; }
   const x = candles.map(c => c.t), closes = candles.map(c => c.c);
+  // Chinese convention: red = up, green = down.
   const traces = [{
     type: "candlestick", x,
     open: candles.map(c => c.o), high: candles.map(c => c.h), low: candles.map(c => c.l), close: closes,
-    increasing: { line: { color: "#3fb950" }, fillcolor: "rgba(63,185,80,0.55)" },
-    decreasing: { line: { color: "#ff5fa0" }, fillcolor: "rgba(255,95,160,0.55)" },
+    increasing: { line: { color: "#ef4d56" }, fillcolor: "rgba(239,77,86,0.6)" },
+    decreasing: { line: { color: "#3fb950" }, fillcolor: "rgba(63,185,80,0.6)" },
     name: ticker,
   }];
-  const ln = (y, name, color, dash) => ({ type: "scatter", mode: "lines", x, y, name, line: { color, width: 1.4, dash: dash || "solid" } });
-  if (indicator === "sma20") traces.push(ln(_sma(closes, 20), "SMA 20", "#4f9eff"));
-  else if (indicator === "sma50") traces.push(ln(_sma(closes, 50), "SMA 50", "#ffb340"));
-  else if (indicator === "sma200") traces.push(ln(_sma(closes, 200), "SMA 200", "#a78bfa"));
-  else if (indicator === "ema20") traces.push(ln(_ema(closes, 20), "EMA 20", "#00e5cc"));
-  else if (indicator === "bb") { const b = _bb(closes, 20, 2); traces.push(ln(b.up, "BB Upper", "rgba(124,92,255,0.7)", "dot"), ln(b.mid, "BB Mid", "rgba(180,189,212,0.5)"), ln(b.lo, "BB Lower", "rgba(124,92,255,0.7)", "dot")); }
-  else if (indicator === "trend") traces.push(ln(_trend(closes), "Trendline", "#b8f264", "dash"));
+  const inds = Array.from(indicators || []);
+  inds.forEach(k => _indTraces(k, x, closes).forEach(t => traces.push(t)));
   const layout = {
     paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
     font: { family: "DM Mono, monospace", color: "#b4bdd4", size: 11 },
@@ -113,7 +124,7 @@ function renderCandles(divId, candles, ticker, indicator) {
     xaxis: { gridcolor: "rgba(255,255,255,0.05)", rangeslider: { visible: false } },
     yaxis: { gridcolor: "rgba(255,255,255,0.05)", side: "right" },
     dragmode: "zoom", hovermode: "x unified",
-    showlegend: indicator !== "none", legend: { orientation: "h", y: 1.04, x: 0, font: { size: 10 } },
+    showlegend: inds.length > 0, legend: { orientation: "h", y: 1.04, x: 0, font: { size: 10 } },
   };
   window.Plotly.react(el, traces, layout, { responsive: true, displayModeBar: false, scrollZoom: true });
 }
@@ -123,7 +134,7 @@ async function loadCandles() {
   if (el) el.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:48px">Loading price…</div>`;
   try {
     const p = await (await fetch(`/api/prices/${DD_TICKER}?interval=${ddInterval}`)).json();
-    if (p && !p.error && p.candles && p.candles.length) renderCandles("dd-candles", p.candles, DD_TICKER, ddIndicator);
+    if (p && !p.error && p.candles && p.candles.length) renderCandles("dd-candles", p.candles, DD_TICKER, ddIndicators);
     else if (el) el.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:48px">Price unavailable: ${(p && p.error) || "no data"}</div>`;
   } catch (e) { if (el) el.innerHTML = `<div style="text-align:center;color:var(--pink);padding:48px">${e.message}</div>`; }
 }
@@ -344,6 +355,8 @@ async function loadMonteCarlo() {
     const res = await fetch(`/api/simulation/${MC_TICKER}`);
     const d = await res.json();
     if (!res.ok || (d.error && !d.bands)) throw new Error(d.error || `API ${res.status}`);
+    const ct = document.getElementById("mc-conetitle");
+    if (ct) ct.innerHTML = `<i class="ti ti-chart-dots"></i> ${(d.model || "GBM").toUpperCase()} path simulation — ${MC_TICKER} · ${d.horizon}-day horizon`;
     const rp = d.returns_pct || {}, rm = d.risk_metrics || {};
     if (kp) kp.innerHTML = `
       <div class="kpi c"><div class="kpi-lbl">Median Return</div><div class="kpi-val c">${pctSigned(rp.p50)}</div><div class="kpi-sub">2,000 sims · ${d.horizon}d</div></div>
@@ -487,21 +500,39 @@ function selectTicker(t) {
 }
 window.selectTicker = selectTicker;
 
+let _curModule = 0;
+async function resolveAndSelect(q) {
+  q = (q || "").trim();
+  if (!q) return;
+  try {
+    const r = await (await fetch(`/api/search?q=${encodeURIComponent(q)}`)).json();
+    const sym = (r.results && r.results[0] && r.results[0].symbol) || q.toUpperCase();
+    selectTicker(sym);
+  } catch (e) { selectTicker(q.toUpperCase()); }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const orig = window.switchModule;
   window.switchModule = function (idx, el) {
     if (orig) orig(idx, el);
+    _curModule = idx;
     const sub = document.getElementById("mod-sub");
     if (sub && TICKER_MODULES.has(idx)) sub.textContent = "/ " + DD_TICKER;
     onModule(idx);
   };
   const search = document.getElementById("ticker-search");
   if (search) search.addEventListener("keydown", e => {
-    if (e.key === "Enter") { selectTicker(search.value); search.value = ""; search.blur(); }
+    if (e.key === "Enter") { resolveAndSelect(search.value); search.value = ""; search.blur(); }
   });
   const iv = document.getElementById("dd-interval");
   if (iv) iv.addEventListener("change", () => { ddInterval = iv.value; loadCandles(); });
-  const ind = document.getElementById("dd-indicator");
-  if (ind) ind.addEventListener("change", () => { ddIndicator = ind.value; loadCandles(); });
+  document.querySelectorAll(".ind-btn").forEach(b => b.addEventListener("click", () => {
+    const k = b.dataset.ind;
+    if (ddIndicators.has(k)) { ddIndicators.delete(k); b.classList.remove("on"); }
+    else { ddIndicators.add(k); b.classList.add("on"); }
+    loadCandles();
+  }));
+  const rf = document.getElementById("topbar-refresh");
+  if (rf) rf.addEventListener("click", () => { delete loaded[_curModule]; if (loaders[_curModule]) loaders[_curModule](); });
   onModule(0);  // Screener active on load
 });
