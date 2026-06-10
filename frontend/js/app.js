@@ -80,13 +80,45 @@ function renderRevChart(svg, series) {
   out += `<line x1="96" y1="11" x2="112" y2="11" stroke="var(--lime)" stroke-width="1.5" stroke-dasharray="3,2"/><text x="116" y="14" fill="var(--txt-m)" font-size="9" font-family="DM Mono,monospace">Net mgn</text>`;
   svg.innerHTML = out;
 }
+function renderCandles(divId, candles, ticker) {
+  const el = document.getElementById(divId);
+  if (!el) return;
+  if (!window.Plotly) { el.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:48px">chart engine not loaded</div>`; return; }
+  if (!candles || !candles.length) { el.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:48px">No price data</div>`; return; }
+  const trace = {
+    type: "candlestick", x: candles.map(c => c.t),
+    open: candles.map(c => c.o), high: candles.map(c => c.h),
+    low: candles.map(c => c.l), close: candles.map(c => c.c),
+    increasing: { line: { color: "#3fb950" }, fillcolor: "rgba(63,185,80,0.55)" },
+    decreasing: { line: { color: "#ff5fa0" }, fillcolor: "rgba(255,95,160,0.55)" },
+    name: ticker,
+  };
+  const layout = {
+    paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+    font: { family: "DM Mono, monospace", color: "#b4bdd4", size: 11 },
+    margin: { l: 8, r: 56, t: 6, b: 28 },
+    xaxis: { gridcolor: "rgba(255,255,255,0.05)", rangeslider: { visible: false } },
+    yaxis: { gridcolor: "rgba(255,255,255,0.05)", side: "right" },
+    dragmode: "pan", showlegend: false, hovermode: "x unified",
+  };
+  window.Plotly.react(el, [trace], layout, { responsive: true, displayModeBar: false });
+}
 async function loadDeepDive() {
   const kp = document.getElementById("dd-kpis");
   const fund = document.getElementById("dd-fundamentals");
   const memo = document.getElementById("dd-memo");
   const svg = document.getElementById("dd-revsvg");
   const title = document.getElementById("dd-revtitle");
-  if (memo) memo.innerHTML = `<span style="color:var(--txt-m)">Loading ${DD_TICKER}… (a deep dive takes a few seconds)</span>`;
+  if (memo) memo.innerHTML = `<span style="color:var(--txt-m)">Loading ${DD_TICKER}…</span>`;
+  // Price candlestick loads independently (works even where fundamentals are blocked).
+  const pt = document.getElementById("dd-pricetitle");
+  if (pt) pt.innerHTML = `<i class="ti ti-chart-candle"></i> ${DD_TICKER} — Price (1Y)`;
+  const candlesEl = document.getElementById("dd-candles");
+  if (candlesEl) candlesEl.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:48px">Loading price…</div>`;
+  fetch(`/api/prices/${DD_TICKER}`).then(r => r.json()).then(p => {
+    if (p && !p.error && p.candles) renderCandles("dd-candles", p.candles, DD_TICKER);
+    else if (candlesEl) candlesEl.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:48px">Price unavailable: ${(p && p.error) || "error"}</div>`;
+  }).catch(e => { if (candlesEl) candlesEl.innerHTML = `<div style="text-align:center;color:var(--pink);padding:48px">${e.message}</div>`; });
   try {
     const res = await fetch(`/api/deep-dive/${DD_TICKER}`);
     const d = await res.json();

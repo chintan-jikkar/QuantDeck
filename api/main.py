@@ -404,6 +404,28 @@ def portfolio(tickers: str = "NVDA,META,LLY,AVGO,AAPL,MSFT,JPM,UNH"):
     }))
 
 
+@app.get("/api/prices/{ticker}")
+def prices(ticker: str, period: str = "1y"):
+    """OHLCV candles for any tradable symbol (equity/FX/commodity) via yfinance."""
+    from data.prices import fetch_prices
+    ticker = ticker.upper()
+    try:
+        df = fetch_prices(ticker, period=period)
+    except Exception as e:
+        return JSONResponse({"ticker": ticker, "error": str(e)}, status_code=502)
+    if df is None or df.empty:
+        return JSONResponse({"ticker": ticker, "error": "No price data for this symbol"}, status_code=404)
+    df = df.dropna(subset=["Open", "High", "Low", "Close"]).tail(300)
+    have_vol = "Volume" in df.columns
+    candles = [{
+        "t": str(idx)[:10],
+        "o": round(float(r["Open"]), 4), "h": round(float(r["High"]), 4),
+        "l": round(float(r["Low"]), 4), "c": round(float(r["Close"]), 4),
+        "v": (float(r["Volume"]) if have_vol and r["Volume"] == r["Volume"] else None),
+    } for idx, r in df.iterrows()]
+    return JSONResponse(to_jsonable({"ticker": ticker, "candles": candles}))
+
+
 # Static frontend, mounted last so /api/* routes take precedence.
 # html=True serves index.html at "/".
 app.mount("/", StaticFiles(directory=str(_FRONTEND), html=True), name="frontend")
