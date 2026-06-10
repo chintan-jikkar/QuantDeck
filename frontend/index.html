@@ -640,7 +640,7 @@ svg.mc{width:100%;height:140px;display:block;}
 
     <!-- ═══ MODULE 07: PORTFOLIO OPTIMIZER ═══ -->
     <div class="module-panel" id="m6">
-      <div class="kpi-row">
+      <div class="kpi-row" id="po-kpis">
         <div class="kpi c"><div class="kpi-lbl">Expected Return</div><div class="kpi-val c">+22.4%</div><div class="kpi-sub up">optimized portfolio</div></div>
         <div class="kpi l"><div class="kpi-lbl">Portfolio Sharpe</div><div class="kpi-val l">1.94</div><div class="kpi-sub up">vs 1.12 equal-weight</div></div>
         <div class="kpi b"><div class="kpi-lbl">Portfolio Vol.</div><div class="kpi-val b">18.2%</div><div class="kpi-sub dn">ann. std dev</div></div>
@@ -649,7 +649,7 @@ svg.mc{width:100%;height:140px;display:block;}
       <div class="two-col">
         <div class="card tb">
           <div class="ctitle"><i class="ti ti-chart-pie"></i> Optimal weights — max Sharpe portfolio</div>
-          <div class="port-bar-wrap" style="margin-bottom:10px">
+          <div class="port-bar-wrap" id="po-weights" style="margin-bottom:10px">
             <div class="port-bar-row"><span class="pb-sym">NVDA</span><div class="pb-track"><div class="pb-fill" style="width:28%;background:linear-gradient(90deg,var(--blue),var(--cyan))"></div></div><span class="pb-pct">28.1%</span><span class="pb-ret up2">+61.2%</span></div>
             <div class="port-bar-row"><span class="pb-sym">META</span><div class="pb-track"><div class="pb-fill" style="width:18%;background:linear-gradient(90deg,var(--cyan),var(--lime))"></div></div><span class="pb-pct">18.4%</span><span class="pb-ret up2">+22.1%</span></div>
             <div class="port-bar-row"><span class="pb-sym">LLY</span><div class="pb-track"><div class="pb-fill" style="width:16%;background:linear-gradient(90deg,var(--lime),var(--cyan))"></div></div><span class="pb-pct">15.7%</span><span class="pb-ret up2">+38.4%</span></div>
@@ -666,7 +666,7 @@ svg.mc{width:100%;height:140px;display:block;}
         </div>
         <div class="card tc">
           <div class="ctitle"><i class="ti ti-chart-dots-3"></i> Efficient frontier</div>
-          <svg viewBox="0 0 230 130" style="width:100%;height:130px;display:block">
+          <svg id="po-frontier" viewBox="0 0 230 130" style="width:100%;height:130px;display:block">
             <defs><linearGradient id="efg" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#4f9eff" stop-opacity=".4"/><stop offset="100%" stop-color="#b8f264" stop-opacity=".6"/></linearGradient></defs>
             <!-- axes -->
             <line x1="20" y1="10" x2="20" y2="110" stroke="#9aa6c2" stroke-width="1"/>
@@ -688,7 +688,7 @@ svg.mc{width:100%;height:140px;display:block;}
           </svg>
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
             <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-git-merge"></i> Correlation heatmap (top 4)</div>
-            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px;font-size:8px;text-align:center">
+            <div id="po-corr" style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px;font-size:8px;text-align:center">
               <div style="color:var(--txt-d)"></div><div style="color:var(--txt-d)">NVDA</div><div style="color:var(--txt-d)">META</div><div style="color:var(--txt-d)">LLY</div><div style="color:var(--txt-d)">AVGO</div>
               <div style="color:var(--txt-d)">NVDA</div><div style="height:18px;background:rgba(0,229,204,.6);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--bg-deep)">1.0</div><div style="height:18px;background:rgba(79,158,255,.4);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-m)">.62</div><div style="height:18px;background:rgba(255,179,64,.2);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-d)">.18</div><div style="height:18px;background:rgba(79,158,255,.5);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-m)">.71</div>
               <div style="color:var(--txt-d)">META</div><div style="height:18px;background:rgba(79,158,255,.4);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-m)">.62</div><div style="height:18px;background:rgba(0,229,204,.6);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--bg-deep)">1.0</div><div style="height:18px;background:rgba(255,179,64,.15);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-d)">.12</div><div style="height:18px;background:rgba(79,158,255,.35);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:var(--txt-d)">.55</div>

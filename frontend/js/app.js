@@ -354,8 +354,66 @@ async function loadStrategies() {
   }
 }
 
+// ── Portfolio Optimizer (module 6) ───────────────────────────────────
+function renderFrontier(svg, frontier, maxSharpe, minVol) {
+  if (!frontier || !frontier.length) { svg.innerHTML = `<text x="115" y="65" text-anchor="middle" fill="#9aa6c2" font-size="9" font-family="DM Mono,monospace">No data</text>`; return; }
+  const W = 230, H = 130, padL = 24, padB = 20;
+  const vols = frontier.map(p => p[0]).concat([maxSharpe[0], minVol[0]]);
+  const rets = frontier.map(p => p[1]).concat([maxSharpe[1], minVol[1]]);
+  const vlo = Math.min(...vols), vhi = Math.max(...vols), rlo = Math.min(...rets), rhi = Math.max(...rets);
+  const X = v => padL + (v - vlo) / ((vhi - vlo) || 1) * (W - padL - 8);
+  const Y = r => H - padB - (r - rlo) / ((rhi - rlo) || 1) * (H - padB - 12);
+  let out = `<line x1="${padL}" y1="10" x2="${padL}" y2="${H - padB}" stroke="#9aa6c2" stroke-width="1"/><line x1="${padL}" y1="${H - padB}" x2="${W - 4}" y2="${H - padB}" stroke="#9aa6c2" stroke-width="1"/>`;
+  out += `<text x="6" y="14" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">Ret</text><text x="${W - 26}" y="${H - 8}" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">Risk</text>`;
+  frontier.forEach(p => { out += `<circle cx="${X(p[0]).toFixed(1)}" cy="${Y(p[1]).toFixed(1)}" r="1.6" fill="rgba(255,255,255,0.14)"/>`; });
+  out += `<circle cx="${X(minVol[0]).toFixed(1)}" cy="${Y(minVol[1]).toFixed(1)}" r="3.5" fill="#9aa6c2"/><text x="${(X(minVol[0]) + 5).toFixed(1)}" y="${(Y(minVol[1]) + 3).toFixed(1)}" fill="#9aa6c2" font-size="7" font-family="DM Mono,monospace">Min Vol</text>`;
+  out += `<circle cx="${X(maxSharpe[0]).toFixed(1)}" cy="${Y(maxSharpe[1]).toFixed(1)}" r="5" fill="var(--lime)"/><text x="${(X(maxSharpe[0]) + 6).toFixed(1)}" y="${(Y(maxSharpe[1]) + 3).toFixed(1)}" fill="var(--lime)" font-size="7" font-family="DM Mono,monospace">★ Max Sharpe</text>`;
+  svg.innerHTML = out;
+}
+function renderCorr(el, corr) {
+  const syms = corr.symbols || [], m = corr.matrix || [];
+  if (!syms.length) { el.innerHTML = `<div style="grid-column:1/-1;color:#fff;font-size:8px">No data</div>`; return; }
+  const k = syms.length;
+  el.style.gridTemplateColumns = `repeat(${k + 1},1fr)`;
+  let out = `<div></div>`;
+  syms.forEach(s => out += `<div style="color:#fff;font-size:8px">${s}</div>`);
+  for (let i = 0; i < k; i++) {
+    out += `<div style="color:#fff;font-size:8px">${syms[i]}</div>`;
+    for (let j = 0; j < k; j++) {
+      const v = m[i][j], a = Math.abs(v);
+      const col = v >= 0 ? `rgba(0,229,204,${(0.14 + a * 0.5).toFixed(2)})` : `rgba(255,95,160,${(0.14 + a * 0.5).toFixed(2)})`;
+      out += `<div style="height:18px;background:${col};border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff">${v.toFixed(2)}</div>`;
+    }
+  }
+  el.innerHTML = out;
+}
+async function loadPortfolio() {
+  const kp = document.getElementById("po-kpis"), wts = document.getElementById("po-weights"),
+        fr = document.getElementById("po-frontier"), cr = document.getElementById("po-corr");
+  if (wts) wts.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:14px">Optimizing portfolio…</div>`;
+  try {
+    const res = await fetch(`/api/portfolio`);
+    const d = await res.json();
+    if (!res.ok || (d.error && !d.weights)) throw new Error(d.error || `API ${res.status}`);
+    if (kp) kp.innerHTML = `
+      <div class="kpi c"><div class="kpi-lbl">Expected Return</div><div class="kpi-val c">${pctSigned(d.expected_return)}</div><div class="kpi-sub">optimized · ann.</div></div>
+      <div class="kpi l"><div class="kpi-lbl">Portfolio Sharpe</div><div class="kpi-val l">${fmt(d.sharpe, 2)}</div><div class="kpi-sub">max-Sharpe frontier</div></div>
+      <div class="kpi b"><div class="kpi-lbl">Portfolio Vol.</div><div class="kpi-val b">${pct(d.volatility, 1)}</div><div class="kpi-sub">ann. std dev</div></div>
+      <div class="kpi a"><div class="kpi-lbl">Positions</div><div class="kpi-val a">${d.positions}</div><div class="kpi-sub">in basket</div></div>`;
+    if (wts) {
+      const cols = ["var(--blue)", "var(--cyan)", "var(--lime)", "var(--amber)", "var(--purple)", "var(--pink)", "var(--blue)", "var(--cyan)"];
+      const maxW = Math.max(...d.weights.map(w => w.weight), 0.01);
+      wts.innerHTML = d.weights.map((w, i) => `<div class="port-bar-row"><span class="pb-sym">${w.symbol}</span><div class="pb-track"><div class="pb-fill" style="width:${(w.weight / maxW * 100).toFixed(0)}%;background:${cols[i % cols.length]}"></div></div><span class="pb-pct">${(w.weight * 100).toFixed(1)}%</span><span class="pb-ret ${w.ret >= 0 ? "up2" : "dn2"}">${pctSigned(w.ret)}</span></div>`).join("");
+    }
+    if (fr) renderFrontier(fr, d.frontier || [], d.max_sharpe || [0, 0], d.min_vol || [0, 0]);
+    if (cr) renderCorr(cr, d.correlation || {});
+  } catch (e) {
+    if (wts) wts.innerHTML = `<div style="text-align:center;color:var(--pink);padding:14px">Optimization failed: ${e.message}</div>`;
+  }
+}
+
 // ── Module loader wiring ─────────────────────────────────────────────
-const loaders = { 0: loadScreener, 1: loadDeepDive, 2: loadValuation, 3: loadBacktester, 4: loadMonteCarlo, 5: loadStrategies };
+const loaders = { 0: loadScreener, 1: loadDeepDive, 2: loadValuation, 3: loadBacktester, 4: loadMonteCarlo, 5: loadStrategies, 6: loadPortfolio };
 const loaded = {};
 function onModule(idx) { if (loaders[idx] && !loaded[idx]) { loaded[idx] = true; loaders[idx](); } }
 

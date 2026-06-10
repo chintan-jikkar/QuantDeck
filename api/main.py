@@ -352,6 +352,58 @@ def strategies(ticker: str = "AAPL"):
     return JSONResponse(to_jsonable({"ticker": ticker, "strategies": items}))
 
 
+@app.get("/api/portfolio")
+def portfolio(tickers: str = "NVDA,META,LLY,AVGO,AAPL,MSFT,JPM,UNH"):
+    """Markowitz mean-variance optimization via random portfolios: max-Sharpe
+    weights, efficient-frontier cloud, and the correlation matrix."""
+    import numpy as np
+    import yfinance as yf
+
+    syms = [t.strip().upper() for t in tickers.split(",") if t.strip()]
+    try:
+        data = yf.download(syms, period="2y", progress=False, auto_adjust=True)["Close"]
+    except Exception as e:
+        return JSONResponse({"error": f"prices: {e}"}, status_code=502)
+    data = data.dropna(axis=1, how="all").dropna()
+    rets = data.pct_change().dropna()
+    syms = list(rets.columns)
+    n = len(syms)
+    if n < 2:
+        return JSONResponse({"error": "not enough price history for these tickers"}, status_code=502)
+
+    mu = rets.mean().values * 252.0
+    cov = rets.cov().values * 252.0
+    rng = np.random.default_rng(42)
+    best = {"sharpe": -1e9, "weights": None, "ret": 0.0, "vol": 0.0}
+    minvol = {"vol": 1e9, "ret": 0.0}
+    cloud = []
+    for _ in range(5000):
+        w = rng.random(n); w /= w.sum()
+        r = float(w @ mu); v = float(np.sqrt(w @ cov @ w)); s = r / v if v > 0 else 0.0
+        cloud.append([round(v, 4), round(r, 4)])
+        if s > best["sharpe"]:
+            best = {"sharpe": s, "ret": r, "vol": v, "weights": w.tolist()}
+        if v < minvol["vol"]:
+            minvol = {"vol": v, "ret": r}
+
+    weights = sorted(
+        [{"symbol": syms[i], "weight": best["weights"][i], "ret": float(mu[i])} for i in range(n)],
+        key=lambda x: -x["weight"])
+    k = min(5, n)
+    corr = rets.corr()
+    correlation = {"symbols": syms[:k],
+                   "matrix": [[round(float(corr.iloc[i, j]), 2) for j in range(k)] for i in range(k)]}
+
+    return JSONResponse(to_jsonable({
+        "tickers": syms,
+        "expected_return": best["ret"], "volatility": best["vol"], "sharpe": best["sharpe"],
+        "positions": n, "weights": weights,
+        "frontier": cloud[::25],
+        "max_sharpe": [best["vol"], best["ret"]], "min_vol": [minvol["vol"], minvol["ret"]],
+        "correlation": correlation,
+    }))
+
+
 # Static frontend, mounted last so /api/* routes take precedence.
 # html=True serves index.html at "/".
 app.mount("/", StaticFiles(directory=str(_FRONTEND), html=True), name="frontend")
