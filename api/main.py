@@ -103,7 +103,7 @@ def deep_dive(ticker: str):
     """
     from data.prices import detect_asset_type
     from data.fundamentals import (fetch_income_statement, fetch_balance_sheet,
-                                    fetch_cash_flow, fetch_key_metrics)
+                                    fetch_cash_flow, fetch_key_metrics, fetch_analyst_info)
     from layers.deep_dive import (compute_margins, compute_earnings_quality,
                                    compute_beneish_mscore)
 
@@ -170,6 +170,10 @@ def deep_dive(ticker: str):
         "beneish_mscore": float(mscore) if (mscore is not None and mscore == mscore) else None,
     }
     out["memo"] = _build_memo(margins, mscore, {})
+    try:
+        out["analyst"] = fetch_analyst_info(ticker)
+    except Exception:
+        out["analyst"] = {}
     return JSONResponse(to_jsonable(out))
 
 
@@ -504,6 +508,41 @@ def search(q: str):
         return JSONResponse({"q": q, "results": results})
     except Exception as e:
         return JSONResponse({"q": q, "results": [], "error": str(e)})
+
+
+@app.get("/api/watchlist")
+def watchlist_get():
+    """Return saved watchlist tickers with their latest price + 1d change."""
+    from utils.watchlist import load_watchlist
+    import yfinance as yf
+    tickers = load_watchlist()
+    items = []
+    for sym in tickers:
+        try:
+            info = yf.Ticker(sym).info
+            price = info.get("currentPrice") or info.get("regularMarketPrice")
+            prev  = info.get("previousClose") or info.get("regularMarketPreviousClose")
+            chg   = round((price / prev - 1) * 100, 2) if (price and prev and prev > 0) else None
+            items.append({"symbol": sym, "price": price, "change_pct": chg})
+        except Exception:
+            items.append({"symbol": sym, "price": None, "change_pct": None})
+    return JSONResponse({"tickers": items})
+
+
+@app.post("/api/watchlist/{ticker}")
+def watchlist_add(ticker: str):
+    """Add a ticker to the watchlist."""
+    from utils.watchlist import add_ticker
+    add_ticker(ticker.upper())
+    return JSONResponse({"ok": True, "ticker": ticker.upper()})
+
+
+@app.delete("/api/watchlist/{ticker}")
+def watchlist_remove(ticker: str):
+    """Remove a ticker from the watchlist."""
+    from utils.watchlist import remove_ticker
+    remove_ticker(ticker.upper())
+    return JSONResponse({"ok": True, "ticker": ticker.upper()})
 
 
 # Static frontend, mounted last so /api/* routes take precedence.

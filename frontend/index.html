@@ -201,12 +201,15 @@ svg.mc{width:100%;height:140px;display:block;}
     <div class="nav-item"><i class="ti ti-settings"></i> Settings <span class="nav-num">soon</span></div>
   </div>
   <div class="sb-bottom">
-    <div class="wl-lbl">Watchlist</div>
-    <div class="wl-row"><span class="wl-sym">NVDA</span><span class="wl-up">+3.21%</span></div>
-    <div class="wl-row"><span class="wl-sym">META</span><span class="wl-up">+1.93%</span></div>
-    <div class="wl-row"><span class="wl-sym">LLY</span><span class="wl-up">+2.11%</span></div>
-    <div class="wl-row"><span class="wl-sym">AAPL</span><span class="wl-up">+0.84%</span></div>
-    <div class="wl-row"><span class="wl-sym">MSFT</span><span class="wl-dn">−0.47%</span></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div class="wl-lbl" style="margin-bottom:0">Watchlist</div>
+      <button id="wl-add-btn" title="Add ticker" style="background:none;border:1px solid rgba(79,158,255,0.3);border-radius:4px;color:var(--blue);font-size:11px;padding:1px 6px;cursor:pointer;line-height:1.4">+</button>
+    </div>
+    <div id="sidebar-watchlist" style="min-height:40px"></div>
+    <div id="wl-add-row" style="display:none;margin-bottom:6px">
+      <input id="wl-add-input" placeholder="Ticker…" autocomplete="off"
+        style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.04);border:1px solid var(--border-b);border-radius:4px;color:var(--txt);font-family:'DM Mono',monospace;font-size:10px;padding:4px 7px"/>
+    </div>
     <div class="av">
       <div class="av-circle">CJ</div>
       <div><div class="av-name">Chintan Jikkar</div><div class="av-role">Research Analyst</div></div>
@@ -260,7 +263,7 @@ svg.mc{width:100%;height:140px;display:block;}
           <div class="fr"><span class="fn">Low Vol</span><div class="ft"><div class="ff" style="width:34%;background:#b4bdd4"></div></div><span class="fv">0.34</span></div>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-              <span style="font-size:10px;color:var(--txt-m)">NVDA — score trend</span><span style="font-size:10px;color:var(--lime)">↑ 91pts · 90d</span>
+              <span id="scr-spark-label" style="font-size:10px;color:var(--txt-m)">Top pick — score trend</span><span id="scr-spark-score" style="font-size:10px;color:var(--lime)">—</span>
             </div>
             <svg class="spark" viewBox="0 0 260 68" preserveAspectRatio="none">
               <defs><linearGradient id="sg0" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00e5cc" stop-opacity=".3"/><stop offset="100%" stop-color="#00e5cc" stop-opacity="0"/></linearGradient></defs>
@@ -338,22 +341,9 @@ svg.mc{width:100%;height:140px;display:block;}
               <tr><td style="color:var(--txt-d);font-size:10px;text-align:left">Div Yield</td><td style="color:var(--txt-m)">0.03%</td></tr>
             </tbody>
           </table>
-          <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <div id="dd-analyst" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
             <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-users"></i> Analyst consensus</div>
-            <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-              <div style="flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden">
-                <div style="display:flex;height:100%">
-                  <div style="width:72%;background:var(--lime)"></div>
-                  <div style="width:18%;background:var(--amber)"></div>
-                  <div style="width:10%;background:var(--pink)"></div>
-                </div>
-              </div>
-            </div>
-            <div style="display:flex;gap:14px;font-size:10px">
-              <span style="color:var(--lime)">■ Buy 72%</span>
-              <span style="color:var(--amber)">■ Hold 18%</span>
-              <span style="color:var(--pink)">■ Sell 10%</span>
-            </div>
+            <div style="color:var(--txt-d);font-size:10px">Loading…</div>
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 # layers/valuation.py — no Streamlit imports
+import math
 import pandas as pd
 import numpy as np
 from data.fundamentals import (
@@ -185,12 +186,16 @@ def _derive_wacc_inputs(
     try:
         kd = abs(float(income.loc[0, "interestExpense"])) / float(balance.loc[0, "totalDebt"])
         kd = min(kd, 0.20)
+        if not math.isfinite(kd) or kd <= 0:
+            raise ValueError("kd not finite or zero")
     except Exception:
         kd = 0.04
 
     try:
         tax_rate = float(income.loc[0, "incomeTaxExpense"]) / float(income.loc[0, "incomeBeforeTax"])
         tax_rate = max(0, min(tax_rate, 0.50))
+        if not math.isfinite(tax_rate):
+            raise ValueError("tax_rate not finite")
     except Exception:
         tax_rate = 0.21
 
@@ -201,6 +206,8 @@ def _derive_wacc_inputs(
         # equity is only a fallback when no market cap is available.
         equity = market_equity if (market_equity is not None and market_equity > 0) else book_equity
         wacc   = compute_wacc(ke, kd, tax_rate, equity, debt)
+        if not math.isfinite(wacc) or wacc <= 0.001:
+            raise ValueError("wacc not finite or non-positive")
     except Exception:
         equity = debt = float("nan")
         wacc = ke

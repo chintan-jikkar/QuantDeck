@@ -136,3 +136,38 @@ def fetch_key_metrics(ticker: str, limit: int = 5) -> pd.DataFrame:
 def fetch_peers(ticker: str) -> list[str]:
     """yfinance has no reliable peer endpoint; comps are unavailable for now."""
     return []
+
+
+def fetch_analyst_info(ticker: str) -> dict:
+    """Analyst price target + recommendation breakdown from yfinance."""
+    info = _cached(ticker.upper(), "info") or {}
+    target = info.get("targetMeanPrice")
+    target_high = info.get("targetHighPrice")
+    target_low = info.get("targetLowPrice")
+    rec_key = (info.get("recommendationKey") or "").lower()
+    n_analysts = info.get("numberOfAnalystOpinions")
+    cur = info.get("currentPrice") or info.get("regularMarketPrice")
+    upside = round((target / cur - 1) * 100, 1) if (target and cur and cur > 0) else None
+    buy_pct = hold_pct = sell_pct = None
+    try:
+        import yfinance as yf
+        rs = yf.Ticker(ticker.upper()).recommendations_summary
+        if rs is not None and not rs.empty:
+            row = rs.iloc[0]
+            sb = float(row.get("strongBuy", 0) or 0)
+            b  = float(row.get("buy", 0) or 0)
+            h  = float(row.get("hold", 0) or 0)
+            s  = float(row.get("sell", 0) or 0)
+            ss = float(row.get("strongSell", 0) or 0)
+            total = sb + b + h + s + ss
+            if total > 0:
+                buy_pct  = round((sb + b) / total * 100)
+                hold_pct = round(h / total * 100)
+                sell_pct = round((s + ss) / total * 100)
+    except Exception:
+        pass
+    return {
+        "target": target, "target_high": target_high, "target_low": target_low,
+        "rec_key": rec_key, "n_analysts": n_analysts, "upside": upside,
+        "buy_pct": buy_pct, "hold_pct": hold_pct, "sell_pct": sell_pct,
+    }

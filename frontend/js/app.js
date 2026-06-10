@@ -57,6 +57,14 @@ async function loadScreener() {
         </tr>`;
       }).join("");
     }
+    // Update sparkline label to the live top pick
+    const top = rows[0];
+    if (top) {
+      const lbl = document.getElementById("scr-spark-label");
+      const sc = document.getElementById("scr-spark-score");
+      if (lbl) lbl.textContent = `${top.symbol} — score trend`;
+      if (sc) sc.textContent = `↑ ${fmt(top.composite_score, 0)}pts`;
+    }
   } catch (e) {
     if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--pink);padding:22px">Could not load data: ${e.message}</td></tr>`;
   }
@@ -164,13 +172,16 @@ async function loadDeepDive() {
     const d = await res.json();
     if (!res.ok || d.error) throw new Error(d.error || `API ${res.status}`);
     if (title) title.innerHTML = `<i class="ti ti-chart-area"></i> Revenue &amp; margins — ${d.ticker}`;
+    const an = d.analyst || {};
     if (kp) {
       const k = d.kpis || {};
+      const tgt = an.target != null ? "$" + Number(an.target).toFixed(0) : "—";
+      const upsideStr = an.upside != null ? `<div class="kpi-sub ${an.upside >= 0 ? "up" : "dn"}">${an.upside >= 0 ? "+" : ""}${an.upside}% vs price</div>` : `<div class="kpi-sub">${an.n_analysts ? an.n_analysts + " analysts" : "analyst target"}</div>`;
       kp.innerHTML = `
         <div class="kpi b"><div class="kpi-lbl">Market Cap</div><div class="kpi-val b">${money(k.marketCap)}</div><div class="kpi-sub">${d.ticker}</div></div>
         <div class="kpi c"><div class="kpi-lbl">Revenue (FY)</div><div class="kpi-val c">${money(k.revenue)}</div><div class="kpi-sub">latest fiscal year</div></div>
         <div class="kpi l"><div class="kpi-lbl">Net Margin</div><div class="kpi-val l">${pct(k.net_margin)}</div><div class="kpi-sub">most recent</div></div>
-        <div class="kpi a"><div class="kpi-lbl">P/E</div><div class="kpi-val a">${fmt(k.peRatio)}×</div><div class="kpi-sub">trailing</div></div>`;
+        <div class="kpi a"><div class="kpi-lbl">Analyst Target</div><div class="kpi-val a">${tgt}</div>${upsideStr}</div>`;
     }
     if (fund) {
       const f = d.fundamentals || {};
@@ -180,6 +191,37 @@ async function loadDeepDive() {
         ["Debt/Equity", fmt(f.debtToEquity)], ["Current Ratio", fmt(f.currentRatio)], ["Rev Growth", pct(f.revenueGrowth)],
       ];
       fund.innerHTML = rows.map(([l, v]) => `<tr><td style="color:var(--txt-d);font-size:10px;text-align:left">${l}</td><td style="color:var(--txt)">${v}</td></tr>`).join("");
+    }
+    const analystEl = document.getElementById("dd-analyst");
+    if (analystEl) {
+      const recColors = { strong_buy: "var(--lime)", buy: "var(--lime)", hold: "var(--amber)", sell: "var(--pink)", strong_sell: "var(--pink)", underperform: "var(--pink)", outperform: "var(--lime)" };
+      const recLabels = { strong_buy: "Strong Buy", buy: "Buy", hold: "Hold", sell: "Sell", strong_sell: "Strong Sell", underperform: "Underperform", outperform: "Outperform" };
+      const recKey = an.rec_key || "";
+      const recColor = recColors[recKey] || "var(--txt-m)";
+      const recLabel = recLabels[recKey] || (recKey ? recKey.replace(/_/g," ") : "—");
+      let barHtml = "";
+      if (an.buy_pct != null && an.hold_pct != null && an.sell_pct != null) {
+        barHtml = `
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">
+            <div style="flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden">
+              <div style="display:flex;height:100%">
+                <div style="width:${an.buy_pct}%;background:var(--lime)"></div>
+                <div style="width:${an.hold_pct}%;background:var(--amber)"></div>
+                <div style="width:${an.sell_pct}%;background:var(--pink)"></div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;font-size:10px">
+            <span style="color:var(--lime)">■ Buy ${an.buy_pct}%</span>
+            <span style="color:var(--amber)">■ Hold ${an.hold_pct}%</span>
+            <span style="color:var(--pink)">■ Sell ${an.sell_pct}%</span>
+          </div>`;
+      }
+      const tgtLine = an.target != null ? `<div style="font-size:10px;color:var(--txt-m);margin-bottom:6px">Target: <span style="color:var(--txt)">$${Number(an.target).toFixed(0)}</span>${an.target_high ? ` · High: $${Number(an.target_high).toFixed(0)}` : ""}${an.n_analysts ? ` · ${an.n_analysts} analysts` : ""}</div>` : "";
+      analystEl.innerHTML = `
+        <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-users"></i> Analyst consensus</div>
+        <div style="font-size:13px;font-weight:700;color:${recColor};font-family:'Syne',sans-serif;margin-bottom:6px">${recLabel}</div>
+        ${tgtLine}${barHtml || `<div style="font-size:10px;color:var(--txt-d)">Breakdown unavailable</div>`}`;
     }
     if (memo) {
       const m = d.memo || { bull: [], bear: [] };
@@ -786,6 +828,36 @@ async function resolveAndSelect(q) {
   } catch (e) { _pickSearch(q.toUpperCase()); }
 }
 
+// ── Sidebar watchlist ────────────────────────────────────────────────
+async function loadSidebarWatchlist() {
+  const el = document.getElementById("sidebar-watchlist");
+  if (!el) return;
+  try {
+    const res = await fetch("/api/watchlist");
+    const d = await res.json();
+    const items = d.tickers || [];
+    if (!items.length) {
+      el.innerHTML = `<div style="font-size:10px;color:var(--txt-d);padding:4px 0">Empty — add tickers below</div>`;
+      return;
+    }
+    el.innerHTML = items.map(it => {
+      const chg = it.change_pct;
+      const chgStr = chg != null ? (chg >= 0 ? `+${chg.toFixed(2)}%` : `${chg.toFixed(2)}%`) : "—";
+      const cls = chg == null ? "" : chg >= 0 ? "wl-up" : "wl-dn";
+      const rmBtn = `<span data-wl-rm="${it.symbol}" style="margin-left:auto;cursor:pointer;color:#3d4f70;font-size:10px;padding:0 2px" title="Remove">✕</span>`;
+      return `<div class="wl-row" style="gap:4px"><span class="wl-sym" style="cursor:pointer" onclick="selectTicker('${it.symbol}')">${it.symbol}</span><span class="${cls}">${chgStr}</span>${rmBtn}</div>`;
+    }).join("");
+    el.querySelectorAll("[data-wl-rm]").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        await fetch(`/api/watchlist/${btn.dataset.wlRm}`, { method: "DELETE" });
+        loadSidebarWatchlist();
+      });
+    });
+  } catch (e) {
+    el.innerHTML = `<div style="font-size:10px;color:var(--txt-d)">—</div>`;
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const orig = window.switchModule;
   window.switchModule = function (idx, el) {
@@ -887,6 +959,31 @@ document.addEventListener("DOMContentLoaded", () => {
     delete loaded[6];
     loadPortfolio();
   });
+
+  // Sidebar watchlist
+  loadSidebarWatchlist();
+  const wlAddBtn = document.getElementById("wl-add-btn");
+  const wlAddRow = document.getElementById("wl-add-row");
+  const wlAddInput = document.getElementById("wl-add-input");
+  if (wlAddBtn) {
+    wlAddBtn.addEventListener("click", () => {
+      if (!wlAddRow) return;
+      const visible = wlAddRow.style.display !== "none";
+      wlAddRow.style.display = visible ? "none" : "block";
+      if (!visible && wlAddInput) wlAddInput.focus();
+    });
+  }
+  if (wlAddInput) {
+    wlAddInput.addEventListener("keydown", async e => {
+      if (e.key !== "Enter") return;
+      const sym = wlAddInput.value.trim().toUpperCase();
+      if (!sym) return;
+      await fetch(`/api/watchlist/${sym}`, { method: "POST" });
+      wlAddInput.value = "";
+      if (wlAddRow) wlAddRow.style.display = "none";
+      loadSidebarWatchlist();
+    });
+  }
 
   onModule(0);  // Screener active on load
 });
