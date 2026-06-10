@@ -299,6 +299,44 @@ async function loadValuation() {
         : `<tr><td colspan="4" style="text-align:center;color:var(--txt-d);padding:14px">Comps unavailable (peer API rate limit)</td></tr>`;
     }
     if (svg) renderRangeSvg(svg, dcf.price_bear, dcf.price_base, dcf.price_bull, cur);
+
+    // WACC components breakdown
+    const waccT = document.getElementById("val-wacc-table");
+    if (waccT) {
+      const p = (v, d=1) => v != null ? (v*100).toFixed(d)+"%" : "—";
+      const f2 = v => v != null ? Number(v).toFixed(2) : "—";
+      waccT.querySelector("tbody").innerHTML = `
+        <tr><td style="color:var(--txt-d);font-size:10px">Risk-Free (Rf)</td><td style="color:var(--txt)">${p(w.rf)}</td></tr>
+        <tr><td style="color:var(--txt-d);font-size:10px">Beta (β)</td><td style="color:var(--txt)">${f2(w.beta)}</td></tr>
+        <tr><td style="color:var(--txt-d);font-size:10px">Cost of Equity (Ke)</td><td style="color:var(--blue)">${p(w.ke)}</td></tr>
+        <tr><td style="color:var(--txt-d);font-size:10px">Cost of Debt (Kd)</td><td style="color:var(--txt)">${p(w.kd)}</td></tr>
+        <tr><td style="color:var(--txt-d);font-size:10px">Tax Rate</td><td style="color:var(--txt)">${p(w.tax_rate)}</td></tr>
+        <tr style="border-top:1px solid var(--border)">
+          <td style="color:var(--txt-m);font-size:10px;font-weight:600;padding-top:8px">WACC</td>
+          <td style="color:var(--cyan);font-weight:700;padding-top:8px">${p(w.wacc)}</td>
+        </tr>`;
+    }
+
+    // Multi-method price summary
+    const methT = document.getElementById("val-methods");
+    if (methT && cur) {
+      const row = (label, price, col) => {
+        if (price == null || isNaN(price)) return "";
+        const vs = (price / cur - 1) * 100;
+        const vsCol = vs >= 0 ? "var(--lime)" : "var(--pink)";
+        return `<tr><td style="color:var(--txt-d);font-size:10px">${label}</td><td style="color:${col}">${dollar(price)}</td><td style="color:${vsCol}">${vs >= 0 ? "+" : ""}${vs.toFixed(1)}%</td></tr>`;
+      };
+      const ci = d.comps_implied || {}, ddm = d.ddm || {};
+      const ddmPrice = (ddm.applicable && ddm.price > 0 && ddm.price < cur * 3) ? ddm.price : null;
+      methT.innerHTML =
+        row("DCF Base", dcf.price_base, "var(--cyan)") +
+        row("DCF Bull", dcf.price_bull, "var(--lime)") +
+        row("DCF Bear", dcf.price_bear, "var(--pink)") +
+        row("Comps — P/E", ci.price_from_pe, "var(--blue)") +
+        row("Comps — EV/EBITDA", ci.price_from_ev_ebitda, "var(--blue)") +
+        (ddmPrice ? row("DDM", ddmPrice, "var(--amber)") : "") ||
+        `<tr><td colspan="3" style="color:var(--txt-d);text-align:center;padding:10px">No data</td></tr>`;
+    }
   } catch (e) {
     if (dcfT) dcfT.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--pink);padding:18px">Could not value ${VAL_TICKER}: ${e.message}</td></tr>`;
   }
