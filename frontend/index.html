@@ -225,6 +225,7 @@ svg.mc{width:100%;height:140px;display:block;}
       <span id="mod-sub" style="font-size:10px;color:var(--txt-m);font-family:'DM Mono',monospace;margin-left:8px">/ composite factor scoring</span>
     </div>
     <div class="search"><i class="ti ti-search" style="font-size:12px"></i><input id="ticker-search" placeholder="Search ticker…" autocomplete="off" style="background:none;border:0;outline:0;color:var(--txt);font-family:'DM Mono',monospace;font-size:11px;width:100%"/><div id="search-dropdown"></div></div>
+    <span id="search-wl-btn" title="Add to watchlist" style="cursor:pointer;display:none;background:rgba(79,158,255,0.15);border:1px solid rgba(79,158,255,0.4);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--blue);font-family:'DM Mono',monospace;white-space:nowrap">+ WL</span>
     <span class="pill pill-blue">S&amp;P 500</span>
     <span class="pill-live">Live</span>
     <i class="ti ti-refresh" id="topbar-refresh" style="font-size:16px;color:var(--txt-m);cursor:pointer"></i>
@@ -272,6 +273,15 @@ svg.mc{width:100%;height:140px;display:block;}
               <circle cx="260" cy="4" r="3.5" fill="var(--cyan)"/>
             </svg>
           </div>
+        </div>
+      </div>
+      <div class="card" style="padding:12px 16px">
+        <div class="ctitle" style="margin-bottom:9px;font-size:10px;display:flex;justify-content:space-between;align-items:center">
+          <span><i class="ti ti-bookmarks"></i> Watchlist — quick pick</span>
+          <span style="font-size:9px;color:var(--txt-d)">click to analyse</span>
+        </div>
+        <div id="scr-watchlist-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:24px">
+          <span style="color:var(--txt-d);font-size:10px">Add tickers to your watchlist →</span>
         </div>
       </div>
       <div class="card" style="padding:12px 16px">
@@ -341,10 +351,20 @@ svg.mc{width:100%;height:140px;display:block;}
               <tr><td style="color:var(--txt-d);font-size:10px;text-align:left">Div Yield</td><td style="color:var(--txt-m)">0.03%</td></tr>
             </tbody>
           </table>
+          <div id="dd-sector" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <div class="ctitle" style="font-size:10px;margin-bottom:7px"><i class="ti ti-building-skyscraper"></i> Sector &amp; macro</div>
+            <div style="color:var(--txt-d);font-size:10px">Loading…</div>
+          </div>
           <div id="dd-analyst" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
             <div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-users"></i> Analyst consensus</div>
             <div style="color:var(--txt-d);font-size:10px">Loading…</div>
           </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:0;padding:14px 16px">
+        <div class="ctitle" style="margin-bottom:9px;font-size:10px"><i class="ti ti-news"></i> Recent news &amp; events</div>
+        <div id="dd-news" style="display:flex;flex-direction:column;gap:6px">
+          <div style="color:var(--txt-d);font-size:10px">Loading news…</div>
         </div>
       </div>
     </div>
@@ -532,6 +552,12 @@ svg.mc{width:100%;height:140px;display:block;}
           </div>
         </div>
       </div>
+      <div class="card" style="padding:14px 16px;margin-top:0">
+        <div class="ctitle" style="margin-bottom:10px"><i class="ti ti-crosshair"></i> Trade setup — MC + Backtest combined signal</div>
+        <div id="mc-trade-setup" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
+          <div style="color:var(--txt-d);font-size:10px;grid-column:1/-1;text-align:center;padding:12px">Run Monte Carlo to generate trade setup →</div>
+        </div>
+      </div>
     </div>
 
     <!-- ═══ MODULE 06: STRATEGY LIBRARY ═══ -->
@@ -639,7 +665,7 @@ svg.mc{width:100%;height:140px;display:block;}
           <div id="po-frontierchart" style="width:100%;height:230px"></div>
           <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
             <div class="ctitle" style="font-size:10px;margin-bottom:6px"><i class="ti ti-git-merge"></i> Correlation heatmap</div>
-            <div id="po-corr" style="width:100%;height:200px"></div>
+            <div id="po-corr" style="width:100%;height:260px;overflow:hidden"></div>
           </div>
         </div>
       </div>
@@ -648,11 +674,12 @@ svg.mc{width:100%;height:140px;display:block;}
         <table style="width:100%">
           <thead>
             <tr>
-              <th style="text-align:left">Symbol</th>
-              <th>Opt. Weight</th>
-              <th>Equal Wt.</th>
-              <th>1Y Return</th>
-              <th style="text-align:left;padding-left:12px">Weight allocation</th>
+              <th style="text-align:left;padding-left:4px">Symbol</th>
+              <th style="text-align:center">Opt.Weight</th>
+              <th style="text-align:center">Equal Wt.</th>
+              <th style="text-align:center">1Y Return</th>
+              <th style="text-align:center">Risk</th>
+              <th style="text-align:left;padding-left:12px">Allocation</th>
             </tr>
           </thead>
           <tbody id="po-position-summary">

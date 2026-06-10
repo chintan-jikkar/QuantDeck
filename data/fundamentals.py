@@ -138,6 +138,61 @@ def fetch_peers(ticker: str) -> list[str]:
     return []
 
 
+def fetch_news(ticker: str, max_items: int = 6) -> list:
+    """Recent news articles from Yahoo Finance."""
+    try:
+        from datetime import datetime, timezone
+        t = yf.Ticker(ticker.upper())
+        news = t.news or []
+        result = []
+        for item in news[:max_items]:
+            ts = item.get("providerPublishTime")
+            dt_str = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%b %d") if ts else ""
+            content = item.get("content") or {}
+            title = content.get("title") or item.get("title", "")
+            link = ""
+            click_url = content.get("clickThroughUrl") or {}
+            link = click_url.get("url") or content.get("canonicalUrl", {}).get("url", "")
+            publisher = content.get("provider", {}).get("displayName", "") or item.get("publisher", "")
+            result.append({"title": title, "link": link, "publisher": publisher, "date": dt_str})
+        return result
+    except Exception:
+        return []
+
+
+def fetch_sector_info(ticker: str) -> dict:
+    """Sector, industry, country and macro context from yfinance info."""
+    info = _cached(ticker.upper(), "info") or {}
+    country = info.get("country", "")
+    country_map = {
+        "United States": "US", "United Kingdom": "UK", "Germany": "Germany",
+        "France": "France", "Japan": "Japan", "India": "India",
+        "Australia": "Australia", "Canada": "Canada", "Hong Kong": "HongKong",
+    }
+    from config import COUNTRY_RISK
+    cr_key = country_map.get(country, "US")
+    cr = COUNTRY_RISK.get(cr_key, COUNTRY_RISK["US"])
+    rf_proxy = {"US": 4.2, "UK": 4.5, "India": 7.0, "Canada": 3.4,
+                "Germany": 2.5, "Japan": 1.1, "Australia": 4.3, "France": 3.1}
+    return {
+        "sector": info.get("sector", ""),
+        "industry": info.get("industry", ""),
+        "country": country,
+        "exchange": info.get("exchange", ""),
+        "currency": info.get("currency", ""),
+        "beta": info.get("beta"),
+        "dividend_yield": info.get("dividendYield"),
+        "short_ratio": info.get("shortRatio"),
+        "employees": info.get("fullTimeEmployees"),
+        "macro": {
+            "erp": cr["erp"],
+            "crp": cr["crp"],
+            "rf_pct": rf_proxy.get(cr_key, 4.2),
+            "country_key": cr_key,
+        },
+    }
+
+
 def fetch_analyst_info(ticker: str) -> dict:
     """Analyst price target + recommendation breakdown from yfinance."""
     info = _cached(ticker.upper(), "info") or {}

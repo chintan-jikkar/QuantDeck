@@ -103,7 +103,8 @@ def deep_dive(ticker: str):
     """
     from data.prices import detect_asset_type
     from data.fundamentals import (fetch_income_statement, fetch_balance_sheet,
-                                    fetch_cash_flow, fetch_key_metrics, fetch_analyst_info)
+                                    fetch_cash_flow, fetch_key_metrics, fetch_analyst_info,
+                                    fetch_news, fetch_sector_info)
     from layers.deep_dive import (compute_margins, compute_earnings_quality,
                                    compute_beneish_mscore)
 
@@ -174,6 +175,14 @@ def deep_dive(ticker: str):
         out["analyst"] = fetch_analyst_info(ticker)
     except Exception:
         out["analyst"] = {}
+    try:
+        out["news"] = fetch_news(ticker, max_items=6)
+    except Exception:
+        out["news"] = []
+    try:
+        out["sector_info"] = fetch_sector_info(ticker)
+    except Exception:
+        out["sector_info"] = {}
     return JSONResponse(to_jsonable(out))
 
 
@@ -436,13 +445,35 @@ def portfolio(tickers: str = "NVDA,META,LLY,AVGO,AAPL,MSFT,JPM,UNH"):
         if v < minvol["vol"]:
             minvol = {"vol": v, "ret": r}
 
+    ann_vol = rets.std().values * (252 ** 0.5)
+    # per-position beta vs equal-weight portfolio proxy
+    eq_w = np.ones(n) / n
+    portfolio_ret = (rets.values @ eq_w)
+    betas = []
+    for i in range(n):
+        cov_ip = float(np.cov(rets.values[:, i], portfolio_ret)[0, 1])
+        var_p = float(np.var(portfolio_ret, ddof=1))
+        betas.append(cov_ip / var_p if var_p > 0 else 1.0)
+
+    def _risk_label(beta, vol, weight):
+        score = 0
+        if abs(beta) > 1.5: score += 2
+        elif abs(beta) > 1.2: score += 1
+        if vol > 0.40: score += 2
+        elif vol > 0.25: score += 1
+        if weight > 0.25: score += 1
+        if score >= 3: return "high"
+        if score >= 1: return "medium"
+        return "low"
+
     weights = sorted(
-        [{"symbol": syms[i], "weight": best["weights"][i], "ret": float(mu[i])} for i in range(n)],
+        [{"symbol": syms[i], "weight": best["weights"][i], "ret": float(mu[i]),
+          "ann_vol": float(ann_vol[i]), "beta": float(betas[i]),
+          "risk": _risk_label(betas[i], ann_vol[i], best["weights"][i])} for i in range(n)],
         key=lambda x: -x["weight"])
-    k = min(5, n)
     corr = rets.corr()
-    correlation = {"symbols": syms[:k],
-                   "matrix": [[round(float(corr.iloc[i, j]), 2) for j in range(k)] for i in range(k)]}
+    correlation = {"symbols": syms,
+                   "matrix": [[round(float(corr.iloc[i, j]), 2) for j in range(n)] for i in range(n)]}
 
     return JSONResponse(to_jsonable({
         "tickers": syms,
