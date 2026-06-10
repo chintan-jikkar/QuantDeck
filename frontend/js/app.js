@@ -18,7 +18,7 @@ function signal(score) {
 }
 
 // ── Screener (module 0) ──────────────────────────────────────────────
-const SCREENER_TICKERS = "NVDA,MSFT,AAPL,META,AMD,AVGO,LLY,KO";
+const SCREENER_TICKERS = "NVDA,MSFT,AAPL,META,AVGO,KO";
 async function loadScreener() {
   const tbody = document.getElementById("scr-tbody");
   const kpis = document.getElementById("scr-kpis");

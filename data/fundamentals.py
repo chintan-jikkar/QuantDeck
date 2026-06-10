@@ -1,5 +1,6 @@
 # data/fundamentals.py
 import os
+import time
 import requests
 import pandas as pd
 
@@ -9,16 +10,38 @@ import pandas as pd
 FMP_BASE = "https://financialmodelingprep.com/stable"
 
 
+# In-process response cache: FMP's free tier rate-limits aggressively (HTTP 429),
+# and fundamentals don't change intraday, so cache successful responses. On a 429
+# we serve stale cache rather than failing. Tests use the literal "test_key" and
+# bypass the cache so their request mocks behave normally.
+_CACHE: dict = {}
+_CACHE_TTL = 3600  # seconds
+
+
 def _get(endpoint: str, params: dict | None = None) -> list | dict:
     api_key = os.getenv("FMP_API_KEY", "")
     if not api_key:
         raise EnvironmentError(
             "FMP_API_KEY is not set. Get a free key at https://financialmodelingprep.com/"
         )
+    use_cache = api_key != "test_key"
+    key = (endpoint, tuple(sorted((params or {}).items())))
+    now = time.time()
+    if use_cache:
+        hit = _CACHE.get(key)
+        if hit is not None and now - hit[0] < _CACHE_TTL:
+            return hit[1]
     p = {"apikey": api_key, **(params or {})}
     resp = requests.get(f"{FMP_BASE}/{endpoint}", params=p, timeout=10)
+    if resp.status_code == 429 and use_cache:
+        stale = _CACHE.get(key)
+        if stale is not None:
+            return stale[1]
     resp.raise_for_status()
-    return resp.json()
+    data = resp.json()
+    if use_cache:
+        _CACHE[key] = (now, data)
+    return data
 
 
 def fetch_income_statement(ticker: str, limit: int = 5) -> pd.DataFrame:
