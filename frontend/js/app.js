@@ -60,6 +60,7 @@ async function loadScreener() {
 
 // ── Deep Dive (module 1) ─────────────────────────────────────────────
 let DD_TICKER = "AAPL";
+let ddInterval = "1d", ddIndicator = "none";
 function renderRevChart(svg, series) {
   if (!series || !series.length) { svg.innerHTML = `<text x="200" y="60" text-anchor="middle" fill="#b4bdd4" font-size="10" font-family="DM Mono,monospace">No revenue data</text>`; return; }
   const W = 400, H = 120, pad = 22;
@@ -80,28 +81,51 @@ function renderRevChart(svg, series) {
   out += `<line x1="96" y1="11" x2="112" y2="11" stroke="var(--lime)" stroke-width="1.5" stroke-dasharray="3,2"/><text x="116" y="14" fill="var(--txt-m)" font-size="9" font-family="DM Mono,monospace">Net mgn</text>`;
   svg.innerHTML = out;
 }
-function renderCandles(divId, candles, ticker) {
+function _sma(a, n) { const o = a.map(() => null); let s = 0; for (let i = 0; i < a.length; i++) { s += a[i]; if (i >= n) s -= a[i - n]; if (i >= n - 1) o[i] = s / n; } return o; }
+function _ema(a, n) { const o = a.map(() => null); const k = 2 / (n + 1); let e = a[0]; for (let i = 0; i < a.length; i++) { e = (i === 0) ? a[0] : a[i] * k + e * (1 - k); if (i >= n - 1) o[i] = e; } return o; }
+function _bb(a, n, k) { const mid = _sma(a, n), up = a.map(() => null), lo = a.map(() => null); for (let i = n - 1; i < a.length; i++) { let s = 0; for (let j = i - n + 1; j <= i; j++) s += (a[j] - mid[i]) ** 2; const sd = Math.sqrt(s / n); up[i] = mid[i] + k * sd; lo[i] = mid[i] - k * sd; } return { mid, up, lo }; }
+function _trend(a) { const n = a.length, mx = (n - 1) / 2, my = a.reduce((p, c) => p + c, 0) / n; let num = 0, den = 0; for (let i = 0; i < n; i++) { num += (i - mx) * (a[i] - my); den += (i - mx) ** 2; } const b = den ? num / den : 0, aa = my - b * mx; return a.map((_, i) => aa + b * i); }
+
+function renderCandles(divId, candles, ticker, indicator) {
   const el = document.getElementById(divId);
   if (!el) return;
   if (!window.Plotly) { el.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:48px">chart engine not loaded</div>`; return; }
   if (!candles || !candles.length) { el.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:48px">No price data</div>`; return; }
-  const trace = {
-    type: "candlestick", x: candles.map(c => c.t),
-    open: candles.map(c => c.o), high: candles.map(c => c.h),
-    low: candles.map(c => c.l), close: candles.map(c => c.c),
+  const x = candles.map(c => c.t), closes = candles.map(c => c.c);
+  const traces = [{
+    type: "candlestick", x,
+    open: candles.map(c => c.o), high: candles.map(c => c.h), low: candles.map(c => c.l), close: closes,
     increasing: { line: { color: "#3fb950" }, fillcolor: "rgba(63,185,80,0.55)" },
     decreasing: { line: { color: "#ff5fa0" }, fillcolor: "rgba(255,95,160,0.55)" },
     name: ticker,
-  };
+  }];
+  const ln = (y, name, color, dash) => ({ type: "scatter", mode: "lines", x, y, name, line: { color, width: 1.4, dash: dash || "solid" } });
+  if (indicator === "sma20") traces.push(ln(_sma(closes, 20), "SMA 20", "#4f9eff"));
+  else if (indicator === "sma50") traces.push(ln(_sma(closes, 50), "SMA 50", "#ffb340"));
+  else if (indicator === "sma200") traces.push(ln(_sma(closes, 200), "SMA 200", "#a78bfa"));
+  else if (indicator === "ema20") traces.push(ln(_ema(closes, 20), "EMA 20", "#00e5cc"));
+  else if (indicator === "bb") { const b = _bb(closes, 20, 2); traces.push(ln(b.up, "BB Upper", "rgba(124,92,255,0.7)", "dot"), ln(b.mid, "BB Mid", "rgba(180,189,212,0.5)"), ln(b.lo, "BB Lower", "rgba(124,92,255,0.7)", "dot")); }
+  else if (indicator === "trend") traces.push(ln(_trend(closes), "Trendline", "#b8f264", "dash"));
   const layout = {
     paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
     font: { family: "DM Mono, monospace", color: "#b4bdd4", size: 11 },
     margin: { l: 8, r: 56, t: 6, b: 28 },
     xaxis: { gridcolor: "rgba(255,255,255,0.05)", rangeslider: { visible: false } },
     yaxis: { gridcolor: "rgba(255,255,255,0.05)", side: "right" },
-    dragmode: "pan", showlegend: false, hovermode: "x unified",
+    dragmode: "zoom", hovermode: "x unified",
+    showlegend: indicator !== "none", legend: { orientation: "h", y: 1.04, x: 0, font: { size: 10 } },
   };
-  window.Plotly.react(el, [trace], layout, { responsive: true, displayModeBar: false });
+  window.Plotly.react(el, traces, layout, { responsive: true, displayModeBar: false, scrollZoom: true });
+}
+async function loadCandles() {
+  const el = document.getElementById("dd-candles"), pt = document.getElementById("dd-pricetitle");
+  if (pt) pt.innerHTML = `<i class="ti ti-chart-candle"></i> ${DD_TICKER} — Price`;
+  if (el) el.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:48px">Loading price…</div>`;
+  try {
+    const p = await (await fetch(`/api/prices/${DD_TICKER}?interval=${ddInterval}`)).json();
+    if (p && !p.error && p.candles && p.candles.length) renderCandles("dd-candles", p.candles, DD_TICKER, ddIndicator);
+    else if (el) el.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:48px">Price unavailable: ${(p && p.error) || "no data"}</div>`;
+  } catch (e) { if (el) el.innerHTML = `<div style="text-align:center;color:var(--pink);padding:48px">${e.message}</div>`; }
 }
 async function loadDeepDive() {
   const kp = document.getElementById("dd-kpis");
@@ -110,15 +134,7 @@ async function loadDeepDive() {
   const svg = document.getElementById("dd-revsvg");
   const title = document.getElementById("dd-revtitle");
   if (memo) memo.innerHTML = `<span style="color:var(--txt-m)">Loading ${DD_TICKER}…</span>`;
-  // Price candlestick loads independently (works even where fundamentals are blocked).
-  const pt = document.getElementById("dd-pricetitle");
-  if (pt) pt.innerHTML = `<i class="ti ti-chart-candle"></i> ${DD_TICKER} — Price (1Y)`;
-  const candlesEl = document.getElementById("dd-candles");
-  if (candlesEl) candlesEl.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:48px">Loading price…</div>`;
-  fetch(`/api/prices/${DD_TICKER}`).then(r => r.json()).then(p => {
-    if (p && !p.error && p.candles) renderCandles("dd-candles", p.candles, DD_TICKER);
-    else if (candlesEl) candlesEl.innerHTML = `<div style="text-align:center;color:var(--txt-m);padding:48px">Price unavailable: ${(p && p.error) || "error"}</div>`;
-  }).catch(e => { if (candlesEl) candlesEl.innerHTML = `<div style="text-align:center;color:var(--pink);padding:48px">${e.message}</div>`; });
+  loadCandles();  // price candlestick (independent of the fundamentals call)
   try {
     const res = await fetch(`/api/deep-dive/${DD_TICKER}`);
     const d = await res.json();
@@ -483,5 +499,9 @@ document.addEventListener("DOMContentLoaded", () => {
   if (search) search.addEventListener("keydown", e => {
     if (e.key === "Enter") { selectTicker(search.value); search.value = ""; search.blur(); }
   });
+  const iv = document.getElementById("dd-interval");
+  if (iv) iv.addEventListener("change", () => { ddInterval = iv.value; loadCandles(); });
+  const ind = document.getElementById("dd-indicator");
+  if (ind) ind.addEventListener("change", () => { ddIndicator = ind.value; loadCandles(); });
   onModule(0);  // Screener active on load
 });

@@ -404,26 +404,35 @@ def portfolio(tickers: str = "NVDA,META,LLY,AVGO,AAPL,MSFT,JPM,UNH"):
     }))
 
 
+_INTERVAL_PERIOD = {
+    "1m": "5d", "2m": "5d", "5m": "1mo", "15m": "1mo", "30m": "1mo",
+    "60m": "3mo", "1h": "6mo", "1d": "1y", "1wk": "5y", "1mo": "10y",
+}
+
+
 @app.get("/api/prices/{ticker}")
-def prices(ticker: str, period: str = "1y"):
-    """OHLCV candles for any tradable symbol (equity/FX/commodity) via yfinance."""
+def prices(ticker: str, interval: str = "1d"):
+    """OHLCV candles for any tradable symbol (equity/FX/commodity) via yfinance.
+    interval: 1m/5m/15m/1h/1d/1wk/1mo (period auto-selected to fit)."""
     from data.prices import fetch_prices
     ticker = ticker.upper()
+    period = _INTERVAL_PERIOD.get(interval, "1y")
     try:
-        df = fetch_prices(ticker, period=period)
+        df = fetch_prices(ticker, period=period, interval=interval)
     except Exception as e:
         return JSONResponse({"ticker": ticker, "error": str(e)}, status_code=502)
     if df is None or df.empty:
         return JSONResponse({"ticker": ticker, "error": "No price data for this symbol"}, status_code=404)
-    df = df.dropna(subset=["Open", "High", "Low", "Close"]).tail(300)
+    df = df.dropna(subset=["Open", "High", "Low", "Close"]).tail(400)
     have_vol = "Volume" in df.columns
+    intraday = interval.endswith("m") or interval.endswith("h")
     candles = [{
-        "t": str(idx)[:10],
+        "t": str(idx)[:16] if intraday else str(idx)[:10],
         "o": round(float(r["Open"]), 4), "h": round(float(r["High"]), 4),
         "l": round(float(r["Low"]), 4), "c": round(float(r["Close"]), 4),
         "v": (float(r["Volume"]) if have_vol and r["Volume"] == r["Volume"] else None),
     } for idx, r in df.iterrows()]
-    return JSONResponse(to_jsonable({"ticker": ticker, "candles": candles}))
+    return JSONResponse(to_jsonable({"ticker": ticker, "interval": interval, "candles": candles}))
 
 
 # Static frontend, mounted last so /api/* routes take precedence.

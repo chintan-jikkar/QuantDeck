@@ -283,7 +283,16 @@ svg.mc{width:100%;height:140px;display:block;}
         <div class="kpi l"><div class="kpi-lbl">Net Margin</div><div class="kpi-val l">55.7%</div><div class="kpi-sub up">↑ from 26% prior yr</div></div>
         <div class="kpi a"><div class="kpi-lbl">Analyst Target</div><div class="kpi-val a">$174</div><div class="kpi-sub up">+22% upside</div></div>
       </div>
-      <div class="card tb" style="padding-bottom:8px"><div class="ctitle" id="dd-pricetitle"><i class="ti ti-chart-candle"></i> Price (1Y)</div><div id="dd-candles" style="width:100%;height:360px"></div></div>
+      <div class="card tb" style="padding-bottom:8px">
+        <div class="ctitle" style="justify-content:space-between">
+          <span id="dd-pricetitle"><i class="ti ti-chart-candle"></i> Price</span>
+          <span style="display:flex;gap:6px">
+            <select id="dd-interval" style="background:var(--bg-card);border:1px solid var(--border-b);border-radius:6px;color:var(--txt);font-family:'DM Mono',monospace;font-size:10px;padding:3px 6px;cursor:pointer"><option value="1m">1m</option><option value="5m">5m</option><option value="15m">15m</option><option value="1h">1h</option><option value="1d" selected>1D</option><option value="1wk">1W</option><option value="1mo">1M</option></select>
+            <select id="dd-indicator" style="background:var(--bg-card);border:1px solid var(--border-b);border-radius:6px;color:var(--txt);font-family:'DM Mono',monospace;font-size:10px;padding:3px 6px;cursor:pointer"><option value="none">Indicator</option><option value="sma20">SMA 20</option><option value="sma50">SMA 50</option><option value="sma200">SMA 200</option><option value="ema20">EMA 20</option><option value="bb">Bollinger</option><option value="trend">Trendline</option></select>
+          </span>
+        </div>
+        <div id="dd-candles" style="width:100%;height:360px"></div>
+      </div>
       <div class="two-col">
         <div class="card tb">
           <div class="ctitle" id="dd-revtitle"><i class="ti ti-chart-area"></i> Revenue &amp; EPS trend — NVDA</div>
