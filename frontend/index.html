@@ -54,8 +54,15 @@ body{font-family:'DM Mono',monospace;background:var(--bg-deep);color:var(--txt);
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
 .topbar{display:flex;align-items:center;gap:12px;padding:13px 22px;border-bottom:1px solid var(--border);background:rgba(8,11,18,0.6);flex-shrink:0;}
 .topbar-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:600;color:var(--txt);flex:1;}
-.search{display:flex;align-items:center;gap:7px;background:var(--bg-card);border:1px solid var(--border-b);border-radius:8px;padding:6px 12px;font-size:11px;color:var(--txt-m);width:160px;cursor:pointer;font-family:'DM Mono',monospace;transition:border-color .15s;}
+.search{position:relative;display:flex;align-items:center;gap:7px;background:var(--bg-card);border:1px solid var(--border-b);border-radius:8px;padding:6px 12px;font-size:11px;color:var(--txt-m);width:180px;cursor:pointer;font-family:'DM Mono',monospace;transition:border-color .15s;}
 .search:hover{border-color:var(--blue);}
+#search-dropdown{display:none;position:absolute;z-index:9999;top:calc(100% + 6px);right:0;background:#131929;border:1px solid var(--border-b);border-radius:10px;min-width:300px;max-height:300px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.7);}
+.search-item{display:flex;align-items:center;gap:8px;padding:9px 14px;cursor:pointer;transition:background .1s;border-bottom:1px solid rgba(255,255,255,0.04);}
+.search-item:last-child{border-bottom:none;}
+.search-item:hover,.search-item.hi{background:rgba(79,158,255,0.1);}
+.si-sym{font-size:11px;font-weight:700;color:var(--txt);font-family:'DM Mono',monospace;min-width:70px;}
+.si-name{font-size:10px;color:var(--txt-m);font-family:'DM Mono',monospace;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.si-exch{font-size:9px;color:var(--txt-d);font-family:'DM Mono',monospace;min-width:36px;text-align:right;}
 .pill{font-size:9px;padding:3px 10px;border-radius:20px;font-family:'DM Mono',monospace;font-weight:500;border:1px solid;}
 .pill-blue{background:rgba(79,158,255,0.12);color:var(--blue);border-color:rgba(79,158,255,0.3);}
 .pill-live{display:flex;align-items:center;gap:5px;font-size:9px;padding:3px 10px;border-radius:20px;border:1px solid rgba(184,242,100,0.3);background:rgba(184,242,100,0.08);color:var(--lime);}
@@ -214,7 +221,7 @@ svg.mc{width:100%;height:140px;display:block;}
       <span class="topbar-title" id="mod-title">Screener</span>
       <span id="mod-sub" style="font-size:10px;color:var(--txt-m);font-family:'DM Mono',monospace;margin-left:8px">/ composite factor scoring</span>
     </div>
-    <div class="search"><i class="ti ti-search" style="font-size:12px"></i><input id="ticker-search" placeholder="Search ticker…" autocomplete="off" style="background:none;border:0;outline:0;color:var(--txt);font-family:'DM Mono',monospace;font-size:11px;width:100%"/></div>
+    <div class="search"><i class="ti ti-search" style="font-size:12px"></i><input id="ticker-search" placeholder="Search ticker…" autocomplete="off" style="background:none;border:0;outline:0;color:var(--txt);font-family:'DM Mono',monospace;font-size:11px;width:100%"/><div id="search-dropdown"></div></div>
     <span class="pill pill-blue">S&amp;P 500</span>
     <span class="pill-live">Live</span>
     <i class="ti ti-refresh" id="topbar-refresh" style="font-size:16px;color:var(--txt-m);cursor:pointer"></i>
@@ -438,49 +445,36 @@ svg.mc{width:100%;height:140px;display:block;}
 
     <!-- ═══ MODULE 04: BACKTESTER ═══ -->
     <div class="module-panel" id="m3">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:10px;color:var(--txt-m)">Strategy:</span>
+        <select id="bt-strategy-sel" style="background:var(--bg-card);border:1px solid var(--border-b);border-radius:6px;color:var(--txt);font-family:'DM Mono',monospace;font-size:10px;padding:4px 8px;cursor:pointer">
+          <option value="MA Crossover">MA Crossover</option>
+          <option value="RSI Mean Reversion">RSI Mean Reversion</option>
+          <option value="12-1 Momentum">12-1 Momentum</option>
+          <option value="Value (Graham/Buffett)">Value (Graham/Buffett)</option>
+          <option value="Quality Factor">Quality Factor</option>
+          <option value="Pairs Trading (Stat Arb)">Pairs Trading (Stat Arb)</option>
+        </select>
+        <span style="font-size:10px;color:var(--txt-m)">on</span>
+        <span id="bt-curr-ticker" style="font-size:11px;font-weight:700;color:var(--cyan);font-family:'DM Mono',monospace">AAPL</span>
+        <span style="font-size:10px;color:var(--txt-d)">· 2021–2024</span>
+        <button id="bt-run-btn" class="ind-btn on" style="font-size:10px;padding:4px 14px;margin-left:auto">▶ Run</button>
+      </div>
       <div class="tearsheet-row" id="bt-stats">
-        <div class="ts-stat"><div class="ts-lbl">Total Return</div><div class="ts-val" style="color:var(--lime)">+214.3%</div></div>
-        <div class="ts-stat"><div class="ts-lbl">Ann. Sharpe</div><div class="ts-val" style="color:var(--cyan)">1.87</div></div>
-        <div class="ts-stat"><div class="ts-lbl">Max Drawdown</div><div class="ts-val" style="color:var(--pink)">−18.4%</div></div>
-        <div class="ts-stat"><div class="ts-lbl">Win Rate</div><div class="ts-val" style="color:var(--blue)">64.2%</div></div>
-        <div class="ts-stat"><div class="ts-lbl">Sortino</div><div class="ts-val" style="color:var(--amber)">2.41</div></div>
-        <div class="ts-stat"><div class="ts-lbl">Alpha (ann.)</div><div class="ts-val" style="color:var(--lime)">+8.3%</div></div>
+        <div class="ts-stat"><div class="ts-lbl">Total Return</div><div class="ts-val" style="color:var(--lime)">—</div></div>
+        <div class="ts-stat"><div class="ts-lbl">Ann. Sharpe</div><div class="ts-val" style="color:var(--cyan)">—</div></div>
+        <div class="ts-stat"><div class="ts-lbl">Max Drawdown</div><div class="ts-val" style="color:var(--pink)">—</div></div>
+        <div class="ts-stat"><div class="ts-lbl">Win Rate</div><div class="ts-val" style="color:var(--blue)">—</div></div>
+        <div class="ts-stat"><div class="ts-lbl">Sortino</div><div class="ts-val" style="color:var(--amber)">—</div></div>
+        <div class="ts-stat"><div class="ts-lbl">CAGR</div><div class="ts-val" style="color:var(--lime)">—</div></div>
       </div>
       <div class="two-col">
         <div class="card tb">
-          <div class="ctitle"><i class="ti ti-chart-line"></i> Equity curve — 2020–2025 (Momentum factor)</div>
-          <svg id="bt-eqsvg" viewBox="0 0 420 120" style="width:100%;height:250px;display:block">
-            <defs>
-              <linearGradient id="ecg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#b8f264" stop-opacity=".3"/><stop offset="100%" stop-color="#b8f264" stop-opacity="0"/></linearGradient>
-              <linearGradient id="bmg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4f9eff" stop-opacity=".1"/><stop offset="100%" stop-color="#4f9eff" stop-opacity="0"/></linearGradient>
-            </defs>
-            <!-- benchmark (S&P) -->
-            <polygon points="10,100 80,95 130,75 160,88 210,68 270,52 330,42 400,30 400,105 10,105" fill="url(#bmg)"/>
-            <polyline points="10,100 80,95 130,75 160,88 210,68 270,52 330,42 400,30" fill="none" stroke="var(--blue)" stroke-width="1.2" stroke-dasharray="3,3"/>
-            <!-- strategy -->
-            <polygon points="10,100 80,88 130,60 160,72 210,45 270,28 330,14 400,6 400,105 10,105" fill="url(#ecg)"/>
-            <polyline points="10,100 80,88 130,60 160,72 210,45 270,28 330,14 400,6" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linejoin="round"/>
-            <!-- drawdown marker -->
-            <line x1="155" y1="60" x2="155" y2="72" stroke="var(--pink)" stroke-width="1.5"/>
-            <circle cx="155" cy="66" r="3" fill="var(--pink)" opacity=".8"/>
-            <!-- legend -->
-            <line x1="14" y1="12" x2="30" y2="12" stroke="var(--lime)" stroke-width="2"/>
-            <text x="34" y="16" fill="#6b7a99" font-size="9" font-family="DM Mono,monospace">Strategy</text>
-            <line x1="100" y1="12" x2="116" y2="12" stroke="var(--blue)" stroke-width="1.5" stroke-dasharray="3,2"/>
-            <text x="120" y="16" fill="#6b7a99" font-size="9" font-family="DM Mono,monospace">S&amp;P 500</text>
-            <!-- year labels -->
-            <text x="10" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">2020</text>
-            <text x="90" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">2021</text>
-            <text x="170" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">2022</text>
-            <text x="250" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">2023</text>
-            <text x="330" y="115" fill="#b4bdd4" font-size="8" font-family="DM Mono,monospace">2024</text>
-          </svg>
-          <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-            <div style="display:flex;gap:6px">
-              <span style="font-size:10px;color:var(--txt-m)">Period:</span>
-              <span style="font-size:10px;padding:1px 8px;border-radius:10px;background:rgba(184,242,100,.12);color:var(--lime);border:1px solid rgba(184,242,100,.2)">Jan 2020 → Dec 2024</span>
-              <span style="font-size:10px;padding:1px 8px;border-radius:10px;background:rgba(255,255,255,.05);color:var(--txt-d);border:1px solid var(--border);cursor:pointer">Rebalance: Monthly</span>
-              <span style="font-size:10px;padding:1px 8px;border-radius:10px;background:rgba(255,255,255,.05);color:var(--txt-d);border:1px solid var(--border);cursor:pointer">Slippage: 5bps</span>
+          <div class="ctitle" id="bt-eq-title"><i class="ti ti-chart-line"></i> Equity curve</div>
+          <div id="bt-eqchart" style="width:100%;height:240px"></div>
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span style="font-size:9px;color:var(--txt-d)"><span style="color:var(--lime)">▲</span> Entry · <span style="color:var(--pink)">▼</span> Exit · dashed = benchmark</span>
             </div>
           </div>
         </div>
@@ -596,6 +590,11 @@ svg.mc{width:100%;height:140px;display:block;}
       <div class="two-col">
         <div class="card tb">
           <div class="ctitle"><i class="ti ti-books"></i> Strategy cards</div>
+          <div id="sl-recommended" style="display:none;margin-bottom:10px;padding:10px 14px;background:rgba(184,242,100,0.07);border:1px solid rgba(184,242,100,0.25);border-radius:10px">
+            <div style="font-size:9px;color:var(--lime);font-family:'DM Mono',monospace;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">⭐ Recommended — Best Sharpe</div>
+            <div id="sl-rec-name" style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--txt)">—</div>
+            <div id="sl-rec-note" style="font-size:10px;color:var(--txt-m);margin-top:3px">—</div>
+          </div>
           <div class="strat-grid" id="sl-cards">
             <div class="strat-card sel" onclick="this.classList.toggle('sel')">
               <div class="strat-name">Momentum + Quality</div>

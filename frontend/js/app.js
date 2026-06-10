@@ -251,18 +251,57 @@ async function loadValuation() {
 
 // ── Backtester (module 3) ────────────────────────────────────────────
 const BT = { strategy: "MA Crossover", ticker: "AAPL", start: "2021-01-01", end: "2024-12-31" };
-function renderEquitySvg(svg, strat, bench) {
-  if (!strat || strat.length < 2) { svg.innerHTML = `<text x="210" y="60" text-anchor="middle" fill="#b4bdd4" font-size="10" font-family="DM Mono,monospace">No data</text>`; return; }
-  const W = 420, H = 120, pad = 10;
-  const all = [...strat, ...(bench || [])].filter(x => x != null && !isNaN(x));
-  const lo = Math.min(...all), hi = Math.max(...all), span = (hi - lo) || 1;
-  const pts = arr => arr.map((v, i) => `${(pad + i / (arr.length - 1) * (W - 2 * pad)).toFixed(1)},${(H - 10 - (v - lo) / span * (H - 26)).toFixed(1)}`).join(" ");
-  let out = "";
-  if (bench && bench.length > 1) out += `<polyline points="${pts(bench)}" fill="none" stroke="var(--blue)" stroke-width="1.2" stroke-dasharray="3,3"/>`;
-  out += `<polyline points="${pts(strat)}" fill="none" stroke="var(--lime)" stroke-width="2" stroke-linejoin="round"/>`;
-  out += `<line x1="14" y1="12" x2="30" y2="12" stroke="var(--lime)" stroke-width="2"/><text x="34" y="15" fill="#6b7a99" font-size="9" font-family="DM Mono,monospace">Strategy</text>`;
-  out += `<line x1="104" y1="12" x2="120" y2="12" stroke="var(--blue)" stroke-width="1.5" stroke-dasharray="3,2"/><text x="124" y="15" fill="#6b7a99" font-size="9" font-family="DM Mono,monospace">Benchmark</text>`;
-  svg.innerHTML = out;
+function renderEquityPlotly(divId, strat, stratDates, bench, benchDates, markers, stratLabel, benchLabel) {
+  const div = document.getElementById(divId);
+  if (!div) return;
+  if (!strat || strat.length < 2) {
+    div.innerHTML = `<div style="height:240px;display:flex;align-items:center;justify-content:center;color:#b4bdd4;font-size:11px;font-family:'DM Mono',monospace">No equity data</div>`;
+    return;
+  }
+  const traces = [];
+  if (bench && bench.length > 1) {
+    traces.push({
+      x: benchDates && benchDates.length ? benchDates : bench.map((_, i) => i),
+      y: bench, name: benchLabel || "Benchmark", mode: "lines",
+      line: { color: "rgba(79,158,255,0.65)", width: 1.4, dash: "dot" },
+      hovertemplate: "%{x}<br><b>%{y:.1f}</b><extra>Benchmark</extra>",
+    });
+  }
+  traces.push({
+    x: stratDates && stratDates.length ? stratDates : strat.map((_, i) => i),
+    y: strat, name: stratLabel || "Strategy", mode: "lines",
+    line: { color: "#b8f264", width: 2 },
+    hovertemplate: "%{x}<br><b>%{y:.1f}</b><extra>Strategy</extra>",
+  });
+  const buys = (markers || []).filter(m => m.action === "buy" && m.val != null);
+  const sells = (markers || []).filter(m => m.action === "sell" && m.val != null);
+  if (buys.length) traces.push({
+    x: buys.map(m => m.date), y: buys.map(m => m.val),
+    name: "Entry", mode: "markers",
+    marker: { color: "#b8f264", symbol: "triangle-up", size: 9, opacity: 0.85,
+               line: { color: "rgba(0,0,0,0.4)", width: 1 } },
+    hovertemplate: "%{x}<br>Entry @ %{y:.1f}<extra></extra>",
+  });
+  if (sells.length) traces.push({
+    x: sells.map(m => m.date), y: sells.map(m => m.val),
+    name: "Exit", mode: "markers",
+    marker: { color: "#ff5fa0", symbol: "triangle-down", size: 9, opacity: 0.85,
+               line: { color: "rgba(0,0,0,0.4)", width: 1 } },
+    hovertemplate: "%{x}<br>Exit @ %{y:.1f}<extra></extra>",
+  });
+  const layout = {
+    paper_bgcolor: "transparent", plot_bgcolor: "transparent",
+    margin: { l: 40, r: 8, t: 8, b: 30 },
+    xaxis: { gridcolor: "rgba(255,255,255,0.04)", tickfont: { color: "#6b7a99", size: 9, family: "DM Mono" },
+             linecolor: "rgba(255,255,255,0.08)", zeroline: false },
+    yaxis: { gridcolor: "rgba(255,255,255,0.04)", tickfont: { color: "#6b7a99", size: 9, family: "DM Mono" },
+             tickformat: ".0f", linecolor: "rgba(255,255,255,0.08)", zeroline: false },
+    legend: { font: { color: "#b4bdd4", size: 9, family: "DM Mono" }, x: 0.01, y: 0.98,
+               bgcolor: "rgba(8,11,18,0.6)", bordercolor: "rgba(255,255,255,0.08)", borderwidth: 1 },
+    hovermode: "x unified",
+    hoverlabel: { bgcolor: "#131929", bordercolor: "#243559", font: { color: "#e2e8f7", size: 10, family: "DM Mono" } },
+  };
+  Plotly.newPlot(div, traces, layout, { responsive: true, displayModeBar: false });
 }
 function renderHeatmap(el, monthly) {
   if (!monthly || !monthly.length) { el.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--txt-d);font-size:9px">No monthly data</div>`; return; }
@@ -278,10 +317,12 @@ function renderHeatmap(el, monthly) {
 }
 async function loadBacktester() {
   const stats = document.getElementById("bt-stats");
-  const svg = document.getElementById("bt-eqsvg");
   const trades = document.getElementById("bt-trades");
   const heat = document.getElementById("bt-heatmap");
+  const title = document.getElementById("bt-eq-title");
+  const ticker = document.getElementById("bt-curr-ticker");
   if (stats) stats.innerHTML = `<div class="ts-stat" style="grid-column:1/-1;text-align:center;color:var(--txt-m)">Running backtest…</div>`;
+  if (ticker) ticker.textContent = BT.ticker;
   try {
     const res = await fetch(`/api/backtest?${new URLSearchParams(BT)}`);
     const d = await res.json();
@@ -297,7 +338,8 @@ async function loadBacktester() {
         stat("Sortino", fmt(t.sortino, 2), "var(--amber)") +
         stat("CAGR", pctSigned(t.cagr), "var(--lime)");
     }
-    if (svg) renderEquitySvg(svg, d.equity || [], d.benchmark || []);
+    if (title) title.innerHTML = `<i class="ti ti-chart-line"></i> ${d.strategy} — ${d.ticker} · ${BT.start.slice(0,4)}–${BT.end.slice(0,4)}`;
+    renderEquityPlotly("bt-eqchart", d.equity || [], d.equity_dates || [], d.benchmark || [], d.benchmark_dates || [], d.trade_markers || [], d.strategy, d.benchmark_ticker || "Benchmark");
     if (trades) {
       const rows = d.trades || [];
       trades.innerHTML = rows.length
@@ -408,35 +450,68 @@ function renderPerfBars(svg, strats) {
   });
   svg.innerHTML = out;
 }
+function stratDecision(s) {
+  if (!s || s.error) return { label: "N/A", color: "var(--txt-d)", note: "Could not backtest on this ticker." };
+  const sh = s.sharpe || 0, ret = s.total_return || 0;
+  if (sh >= 1.5 && ret >= 0.10) return { label: "BUY", color: "var(--lime)",  note: `Strong risk-adjusted returns (Sharpe ${fmt(sh,2)}). Favorable conditions for this strategy.` };
+  if (sh < 0.3 || ret < -0.05)  return { label: "AVOID", color: "var(--pink)", note: `Weak performance on this ticker. Consider waiting for better conditions.` };
+  return { label: "HOLD", color: "var(--amber)", note: `Moderate performance (Sharpe ${fmt(sh,2)}). Worth monitoring but not a strong signal.` };
+}
+
 async function loadStrategies() {
-  const kp = document.getElementById("sl-kpis"), cards = document.getElementById("sl-cards"), svg = document.getElementById("sl-perfsvg");
+  const kp = document.getElementById("sl-kpis"), cards = document.getElementById("sl-cards"),
+        svg = document.getElementById("sl-perfsvg"), rec = document.getElementById("sl-recommended"),
+        recName = document.getElementById("sl-rec-name"), recNote = document.getElementById("sl-rec-note");
   if (cards) cards.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--txt-m);padding:20px">Backtesting strategies…</div>`;
+  if (rec) rec.style.display = "none";
   try {
     const res = await fetch(`/api/strategies`);
     const d = await res.json();
     if (!res.ok || (d.error && !(d.strategies || []).length)) throw new Error(d.error || `API ${res.status}`);
     const list = d.strategies || [], valid = list.filter(s => !s.error && s.sharpe != null);
     if (kp) {
-      const sharpes = valid.map(s => s.sharpe), rets = valid.map(s => s.total_return);
       const best = valid.reduce((a, b) => ((b.sharpe || -99) > (a.sharpe || -99) ? b : a), valid[0] || {});
-      const avgRet = rets.length ? rets.reduce((a, b) => a + b, 0) / rets.length : null;
+      const avgRet = valid.length ? valid.reduce((a, b) => a + (b.total_return || 0), 0) / valid.length : null;
       kp.innerHTML = `
         <div class="kpi b"><div class="kpi-lbl">Strategies</div><div class="kpi-val b">${list.length}</div><div class="kpi-sub">on ${d.ticker}</div></div>
         <div class="kpi l"><div class="kpi-lbl">Best Sharpe</div><div class="kpi-val l">${fmt(best.sharpe, 2)}</div><div class="kpi-sub">${(best.name || "").slice(0, 18)}</div></div>
         <div class="kpi c"><div class="kpi-lbl">Avg Total Return</div><div class="kpi-val c">${pctSigned(avgRet)}</div><div class="kpi-sub">2021–24 on ${d.ticker}</div></div>
         <div class="kpi a"><div class="kpi-lbl">Reference</div><div class="kpi-val w" style="font-size:16px;padding-top:5px">${d.ticker}</div><div class="kpi-sub">single-name test</div></div>`;
+      if (rec && best.name) {
+        const dec = stratDecision(best);
+        if (recName) recName.textContent = best.name;
+        if (recNote) recNote.innerHTML = `<span style="color:${dec.color};font-weight:700">${dec.label}</span> — ${dec.note}`;
+        rec.style.display = "block";
+      }
     }
     if (cards) cards.innerHTML = list.map(s => {
+      const dec = stratDecision(s);
       const tag = s.error
         ? `<span class="strat-tag" style="color:var(--pink)">n/a here</span>`
         : `<span class="strat-tag">Sharpe ${fmt(s.sharpe, 2)}</span><span class="strat-tag" style="color:${(s.total_return || 0) >= 0 ? "var(--lime)" : "var(--pink)"}">${pctSigned(s.total_return)}</span>`;
-      return `<div class="strat-card" onclick="this.classList.toggle('sel')"><div class="strat-name">${s.name}</div><div class="strat-desc">${s.description || ""}</div><div class="strat-meta">${tag}</div></div>`;
+      const decBadge = `<span class="strat-tag" style="color:${dec.color};border-color:${dec.color};opacity:0.85">${dec.label}</span>`;
+      const safeName = (s.name || "").replace(/&/g,"&amp;").replace(/"/g,"&quot;");
+      return `<div class="strat-card" title="Click to backtest this strategy" data-strat="${safeName}">
+        <div class="strat-name">${s.name}</div>
+        <div class="strat-desc">${s.description || ""}</div>
+        <div style="font-size:9px;color:var(--txt-d);margin:4px 0 6px">${dec.note}</div>
+        <div class="strat-meta">${tag}${decBadge}</div>
+        <div style="font-size:9px;color:var(--blue);margin-top:6px;opacity:0.7">▶ Click to backtest →</div>
+      </div>`;
     }).join("");
     if (svg) renderPerfBars(svg, valid);
   } catch (e) {
     if (cards) cards.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--pink);padding:20px">Could not load strategies: ${e.message}</div>`;
   }
 }
+
+window.sendToBacktester = function(stratName) {
+  BT.strategy = stratName;
+  const sel = document.getElementById("bt-strategy-sel");
+  if (sel) sel.value = stratName;
+  delete loaded[3];
+  window.switchModule(3, null);
+};
 
 // ── Portfolio Optimizer (module 6) ───────────────────────────────────
 function renderFrontier(svg, frontier, maxSharpe, minVol) {
@@ -528,6 +603,50 @@ async function resolveAndSelect(q) {
   } catch (e) { selectTicker(q.toUpperCase()); }
 }
 
+// ── Search autocomplete ──────────────────────────────────────────────
+let _searchTimer = null, _ddIdx = -1;
+
+function _buildDropdown(results) {
+  const dd = document.getElementById("search-dropdown");
+  if (!dd) return;
+  if (!results || !results.length) { dd.style.display = "none"; return; }
+  dd.innerHTML = results.map((r, i) =>
+    `<div class="search-item" data-sym="${r.symbol}" data-i="${i}">
+      <span class="si-sym">${r.symbol}</span>
+      <span class="si-name">${r.name || ""}</span>
+      <span class="si-exch">${r.exch || ""}</span>
+    </div>`
+  ).join("");
+  dd.style.display = "block";
+  _ddIdx = -1;
+  dd.querySelectorAll(".search-item").forEach(el => {
+    el.addEventListener("click", () => _pickSearch(el.dataset.sym));
+    el.addEventListener("mouseenter", () => {
+      dd.querySelectorAll(".search-item").forEach(e => e.classList.remove("hi"));
+      el.classList.add("hi");
+      _ddIdx = parseInt(el.dataset.i);
+    });
+  });
+}
+
+function _pickSearch(sym) {
+  const dd = document.getElementById("search-dropdown");
+  const inp = document.getElementById("ticker-search");
+  if (dd) dd.style.display = "none";
+  if (inp) { inp.value = ""; inp.blur(); }
+  selectTicker(sym);
+}
+
+async function resolveAndSelect(q) {
+  q = (q || "").trim();
+  if (!q) return;
+  try {
+    const r = await (await fetch(`/api/search?q=${encodeURIComponent(q)}`)).json();
+    const sym = (r.results && r.results[0] && r.results[0].symbol) || q.toUpperCase();
+    _pickSearch(sym);
+  } catch (e) { _pickSearch(q.toUpperCase()); }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const orig = window.switchModule;
   window.switchModule = function (idx, el) {
@@ -537,23 +656,79 @@ document.addEventListener("DOMContentLoaded", () => {
     if (sub && TICKER_MODULES.has(idx)) sub.textContent = "/ " + DD_TICKER;
     onModule(idx);
   };
+
+  // Search: autocomplete dropdown + Enter/arrow keys
   const search = document.getElementById("ticker-search");
-  if (search) search.addEventListener("keydown", e => {
-    if (e.key === "Enter") { resolveAndSelect(search.value); search.value = ""; search.blur(); }
+  const dd = document.getElementById("search-dropdown");
+  if (search) {
+    search.addEventListener("input", () => {
+      const q = search.value.trim();
+      clearTimeout(_searchTimer);
+      if (!q) { if (dd) dd.style.display = "none"; return; }
+      _searchTimer = setTimeout(async () => {
+        try {
+          const r = await (await fetch(`/api/search?q=${encodeURIComponent(q)}`)).json();
+          _buildDropdown(r.results || []);
+        } catch (_) {}
+      }, 280);
+    });
+    search.addEventListener("keydown", e => {
+      const items = dd ? [...dd.querySelectorAll(".search-item")] : [];
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        _ddIdx = Math.min(_ddIdx + 1, items.length - 1);
+        items.forEach((el, i) => el.classList.toggle("hi", i === _ddIdx));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        _ddIdx = Math.max(_ddIdx - 1, 0);
+        items.forEach((el, i) => el.classList.toggle("hi", i === _ddIdx));
+      } else if (e.key === "Enter") {
+        if (_ddIdx >= 0 && items[_ddIdx]) { _pickSearch(items[_ddIdx].dataset.sym); }
+        else { resolveAndSelect(search.value); }
+      } else if (e.key === "Escape") {
+        if (dd) dd.style.display = "none";
+      }
+    });
+  }
+  document.addEventListener("click", ev => {
+    const wrap = document.querySelector(".search");
+    if (dd && wrap && !wrap.contains(ev.target)) dd.style.display = "none";
   });
+
+  // Deep Dive interval + indicator chips
   const iv = document.getElementById("dd-interval");
   if (iv) iv.addEventListener("change", () => { ddInterval = iv.value; loadCandles(); });
   document.querySelectorAll(".ind-btn").forEach(b => b.addEventListener("click", () => {
+    if (b.id === "mc-run" || b.id === "bt-run-btn") return;
     const k = b.dataset.ind;
+    if (!k) return;
     if (ddIndicators.has(k)) { ddIndicators.delete(k); b.classList.remove("on"); }
     else { ddIndicators.add(k); b.classList.add("on"); }
     loadCandles();
   }));
+
+  // Backtester: strategy selector + run button
+  const btSel = document.getElementById("bt-strategy-sel");
+  if (btSel) btSel.addEventListener("change", () => { BT.strategy = btSel.value; });
+  const btRun = document.getElementById("bt-run-btn");
+  if (btRun) btRun.addEventListener("click", () => { BT.strategy = (btSel && btSel.value) || BT.strategy; delete loaded[3]; loadBacktester(); });
+
+  // Strategy Library → Backtester interlink (event delegation — cards are dynamically rendered)
+  const slCards = document.getElementById("sl-cards");
+  if (slCards) slCards.addEventListener("click", e => {
+    const card = e.target.closest("[data-strat]");
+    if (card && card.dataset.strat) window.sendToBacktester(card.dataset.strat);
+  });
+
+  // Topbar refresh
   const rf = document.getElementById("topbar-refresh");
   if (rf) rf.addEventListener("click", () => { delete loaded[_curModule]; if (loaders[_curModule]) loaders[_curModule](); });
+
+  // Monte Carlo
   const mcRun = document.getElementById("mc-run");
   if (mcRun) mcRun.addEventListener("click", () => loadMonteCarlo());
   const mcModel = document.getElementById("mc-model");
   if (mcModel) mcModel.addEventListener("change", () => loadMonteCarlo());
+
   onModule(0);  // Screener active on load
 });

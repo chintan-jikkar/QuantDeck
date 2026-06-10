@@ -248,15 +248,28 @@ def backtest(strategy: str = "MA Crossover", ticker: str = "AAPL",
     ts = r.get("tearsheet", {}) or {}
 
     def norm_ds(series, n=110):
+        """Normalize to 100 and downsample. Returns (values, date_strings)."""
         try:
-            vals = series.dropna().tolist()
+            series = series.dropna()
+            vals = series.tolist()
+            try:
+                dates = series.index.strftime("%Y-%m-%d").tolist()
+            except Exception:
+                dates = []
         except Exception:
-            return []
+            return [], []
         if not vals:
-            return []
+            return [], []
         base = vals[0] if vals[0] else 1.0
         step = max(1, len(vals) // n)
-        return [round(vals[i] / base * 100.0, 2) for i in range(0, len(vals), step)]
+        idxs = list(range(0, len(vals), step))
+        return (
+            [round(vals[i] / base * 100.0, 2) for i in idxs],
+            [dates[i] for i in idxs] if dates else [],
+        )
+
+    eq_vals, eq_dates = norm_ds(r.get("equity_curve"))
+    bm_vals, bm_dates = norm_ds(r.get("benchmark_curve"))
 
     out = {
         "strategy": strategy, "ticker": ticker.upper(),
@@ -264,19 +277,41 @@ def backtest(strategy: str = "MA Crossover", ticker: str = "AAPL",
         "tearsheet": {k: ts.get(k) for k in
                       ("total_return", "sharpe", "sortino", "max_drawdown",
                        "win_rate", "cagr", "calmar", "profit_factor")},
-        "equity": norm_ds(r.get("equity_curve")),
-        "benchmark": norm_ds(r.get("benchmark_curve")),
+        "equity": eq_vals,
+        "equity_dates": eq_dates,
+        "benchmark": bm_vals,
+        "benchmark_dates": bm_dates,
     }
 
+    import bisect
     trades = r.get("trades")
     tl = []
+    trade_markers = []
     if trades is not None and not trades.empty:
         for _, row in trades.tail(6).iloc[::-1].iterrows():
             sig = row.get("signal")
             action = "Long" if sig == 1 else "Short" if sig == -1 else "Flat"
             tl.append({"date": str(row.get("date"))[:10], "action": action,
                        "price": row.get("price")})
+        if eq_dates:
+            for _, row in trades.iterrows():
+                sig = row.get("signal")
+                if sig is None or sig == 0:
+                    continue
+                d = str(row.get("date", ""))[:10]
+                if d < eq_dates[0] or d > eq_dates[-1]:
+                    continue
+                idx = min(bisect.bisect_left(eq_dates, d), len(eq_vals) - 1)
+                trade_markers.append({
+                    "date": d,
+                    "action": "buy" if sig == 1 else "sell",
+                    "val": eq_vals[idx] if idx < len(eq_vals) else None,
+                })
+            if len(trade_markers) > 60:
+                step2 = max(1, len(trade_markers) // 60)
+                trade_markers = trade_markers[::step2]
     out["trades"] = tl
+    out["trade_markers"] = trade_markers
 
     rets = r.get("returns")
     monthly = []
