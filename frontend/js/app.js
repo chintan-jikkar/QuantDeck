@@ -312,23 +312,28 @@ async function loadBacktester() {
 
 // ── Monte Carlo (module 4) ───────────────────────────────────────────
 let MC_TICKER = "AAPL";
-function renderCone(svg, bands, samples) {
+let _mcAnim = null;
+function renderCone(svg, bands, samples, upto) {
   const p10 = bands.p10 || [], p25 = bands.p25 || [], p50 = bands.p50 || [], p75 = bands.p75 || [], p90 = bands.p90 || [];
-  if (p50.length < 2) { svg.innerHTML = `<text x="200" y="70" text-anchor="middle" fill="#b4bdd4" font-size="10" font-family="DM Mono,monospace">No data</text>`; return; }
+  const Nfull = p50.length;
+  if (Nfull < 2) { svg.innerHTML = `<text x="200" y="70" text-anchor="middle" fill="#b4bdd4" font-size="11" font-family="DM Mono,monospace">No data</text>`; return; }
+  const n = (upto && upto < Nfull) ? Math.max(2, upto) : Nfull;
   const W = 420, H = 140, padL = 8, padR = 30;
   const all = [...p10, ...p90].filter(x => x != null && !isNaN(x));
   const lo = Math.min(...all), hi = Math.max(...all), span = (hi - lo) || 1;
-  const n = p50.length;
-  const X = i => padL + i / (n - 1) * (W - padL - padR);
+  const X = i => padL + i / (Nfull - 1) * (W - padL - padR);
   const Y = v => H - 10 - (v - lo) / span * (H - 22);
-  const poly = arr => arr.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
-  let out = `<polygon points="${poly(p90)} ${p10.map((v, i) => `${X(n - 1 - i).toFixed(1)},${Y(p10[n - 1 - i]).toFixed(1)}`).join(" ")}" fill="rgba(79,158,255,0.08)"/>`;
-  out += `<polygon points="${poly(p75)} ${p25.map((v, i) => `${X(n - 1 - i).toFixed(1)},${Y(p25[n - 1 - i]).toFixed(1)}`).join(" ")}" fill="rgba(0,229,204,0.10)"/>`;
-  (samples || []).slice(0, 10).forEach(p => { out += `<polyline points="${poly(p)}" fill="none" stroke="rgba(167,139,250,0.22)" stroke-width="0.8"/>`; });
-  out += `<polyline points="${poly(p50)}" fill="none" stroke="var(--cyan)" stroke-width="1.8"/>`;
-  out += `<text x="${W - 26}" y="${Y(p90[n - 1]).toFixed(1)}" fill="var(--lime)" font-size="8" font-family="DM Mono,monospace">P90</text>`;
-  out += `<text x="${W - 26}" y="${Y(p50[n - 1]).toFixed(1)}" fill="var(--cyan)" font-size="8" font-family="DM Mono,monospace">Med</text>`;
-  out += `<text x="${W - 26}" y="${Y(p10[n - 1]).toFixed(1)}" fill="var(--pink)" font-size="8" font-family="DM Mono,monospace">P10</text>`;
+  const up = a => Array.from({ length: n }, (_, i) => `${X(i).toFixed(1)},${Y(a[i]).toFixed(1)}`).join(" ");
+  const down = a => Array.from({ length: n }, (_, i) => `${X(n - 1 - i).toFixed(1)},${Y(a[n - 1 - i]).toFixed(1)}`).join(" ");
+  let out = `<polygon points="${up(p90)} ${down(p10)}" fill="rgba(79,158,255,0.08)"/>`;
+  out += `<polygon points="${up(p75)} ${down(p25)}" fill="rgba(0,229,204,0.10)"/>`;
+  (samples || []).slice(0, 10).forEach(p => { out += `<polyline points="${up(p)}" fill="none" stroke="rgba(167,139,250,0.22)" stroke-width="0.8"/>`; });
+  out += `<polyline points="${up(p50)}" fill="none" stroke="var(--cyan)" stroke-width="2"/>`;
+  if (n >= Nfull) {
+    out += `<text x="${W - 26}" y="${Y(p90[Nfull - 1]).toFixed(1)}" fill="var(--lime)" font-size="9" font-family="DM Mono,monospace">P90</text>`;
+    out += `<text x="${W - 26}" y="${Y(p50[Nfull - 1]).toFixed(1)}" fill="var(--cyan)" font-size="9" font-family="DM Mono,monospace">Med</text>`;
+    out += `<text x="${W - 26}" y="${Y(p10[Nfull - 1]).toFixed(1)}" fill="var(--pink)" font-size="9" font-family="DM Mono,monospace">P10</text>`;
+  }
   svg.innerHTML = out;
 }
 function renderHist(svg, hist, start) {
@@ -351,8 +356,10 @@ async function loadMonteCarlo() {
   const kp = document.getElementById("mc-kpis"), cone = document.getElementById("mc-conesvg"),
         hs = document.getElementById("mc-histsvg"), risk = document.getElementById("mc-risk");
   if (kp) kp.innerHTML = `<div class="kpi c" style="grid-column:1/-1;text-align:center;color:var(--txt-m)">Simulating ${MC_TICKER}…</div>`;
+  if (cone) cone.innerHTML = `<text x="200" y="70" text-anchor="middle" fill="#b4bdd4" font-size="11" font-family="DM Mono,monospace">running…</text>`;
   try {
-    const res = await fetch(`/api/simulation/${MC_TICKER}`);
+    const _model = (document.getElementById("mc-model") || {}).value || "gbm";
+    const res = await fetch(`/api/simulation/${MC_TICKER}?model=${_model}`);
     const d = await res.json();
     if (!res.ok || (d.error && !d.bands)) throw new Error(d.error || `API ${res.status}`);
     const ct = document.getElementById("mc-conetitle");
@@ -363,7 +370,17 @@ async function loadMonteCarlo() {
       <div class="kpi l"><div class="kpi-lbl">95th Percentile</div><div class="kpi-val l">${pctSigned(rp.p95)}</div><div class="kpi-sub">bull scenario</div></div>
       <div class="kpi p"><div class="kpi-lbl">5th Percentile</div><div class="kpi-val p">${pctSigned(rp.p5)}</div><div class="kpi-sub">bear scenario</div></div>
       <div class="kpi a"><div class="kpi-lbl">Prob. of Profit</div><div class="kpi-val a">${pct(d.prob_profit, 1)}</div><div class="kpi-sub">above start price</div></div>`;
-    if (cone) renderCone(cone, d.bands || {}, d.sample_paths || []);
+    if (cone) {
+      if (_mcAnim) { clearInterval(_mcAnim); _mcAnim = null; }
+      const _N = ((d.bands && d.bands.p50) || []).length;
+      let _k = 2;
+      renderCone(cone, d.bands || {}, d.sample_paths || [], _k);
+      _mcAnim = setInterval(() => {
+        _k += Math.max(1, Math.floor(_N / 40));
+        if (_k >= _N) { _k = _N; clearInterval(_mcAnim); _mcAnim = null; }
+        renderCone(cone, d.bands || {}, d.sample_paths || [], _k);
+      }, 40);
+    }
     if (hs) renderHist(hs, d.histogram || [], d.start_price);
     if (risk) {
       const rf = (lbl, val, col) => `<div class="dcf-field"><div class="dcf-lbl">${lbl}</div><div style="font-size:14px;font-weight:700;color:${col};font-family:'Syne',sans-serif;margin-top:3px">${val}</div></div>`;
@@ -534,5 +551,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }));
   const rf = document.getElementById("topbar-refresh");
   if (rf) rf.addEventListener("click", () => { delete loaded[_curModule]; if (loaders[_curModule]) loaders[_curModule](); });
+  const mcRun = document.getElementById("mc-run");
+  if (mcRun) mcRun.addEventListener("click", () => loadMonteCarlo());
+  const mcModel = document.getElementById("mc-model");
+  if (mcModel) mcModel.addEventListener("change", () => loadMonteCarlo());
   onModule(0);  // Screener active on load
 });
