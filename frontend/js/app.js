@@ -839,7 +839,10 @@ window.sendToBacktester = function(stratName) {
 };
 
 // ── Portfolio Optimizer (module 6) ───────────────────────────────────
-let PO_BASKET = ["NVDA", "META", "LLY", "AVGO", "AAPL", "MSFT", "JPM", "UNH"];
+const PO_BASKET_KEY = "qd-po-basket";
+const _PO_DEFAULT = ["NVDA", "META", "LLY", "AVGO", "AAPL", "MSFT", "JPM", "UNH"];
+let PO_BASKET = (() => { try { const s = localStorage.getItem(PO_BASKET_KEY); return s ? JSON.parse(s) : _PO_DEFAULT; } catch (_) { return _PO_DEFAULT; } })();
+function _savePoBasket() { try { localStorage.setItem(PO_BASKET_KEY, JSON.stringify(PO_BASKET)); } catch (_) {} }
 
 function renderPoChips() {
   const el = document.getElementById("po-chips");
@@ -853,6 +856,7 @@ function renderPoChips() {
   el.querySelectorAll("[data-rm]").forEach(btn => {
     btn.addEventListener("click", () => {
       PO_BASKET = PO_BASKET.filter(s => s !== btn.dataset.rm);
+      _savePoBasket();
       renderPoChips();
     });
   });
@@ -1313,7 +1317,7 @@ document.addEventListener("DOMContentLoaded", () => {
       el.addEventListener("mouseleave", () => el.style.background = "");
       el.addEventListener("click", () => {
         const sym = el.dataset.sym;
-        if (sym && !PO_BASKET.includes(sym)) { PO_BASKET.push(sym); renderPoChips(); }
+        if (sym && !PO_BASKET.includes(sym)) { PO_BASKET.push(sym); _savePoBasket(); renderPoChips(); }
         if (poAddInput) poAddInput.value = "";
         poDd.style.display = "none";
       });
@@ -1335,14 +1339,14 @@ document.addEventListener("DOMContentLoaded", () => {
       if (e.key === "Enter") {
         e.preventDefault();
         const sym = poAddInput.value.trim().toUpperCase();
-        if (sym && !PO_BASKET.includes(sym)) { PO_BASKET.push(sym); renderPoChips(); }
+        if (sym && !PO_BASKET.includes(sym)) { PO_BASKET.push(sym); _savePoBasket(); renderPoChips(); }
         poAddInput.value = ""; poDd.style.display = "none";
       } else if (e.key === "Escape") { poDd.style.display = "none"; }
     });
   }
   if (poAddBtn) poAddBtn.addEventListener("click", () => {
     const sym = (poAddInput ? poAddInput.value.trim().toUpperCase() : "");
-    if (sym && !PO_BASKET.includes(sym)) { PO_BASKET.push(sym); renderPoChips(); if (poAddInput) poAddInput.value = ""; }
+    if (sym && !PO_BASKET.includes(sym)) { PO_BASKET.push(sym); _savePoBasket(); renderPoChips(); if (poAddInput) poAddInput.value = ""; }
   });
   if (poRunBtn) poRunBtn.addEventListener("click", () => {
     delete loaded[6];
