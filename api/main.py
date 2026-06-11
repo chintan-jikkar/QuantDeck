@@ -381,6 +381,81 @@ def simulation(ticker: str, model: str = "gbm", horizon: int = 252):
     }))
 
 
+@app.get("/api/decision/{ticker}")
+def decision(ticker: str):
+    """Cross-layer decision signal: combines fundamental health (Deep Dive),
+    valuation (DCF range), and simulation odds into a structured 1-5 framework.
+    A quantitative summary — NOT financial advice."""
+    import layers.valuation as val
+    from data.prices import detect_asset_type, country_from_ticker
+    from data.fundamentals import (fetch_income_statement, fetch_balance_sheet,
+                                    fetch_cash_flow, fetch_key_metrics)
+    from layers.deep_dive import compute_margins, compute_beneish_mscore
+    from layers.simulation import run_simulation
+    from layers.decision import build_decision_signal
+
+    ticker = ticker.upper()
+    if detect_asset_type(ticker) != "equity":
+        return JSONResponse({"ticker": ticker, "error": "Decision signal applies to equities only"})
+
+    # 1) Fundamental health summary
+    dd_summary: dict = {}
+    try:
+        income = fetch_income_statement(ticker, limit=5)
+        balance = fetch_balance_sheet(ticker, limit=5)
+        cashflow = fetch_cash_flow(ticker, limit=5)
+        km = fetch_key_metrics(ticker, limit=1)
+        if income is not None and not income.empty and len(income) >= 2:
+            margins = compute_margins(income)
+            dd_summary["margins_net"] = _g0(margins, "net_margin")
+            if len(balance) >= 2:
+                m = compute_beneish_mscore(income, balance, cashflow)
+                dd_summary["beneish_mscore"] = float(m) if (m is not None and m == m) else None
+        dd_summary["debt_equity"] = _g0(km, "debtToEquity")
+    except Exception:
+        pass
+
+    # 2) Valuation summary (DCF bear/bull as the fair-value range)
+    val_summary: dict = {}
+    country = country_from_ticker(ticker)
+    rf_pct = _RF_PROXY.get(country, 4.2)
+    orig = val.fetch_fred_series
+    val.fetch_fred_series = lambda *a, **k: pd.Series([rf_pct])
+    try:
+        v = val.run_valuation(ticker, country=country)
+        if v.get("applicable"):
+            cur = v.get("current_price")
+            dcf = v.get("dcf_base") or {}
+            val_summary = {"current": cur,
+                           "fair_low": dcf.get("price_bear") or cur,
+                           "fair_high": dcf.get("price_bull") or cur}
+    except Exception:
+        pass
+    finally:
+        val.fetch_fred_series = orig
+
+    # 3) Simulation odds (lighter run — we only need prob_profit + P50/P10)
+    sim_summary: dict = {}
+    try:
+        s = run_simulation(ticker, model="gbm", n_paths=1000, horizon=252, seed=42)
+        bands = s["bands"]
+        sim_summary = {
+            "prob_profit": s["risk_metrics"].get("prob_profit"),
+            "current": float(s["start_price"]),
+            "p50": float(bands["p50"].iloc[-1]) if "p50" in bands.columns else None,
+            "p10": float(bands["p10"].iloc[-1]) if "p10" in bands.columns else None,
+        }
+    except Exception:
+        pass
+
+    if not val_summary and not sim_summary:
+        return JSONResponse({"ticker": ticker, "error": "insufficient data for a decision signal"})
+
+    signal = build_decision_signal(dd_summary, val_summary, sim_summary)
+    signal["ticker"] = ticker
+    return JSONResponse(to_jsonable(signal))
+
+
 @app.get("/api/strategies")
 def strategies(ticker: str = "AAPL"):
     """Strategy library: each registered strategy backtested on one ticker
@@ -423,12 +498,17 @@ def portfolio(tickers: str = "NVDA,META,LLY,AVGO,AAPL,MSFT,JPM,UNH"):
         data = yf.download(syms, period="2y", progress=False, auto_adjust=True)["Close"]
     except Exception as e:
         return JSONResponse({"error": f"prices: {e}"}, status_code=502)
+    # A single resolved symbol comes back as a Series; normalize to a 1-col frame.
+    if isinstance(data, pd.Series):
+        data = data.to_frame(name=syms[0] if syms else "Close")
     data = data.dropna(axis=1, how="all").dropna()
     rets = data.pct_change().dropna()
     syms = list(rets.columns)
     n = len(syms)
     if n < 2:
-        return JSONResponse({"error": "not enough price history for these tickers"}, status_code=502)
+        return JSONResponse({"error": "not enough price history for these tickers (need at least 2)"}, status_code=502)
+    # Latest close per symbol — lets the UI mark stored buy prices to market.
+    last_prices = {s: float(data[s].iloc[-1]) for s in syms}
 
     mu = rets.mean().values * 252.0
     cov = rets.cov().values * 252.0
@@ -469,6 +549,7 @@ def portfolio(tickers: str = "NVDA,META,LLY,AVGO,AAPL,MSFT,JPM,UNH"):
     weights = sorted(
         [{"symbol": syms[i], "weight": best["weights"][i], "ret": float(mu[i]),
           "ann_vol": float(ann_vol[i]), "beta": float(betas[i]),
+          "current_price": last_prices.get(syms[i]),
           "risk": _risk_label(betas[i], ann_vol[i], best["weights"][i])} for i in range(n)],
         key=lambda x: -x["weight"])
     corr = rets.corr()

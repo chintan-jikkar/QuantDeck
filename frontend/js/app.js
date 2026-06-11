@@ -117,6 +117,7 @@ async function loadScreener() {
 
 // ── Deep Dive (module 1) ─────────────────────────────────────────────
 let DD_TICKER = "AAPL";
+window.__activeTicker = DD_TICKER;   // drives the descriptive subtitle (· TICKER)
 let ddInterval = "1d";
 let ddIndicators = new Set();
 function renderRevPlotly(divId, series) {
@@ -423,7 +424,7 @@ async function loadValuation() {
       const rows = d.comps || [];
       compsT.innerHTML = rows.length
         ? rows.map(r => `<tr><td><span class="cn">${r.symbol || "—"}</span></td><td>${fmt(r.evToEbitda)}×</td><td>${fmt(r.peRatio)}×</td><td class="${(r.revenueGrowth || 0) >= 0 ? "up2" : "dn2"}">${pct(r.revenueGrowth, 0)}</td></tr>`).join("")
-        : `<tr><td colspan="4" style="text-align:center;color:var(--txt-d);padding:14px">Comps unavailable (peer API rate limit)</td></tr>`;
+        : `<tr><td colspan="4" style="text-align:center;color:var(--txt-d);padding:14px">No peer comps available for this name</td></tr>`;
     }
     if (svg) renderRangeSvg(svg, dcf.price_bear, dcf.price_base, dcf.price_bull, cur);
 
@@ -684,6 +685,7 @@ async function loadMonteCarlo() {
       <div class="kpi a"><div class="kpi-lbl">Prob. of Profit</div><div class="kpi-val a">${pct(d.prob_profit, 1)}</div><div class="kpi-sub">above start price</div></div>`;
     if (coneDiv) {
       if (_mcAnim) { clearInterval(_mcAnim); _mcAnim = null; }
+      coneDiv.innerHTML = "";   // clear the "running…" placeholder before Plotly draws
       const _N = ((d.bands && d.bands.p50) || []).length;
       let _k = 2;
       renderConePlotly("mc-conechart", d.bands || {}, d.sample_paths || [], _k);
@@ -736,8 +738,55 @@ async function loadMonteCarlo() {
         cell("Bull Target", bull90 ? `$${bull90.toFixed(0)}` : "—", "var(--cyan)", "90d P90") +
         (rr ? `<div class="dcf-field" style="text-align:center"><div class="dcf-lbl">Risk/Reward</div><div style="font-size:14px;font-weight:700;color:${parseFloat(rr) >= 2 ? "var(--lime)" : "var(--amber)"};font-family:'Syne',sans-serif;margin-top:3px">${rr} : 1</div><div style="font-size:9px;color:var(--txt-d);margin-top:1px">target vs stop</div></div>` : "");
     }
+    _loadDecisionSignal(MC_TICKER);  // cross-layer signal (non-blocking)
   } catch (e) {
     if (kp) kp.innerHTML = `<div class="kpi c" style="grid-column:1/-1;text-align:center;color:var(--pink)">Simulation failed: ${e.message}</div>`;
+  }
+}
+
+// Cross-layer decision signal (fundamentals × valuation × simulation).
+async function _loadDecisionSignal(ticker) {
+  const el = document.getElementById("mc-decision");
+  if (!el) return;
+  el.innerHTML = `<div style="color:var(--txt-d);font-size:10px;text-align:center;padding:12px">Computing cross-layer signal for ${ticker}…</div>`;
+  try {
+    const d = await (await fetch(`/api/decision/${ticker}`)).json();
+    if (d.error || !d.combined) { el.innerHTML = `<div style="color:var(--txt-d);font-size:10px;text-align:center;padding:12px">${d.error || "Signal unavailable"}</div>`; return; }
+    const combinedCol = d.combined === "Constructive" ? "var(--lime)" : d.combined === "Cautious" ? "var(--pink)" : "var(--amber)";
+    const rr = d.reward_risk;
+    const rrStr = (rr == null) ? "—" : !isFinite(rr) ? "∞" : `${Number(rr).toFixed(1)} : 1`;
+    const bar = (label, sub) => {
+      const score = sub.score || 0;
+      const col = score >= 4 ? "var(--lime)" : score >= 3 ? "var(--amber)" : "var(--pink)";
+      return `<div style="margin-bottom:9px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+          <span style="font-size:10px;color:var(--txt-m)">${label}</span>
+          <span style="font-size:10px;color:${col};font-weight:600">${score}/5</span>
+        </div>
+        <div style="height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;margin-bottom:3px">
+          <div style="width:${score / 5 * 100}%;height:100%;background:${col};border-radius:3px"></div>
+        </div>
+        <div style="font-size:9px;color:var(--txt-d);line-height:1.4">${sub.evidence || ""}</div>
+      </div>`;
+    };
+    el.innerHTML = `
+      <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
+        <div style="flex:0 0 150px">
+          <div style="font-size:9px;color:var(--txt-d);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Combined</div>
+          <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:${combinedCol}">${d.combined}</div>
+          <div style="font-size:10px;color:var(--txt-m);margin-top:8px">Reward / Risk</div>
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:${rr != null && (rr === Infinity || rr >= 2) ? "var(--lime)" : "var(--amber)"}">${rrStr}</div>
+          ${d.conflict ? `<div style="margin-top:8px;font-size:9px;color:var(--amber);line-height:1.4"><i class="ti ti-alert-triangle"></i> Layers disagree — read the evidence</div>` : ""}
+        </div>
+        <div style="flex:1;min-width:220px">
+          ${bar("Fundamental health", d.fundamental || {})}
+          ${bar("Valuation", d.valuation || {})}
+          ${bar("Simulation odds", d.simulation || {})}
+        </div>
+      </div>
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:9px;color:var(--txt-d);line-height:1.5">${d.disclaimer || ""}</div>`;
+  } catch (e) {
+    el.innerHTML = `<div style="color:var(--txt-d);font-size:10px;text-align:center;padding:12px">Signal unavailable: ${e.message}</div>`;
   }
 }
 
@@ -979,8 +1028,10 @@ async function loadPortfolio() {
         const t = tracking[w.symbol] || {};
         const buyDateStr = t.buyDate || "—";
         const buyPriceStr = t.buyPrice ? "$" + Number(t.buyPrice).toFixed(2) : "—";
-        const plStr = "—";
-        return `<tr data-po-sym="${w.symbol}">
+        const cur = w.current_price;
+        const pnl = _computePoPnl(t, cur);
+        const curAttr = cur != null ? ` data-cur="${cur}"` : "";
+        return `<tr data-po-sym="${w.symbol}"${curAttr}>
           <td style="font-weight:600;color:var(--blue);font-size:11px;padding-left:4px;cursor:pointer" onclick="openPoEdit('${w.symbol}')" title="Click to log buy price">${w.symbol}</td>
           <td style="text-align:center;color:var(--cyan)">${wPct}%</td>
           <td style="text-align:center;color:${diffCol};font-size:10px">${eqWt.toFixed(1)}% <span style="font-size:9px">(${diffStr})</span></td>
@@ -990,7 +1041,7 @@ async function loadPortfolio() {
           </td>
           <td class="po-td-buydate" style="text-align:center;font-size:10px;color:var(--txt-d)">${buyDateStr}</td>
           <td class="po-td-buyprice" style="text-align:center;font-size:10px;color:var(--txt-m)">${buyPriceStr}</td>
-          <td class="po-td-pl" style="text-align:center;font-size:10px;color:var(--txt-d)">${plStr}</td>
+          <td class="po-td-pl" style="text-align:center;font-size:10px;color:${pnl.color}">${pnl.text}</td>
           <td style="padding-left:12px">
             <div style="height:7px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden">
               <div style="width:${barW}%;height:100%;background:var(--blue);border-radius:4px"></div>
@@ -1041,17 +1092,30 @@ function savePoTracking() {
   if (savedEl) savedEl.textContent = `Saved ✓  ${date}${price ? " @ $" + price.toFixed(2) : ""}${qty ? " · " + qty + " units" : ""}`;
   _refreshPoSummaryTracking();
 }
+// P&L of a tracked holding vs the live price. Returns { text, color }.
+function _computePoPnl(t, curPrice) {
+  if (!t || !t.buyPrice || curPrice == null || isNaN(curPrice)) return { text: "—", color: "var(--txt-d)" };
+  const gainPct = (curPrice / t.buyPrice - 1) * 100;
+  const color = gainPct >= 0 ? "var(--lime)" : "var(--pink)";
+  const sign = gainPct >= 0 ? "+" : "";
+  if (t.qty) {
+    const gainAbs = (curPrice - t.buyPrice) * t.qty;
+    return { text: `${sign}${gainPct.toFixed(1)}% · ${gainAbs >= 0 ? "+" : "−"}$${Math.abs(gainAbs).toFixed(0)}`, color };
+  }
+  return { text: `${sign}${gainPct.toFixed(1)}%`, color };
+}
 function _refreshPoSummaryTracking() {
   const tracking = getPoTracking();
   document.querySelectorAll("tr[data-po-sym]").forEach(row => {
     const sym = row.dataset.poSym;
     const t = tracking[sym] || {};
+    const cur = row.dataset.cur ? parseFloat(row.dataset.cur) : null;
     const dateCell = row.querySelector(".po-td-buydate");
     const priceCell = row.querySelector(".po-td-buyprice");
     const plCell = row.querySelector(".po-td-pl");
     if (dateCell) dateCell.textContent = t.buyDate || "—";
     if (priceCell) priceCell.textContent = t.buyPrice ? "$" + Number(t.buyPrice).toFixed(2) : "—";
-    if (plCell) plCell.textContent = "—";
+    if (plCell) { const pnl = _computePoPnl(t, cur); plCell.textContent = pnl.text; plCell.style.color = pnl.color; }
   });
 }
 window.savePoTracking = savePoTracking;
@@ -1099,6 +1163,9 @@ function selectTicker(t) {
   if (!t) return;
   DD_TICKER = VAL_TICKER = MC_TICKER = t;
   BT.ticker = t;
+  window.__activeTicker = t;                         // drives subtitle + topbar pill
+  const pill = document.getElementById("topbar-pill");
+  if (pill) pill.textContent = t;
   TICKER_MODULES.forEach(i => delete loaded[i]);   // force reload for the new ticker
   window.switchModule(1, null);                     // jump to Deep Dive
 }
@@ -1196,10 +1263,10 @@ async function loadSidebarWatchlist() {
 document.addEventListener("DOMContentLoaded", () => {
   const orig = window.switchModule;
   window.switchModule = function (idx, el) {
-    if (orig) orig(idx, el);
+    if (orig) orig(idx, el);   // inline handler sets the descriptive subtitle (+ ticker)
     _curModule = idx;
-    const sub = document.getElementById("mod-sub");
-    if (sub && TICKER_MODULES.has(idx)) sub.textContent = "/ " + DD_TICKER;
+    const pill = document.getElementById("topbar-pill");
+    if (pill) pill.textContent = TICKER_MODULES.has(idx) ? DD_TICKER : "Markets";
     onModule(idx);
   };
 

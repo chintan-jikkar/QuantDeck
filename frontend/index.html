@@ -227,7 +227,7 @@ svg.mc{width:100%;height:140px;display:block;}
     </div>
     <div class="search"><i class="ti ti-search" style="font-size:12px"></i><input id="ticker-search" placeholder="Search ticker…" autocomplete="off" style="background:none;border:0;outline:0;color:var(--txt);font-family:'DM Mono',monospace;font-size:11px;width:100%"/><div id="search-dropdown"></div></div>
     <span id="search-wl-btn" title="Add to watchlist" style="cursor:pointer;display:none;background:rgba(79,158,255,0.15);border:1px solid rgba(79,158,255,0.4);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--blue);font-family:'DM Mono',monospace;white-space:nowrap">+ WL</span>
-    <span class="pill pill-blue">S&amp;P 500</span>
+    <span class="pill pill-blue" id="topbar-pill" title="Active symbol">Markets</span>
     <span class="pill-live">Live</span>
     <i class="ti ti-refresh" id="topbar-refresh" style="font-size:16px;color:var(--txt-m);cursor:pointer"></i>
   </div>
@@ -237,10 +237,10 @@ svg.mc{width:100%;height:140px;display:block;}
     <!-- ═══ MODULE 01: SCREENER ═══ -->
     <div class="module-panel active" id="m0">
       <div class="kpi-row" id="scr-kpis">
-        <div class="kpi b"><i class="ti ti-database kpi-ico" style="color:var(--blue)"></i><div class="kpi-lbl">Universe</div><div class="kpi-val b">503</div><div class="kpi-sub">stocks screened</div></div>
-        <div class="kpi c"><i class="ti ti-trending-up kpi-ico" style="color:var(--cyan)"></i><div class="kpi-lbl">Buy signals</div><div class="kpi-val c">38</div><div class="kpi-sub up">↑ 5 vs yesterday</div></div>
-        <div class="kpi l"><i class="ti ti-chart-bar kpi-ico" style="color:var(--lime)"></i><div class="kpi-lbl">Avg P/E (filtered)</div><div class="kpi-val l">17.4×</div><div class="kpi-sub dn">vs 21.1× S&amp;P</div></div>
-        <div class="kpi a"><i class="ti ti-star kpi-ico" style="color:var(--amber)"></i><div class="kpi-lbl">Top Factor</div><div class="kpi-val w" style="font-size:17px;padding-top:5px">Momentum</div><div class="kpi-sub">composite driver</div></div>
+        <div class="kpi b"><i class="ti ti-database kpi-ico" style="color:var(--blue)"></i><div class="kpi-lbl">Universe</div><div class="kpi-val b">—</div><div class="kpi-sub">stocks screened</div></div>
+        <div class="kpi c"><i class="ti ti-trending-up kpi-ico" style="color:var(--cyan)"></i><div class="kpi-lbl">Buy signals</div><div class="kpi-val c">—</div><div class="kpi-sub">composite ≥ 70</div></div>
+        <div class="kpi l"><i class="ti ti-chart-bar kpi-ico" style="color:var(--lime)"></i><div class="kpi-lbl">Avg P/E</div><div class="kpi-val l">—</div><div class="kpi-sub">screened set</div></div>
+        <div class="kpi a"><i class="ti ti-star kpi-ico" style="color:var(--amber)"></i><div class="kpi-lbl">Top Pick</div><div class="kpi-val w" style="font-size:17px;padding-top:5px">—</div><div class="kpi-sub">loading…</div></div>
       </div>
       <div class="two-col">
         <div class="card tb">
@@ -248,11 +248,7 @@ svg.mc{width:100%;height:140px;display:block;}
           <table>
             <thead><tr><th>Company</th><th>Score</th><th>P/E</th><th>EV/EBITDA</th><th>ROE</th><th>Signal</th></tr></thead>
             <tbody id="scr-tbody">
-              <tr><td><span class="cn">Nvidia</span><span class="cs">NVDA · Tech</span></td><td><span class="sp sh">91</span></td><td>34.2</td><td class="up2">+61%</td><td>48.1</td><td><span class="sb2 buy">Buy</span></td></tr>
-              <tr><td><span class="cn">Eli Lilly</span><span class="cs">LLY · Health</span></td><td><span class="sp sh">87</span></td><td>51.1</td><td class="up2">+38%</td><td>41.7</td><td><span class="sb2 buy">Buy</span></td></tr>
-              <tr><td><span class="cn">Meta</span><span class="cs">META · Tech</span></td><td><span class="sp sh">83</span></td><td>26.7</td><td class="up2">+22%</td><td>19.3</td><td><span class="sb2 buy">Buy</span></td></tr>
-              <tr><td><span class="cn">Apple</span><span class="cs">AAPL · Tech</span></td><td><span class="sp sm">72</span></td><td>29.4</td><td>+9%</td><td>23.8</td><td><span class="sb2 wch">Watch</span></td></tr>
-              <tr><td><span class="cn">Intel</span><span class="cs">INTC · Tech</span></td><td><span class="sp sl">41</span></td><td>19.8</td><td class="dn2">−18%</td><td>14.2</td><td><span class="sb2 avd">Avoid</span></td></tr>
+              <tr><td colspan="6" style="text-align:center;color:var(--txt-m);padding:22px">Loading live data…</td></tr>
             </tbody>
           </table>
         </div>
@@ -307,10 +303,10 @@ svg.mc{width:100%;height:140px;display:block;}
     <!-- ═══ MODULE 02: DEEP DIVE ═══ -->
     <div class="module-panel" id="m1">
       <div class="kpi-row" id="dd-kpis">
-        <div class="kpi b"><div class="kpi-lbl">Market Cap</div><div class="kpi-val b">$3.28T</div><div class="kpi-sub">NVDA · Large Cap</div></div>
-        <div class="kpi c"><div class="kpi-lbl">Revenue TTM</div><div class="kpi-val c">$130.5B</div><div class="kpi-sub up">↑ 122% YoY</div></div>
-        <div class="kpi l"><div class="kpi-lbl">Net Margin</div><div class="kpi-val l">55.7%</div><div class="kpi-sub up">↑ from 26% prior yr</div></div>
-        <div class="kpi a"><div class="kpi-lbl">Analyst Target</div><div class="kpi-val a">$174</div><div class="kpi-sub up">+22% upside</div></div>
+        <div class="kpi b"><div class="kpi-lbl">Market Cap</div><div class="kpi-val b">—</div><div class="kpi-sub">loading…</div></div>
+        <div class="kpi c"><div class="kpi-lbl">Revenue (FY)</div><div class="kpi-val c">—</div><div class="kpi-sub">loading…</div></div>
+        <div class="kpi l"><div class="kpi-lbl">Net Margin</div><div class="kpi-val l">—</div><div class="kpi-sub">loading…</div></div>
+        <div class="kpi a"><div class="kpi-lbl">Analyst Target</div><div class="kpi-val a">—</div><div class="kpi-sub">loading…</div></div>
       </div>
       <div class="card tb" style="padding-bottom:8px">
         <div class="ctitle" style="justify-content:space-between">
@@ -389,10 +385,10 @@ svg.mc{width:100%;height:140px;display:block;}
     <!-- ═══ MODULE 03: VALUATION ═══ -->
     <div class="module-panel" id="m2">
       <div class="kpi-row" id="val-kpis">
-        <div class="kpi c"><div class="kpi-lbl">DCF Fair Value</div><div class="kpi-val c">$161.40</div><div class="kpi-sub up">+13.2% upside</div></div>
-        <div class="kpi l"><div class="kpi-lbl">Comps Median</div><div class="kpi-val l">$158.20</div><div class="kpi-sub up">+11% upside</div></div>
-        <div class="kpi b"><div class="kpi-lbl">Current Price</div><div class="kpi-val b">$142.50</div><div class="kpi-sub">NVDA · as of today</div></div>
-        <div class="kpi a"><div class="kpi-lbl">Implied Return</div><div class="kpi-val a">+12.1%</div><div class="kpi-sub up">blended estimate</div></div>
+        <div class="kpi c"><div class="kpi-lbl">DCF Fair Value</div><div class="kpi-val c">—</div><div class="kpi-sub">loading…</div></div>
+        <div class="kpi l"><div class="kpi-lbl">Bull / Bear</div><div class="kpi-val l">—</div><div class="kpi-sub">loading…</div></div>
+        <div class="kpi b"><div class="kpi-lbl">Current Price</div><div class="kpi-val b">—</div><div class="kpi-sub">loading…</div></div>
+        <div class="kpi a"><div class="kpi-lbl">Implied Return</div><div class="kpi-val a">—</div><div class="kpi-sub">loading…</div></div>
       </div>
       <div class="two-col">
         <div class="card tb">
@@ -400,29 +396,21 @@ svg.mc{width:100%;height:140px;display:block;}
           <table>
             <thead><tr><th>Year</th><th>FCF ($B)</th><th>Disc. FCF ($B)</th></tr></thead>
             <tbody id="val-dcf">
-              <tr><td>2025E</td><td>195.2</td><td>58%</td><td>99.8</td><td class="up2">94.1</td></tr>
-              <tr><td>2026E</td><td>248.7</td><td>60%</td><td>130.4</td><td class="up2">115.8</td></tr>
-              <tr><td>2027E</td><td>298.1</td><td>61%</td><td>159.2</td><td class="up2">133.0</td></tr>
-              <tr><td>2028E</td><td>336.2</td><td>62%</td><td>181.7</td><td class="up2">142.6</td></tr>
-              <tr><td>2029E</td><td>369.8</td><td>62%</td><td>200.3</td><td class="up2">147.4</td></tr>
+              <tr><td colspan="3" style="text-align:center;color:var(--txt-d);padding:18px">Valuing…</td></tr>
             </tbody>
           </table>
           <div id="val-dcffields" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-            <div class="dcf-field"><div class="dcf-lbl">WACC</div><div class="dcf-val" style="font-size:15px;color:var(--blue)">8.4%</div></div>
-            <div class="dcf-field"><div class="dcf-lbl">Terminal Growth</div><div class="dcf-val" style="font-size:15px;color:var(--cyan)">3.0%</div></div>
-            <div class="dcf-field"><div class="dcf-lbl">Equity Value</div><div class="dcf-val" style="font-size:15px;color:var(--lime)">$3.91T</div></div>
+            <div class="dcf-field"><div class="dcf-lbl">WACC</div><div class="dcf-val" style="font-size:15px;color:var(--blue)">—</div></div>
+            <div class="dcf-field"><div class="dcf-lbl">Terminal Growth</div><div class="dcf-val" style="font-size:15px;color:var(--cyan)">—</div></div>
+            <div class="dcf-field"><div class="dcf-lbl">Equity Value</div><div class="dcf-val" style="font-size:15px;color:var(--lime)">—</div></div>
           </div>
         </div>
         <div class="card tc">
-          <div class="ctitle"><i class="ti ti-table"></i> Comps table — semis sector</div>
+          <div class="ctitle"><i class="ti ti-table"></i> Comps table — peer multiples</div>
           <table>
             <thead><tr><th>Ticker</th><th>EV/EBITDA</th><th>P/E</th><th>Rev Gr.</th></tr></thead>
             <tbody id="val-comps">
-              <tr><td><span class="cn">NVDA</span></td><td>48.1×</td><td>34.2×</td><td class="up2">+122%</td></tr>
-              <tr><td><span class="cn">AMD</span></td><td>28.4×</td><td>52.1×</td><td class="up2">+18%</td></tr>
-              <tr><td><span class="cn">INTC</span></td><td>9.2×</td><td>19.8×</td><td class="dn2">−13%</td></tr>
-              <tr><td><span class="cn">AVGO</span></td><td>22.6×</td><td>31.4×</td><td class="up2">+51%</td></tr>
-              <tr><td><span class="cn">QCOM</span></td><td>13.8×</td><td>16.2×</td><td class="up2">+9%</td></tr>
+              <tr><td colspan="4" style="text-align:center;color:var(--txt-d);padding:14px">Loading…</td></tr>
             </tbody>
           </table>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
@@ -511,11 +499,7 @@ svg.mc{width:100%;height:140px;display:block;}
           <table>
             <thead><tr><th>Date</th><th>Action</th><th>Price</th></tr></thead>
             <tbody id="bt-trades">
-              <tr><td><span class="cn">NVDA</span></td><td>$98.40</td><td>$142.50</td><td class="up2">+44.8%</td></tr>
-              <tr><td><span class="cn">META</span></td><td>$310.20</td><td>$480.80</td><td class="up2">+54.9%</td></tr>
-              <tr><td><span class="cn">LLY</span></td><td>$620.10</td><td>$795.40</td><td class="up2">+28.3%</td></tr>
-              <tr><td><span class="cn">INTC</span></td><td>$41.20</td><td>$32.80</td><td class="dn2">−20.4%</td></tr>
-              <tr><td><span class="cn">QCOM</span></td><td>$148.60</td><td>$162.30</td><td class="up2">+9.2%</td></tr>
+              <tr><td colspan="3" style="text-align:center;color:var(--txt-d);padding:14px">Run a backtest to see trades</td></tr>
             </tbody>
           </table>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
@@ -532,10 +516,10 @@ svg.mc{width:100%;height:140px;display:block;}
     <!-- ═══ MODULE 05: MONTE CARLO ═══ -->
     <div class="module-panel" id="m4">
       <div class="kpi-row" id="mc-kpis">
-        <div class="kpi c"><div class="kpi-lbl">Median Return (1Y)</div><div class="kpi-val c">+18.4%</div><div class="kpi-sub">10,000 simulations</div></div>
-        <div class="kpi l"><div class="kpi-lbl">95th Percentile</div><div class="kpi-val l">+64.2%</div><div class="kpi-sub up">bull scenario</div></div>
-        <div class="kpi p"><div class="kpi-lbl">5th Percentile</div><div class="kpi-val p">−22.1%</div><div class="kpi-sub dn">bear scenario</div></div>
-        <div class="kpi a"><div class="kpi-lbl">Prob. of Profit</div><div class="kpi-val a">73.8%</div><div class="kpi-sub up">above entry price</div></div>
+        <div class="kpi c"><div class="kpi-lbl">Median Return</div><div class="kpi-val c">—</div><div class="kpi-sub">run to simulate</div></div>
+        <div class="kpi l"><div class="kpi-lbl">95th Percentile</div><div class="kpi-val l">—</div><div class="kpi-sub">bull scenario</div></div>
+        <div class="kpi p"><div class="kpi-lbl">5th Percentile</div><div class="kpi-val p">—</div><div class="kpi-sub">bear scenario</div></div>
+        <div class="kpi a"><div class="kpi-lbl">Prob. of Profit</div><div class="kpi-val a">—</div><div class="kpi-sub">above start price</div></div>
       </div>
       <div class="two-col">
         <div class="card tb">
@@ -575,15 +559,21 @@ svg.mc{width:100%;height:140px;display:block;}
           <div style="color:var(--txt-d);font-size:10px;grid-column:1/-1;text-align:center;padding:12px">Run Monte Carlo to generate trade setup →</div>
         </div>
       </div>
+      <div class="card" style="padding:14px 16px;margin-top:0">
+        <div class="ctitle" style="margin-bottom:10px"><i class="ti ti-binary-tree"></i> Cross-layer decision signal — fundamentals × valuation × simulation</div>
+        <div id="mc-decision">
+          <div style="color:var(--txt-d);font-size:10px;text-align:center;padding:12px">Run Monte Carlo to compute the cross-layer signal →</div>
+        </div>
+      </div>
     </div>
 
     <!-- ═══ MODULE 06: STRATEGY LIBRARY ═══ -->
     <div class="module-panel" id="m5">
       <div class="kpi-row" id="sl-kpis">
-        <div class="kpi b"><div class="kpi-lbl">Strategies saved</div><div class="kpi-val b">12</div><div class="kpi-sub">across 4 categories</div></div>
-        <div class="kpi l"><div class="kpi-lbl">Best Sharpe</div><div class="kpi-val l">2.14</div><div class="kpi-sub">Momentum + Quality</div></div>
-        <div class="kpi c"><div class="kpi-lbl">Avg Ann. Return</div><div class="kpi-val c">+24.1%</div><div class="kpi-sub up">across active strats</div></div>
-        <div class="kpi a"><div class="kpi-lbl">Last Backtest</div><div class="kpi-val w" style="font-size:16px;padding-top:4px">Today</div><div class="kpi-sub">2m ago · all strats</div></div>
+        <div class="kpi b"><div class="kpi-lbl">Strategies</div><div class="kpi-val b">—</div><div class="kpi-sub">loading…</div></div>
+        <div class="kpi l"><div class="kpi-lbl">Best Sharpe</div><div class="kpi-val l">—</div><div class="kpi-sub">loading…</div></div>
+        <div class="kpi c"><div class="kpi-lbl">Avg Total Return</div><div class="kpi-val c">—</div><div class="kpi-sub">loading…</div></div>
+        <div class="kpi a"><div class="kpi-lbl">Reference</div><div class="kpi-val w" style="font-size:16px;padding-top:4px">—</div><div class="kpi-sub">single-name test</div></div>
       </div>
       <div class="two-col">
         <div class="card tb">
@@ -594,42 +584,7 @@ svg.mc{width:100%;height:140px;display:block;}
             <div id="sl-rec-note" style="font-size:10px;color:var(--txt-m);margin-top:3px">—</div>
           </div>
           <div class="strat-grid" id="sl-cards">
-            <div class="strat-card sel" onclick="this.classList.toggle('sel')">
-              <div class="strat-name">Momentum + Quality</div>
-              <div class="strat-desc">Top-decile momentum stocks filtered by high ROE &amp; low debt. Monthly rebalance.</div>
-              <div class="strat-meta">
-                <span class="strat-tag">Sharpe 2.14</span>
-                <span class="strat-tag">+214% 5yr</span>
-                <span class="strat-tag" style="color:var(--lime)">Active</span>
-              </div>
-            </div>
-            <div class="strat-card" onclick="this.classList.toggle('sel')">
-              <div class="strat-name">Value + Low Vol</div>
-              <div class="strat-desc">Deep value screens (P/B &lt; 1.5, P/E &lt; 15) combined with 52-week low-vol filter.</div>
-              <div class="strat-meta">
-                <span class="strat-tag">Sharpe 1.42</span>
-                <span class="strat-tag">+98% 5yr</span>
-                <span class="strat-tag" style="color:var(--amber)">Idle</span>
-              </div>
-            </div>
-            <div class="strat-card" onclick="this.classList.toggle('sel')">
-              <div class="strat-name">Growth at Reasonable Price</div>
-              <div class="strat-desc">PEG &lt; 1.5, revenue growth &gt; 20%, EPS acceleration. Quarterly rebalance.</div>
-              <div class="strat-meta">
-                <span class="strat-tag">Sharpe 1.78</span>
-                <span class="strat-tag">+161% 5yr</span>
-                <span class="strat-tag" style="color:var(--cyan)">Testing</span>
-              </div>
-            </div>
-            <div class="strat-card" onclick="this.classList.toggle('sel')">
-              <div class="strat-name">Earnings Revisions</div>
-              <div class="strat-desc">Long stocks with strong upward analyst estimate revisions in past 30 days.</div>
-              <div class="strat-meta">
-                <span class="strat-tag">Sharpe 1.61</span>
-                <span class="strat-tag">+132% 5yr</span>
-                <span class="strat-tag" style="color:var(--amber)">Idle</span>
-              </div>
-            </div>
+            <div style="grid-column:1/-1;text-align:center;color:var(--txt-m);padding:20px;font-size:11px">Backtesting strategies…</div>
           </div>
         </div>
         <div class="card tc">
@@ -654,10 +609,10 @@ svg.mc{width:100%;height:140px;display:block;}
         <button id="po-run-btn" class="ind-btn on" style="font-size:10px;padding:4px 12px">▶ Optimize</button>
       </div>
       <div class="kpi-row" id="po-kpis">
-        <div class="kpi c"><div class="kpi-lbl">Expected Return</div><div class="kpi-val c">+22.4%</div><div class="kpi-sub up">optimized portfolio</div></div>
-        <div class="kpi l"><div class="kpi-lbl">Portfolio Sharpe</div><div class="kpi-val l">1.94</div><div class="kpi-sub up">vs 1.12 equal-weight</div></div>
-        <div class="kpi b"><div class="kpi-lbl">Portfolio Vol.</div><div class="kpi-val b">18.2%</div><div class="kpi-sub dn">ann. std dev</div></div>
-        <div class="kpi a"><div class="kpi-lbl">Positions</div><div class="kpi-val a">8</div><div class="kpi-sub">max-Sharpe frontier</div></div>
+        <div class="kpi c"><div class="kpi-lbl">Expected Return</div><div class="kpi-val c">—</div><div class="kpi-sub">optimizing…</div></div>
+        <div class="kpi l"><div class="kpi-lbl">Portfolio Sharpe</div><div class="kpi-val l">—</div><div class="kpi-sub">max-Sharpe frontier</div></div>
+        <div class="kpi b"><div class="kpi-lbl">Portfolio Vol.</div><div class="kpi-val b">—</div><div class="kpi-sub">ann. std dev</div></div>
+        <div class="kpi a"><div class="kpi-lbl">Positions</div><div class="kpi-val a">—</div><div class="kpi-sub">in basket</div></div>
       </div>
       <div class="two-col">
         <div class="card tb">
@@ -739,13 +694,15 @@ svg.mc{width:100%;height:140px;display:block;}
 <script>
 const modules = [
   {title:"Screener", sub:"/ composite factor scoring"},
-  {title:"Deep Dive", sub:"/ fundamental + macro memo · NVDA"},
-  {title:"Valuation Engine", sub:"/ DCF + comps · NVDA"},
+  {title:"Deep Dive", sub:"/ fundamental + macro memo"},
+  {title:"Valuation Engine", sub:"/ DCF + comps"},
   {title:"Backtester", sub:"/ tearsheet + equity curve"},
-  {title:"Monte Carlo", sub:"/ GBM path simulation · NVDA"},
+  {title:"Monte Carlo", sub:"/ GBM path simulation"},
   {title:"Strategy Library", sub:"/ saved strategies + comparison"},
   {title:"Portfolio Optimizer", sub:"/ Markowitz MVO · max Sharpe"},
 ];
+// Modules 1-4 follow the active ticker; append it to the subtitle when known.
+const TICKER_SUB_MODULES = new Set([1, 2, 3, 4]);
 const navItems = document.querySelectorAll('.nav-item');
 const panels = document.querySelectorAll('.module-panel');
 const chips = document.querySelectorAll('.chip');
@@ -757,7 +714,9 @@ function switchModule(idx, navEl) {
   });
   chips.forEach((c,i) => c.classList.toggle('active', i === idx));
   document.getElementById('mod-title').textContent = modules[idx].title;
-  document.getElementById('mod-sub').textContent = modules[idx].sub;
+  const tkr = window.__activeTicker;
+  const sub = (TICKER_SUB_MODULES.has(idx) && tkr) ? `${modules[idx].sub} · ${tkr}` : modules[idx].sub;
+  document.getElementById('mod-sub').textContent = sub;
   if(navEl) {
     navItems.forEach(n => n.classList.remove('active'));
     navEl.classList.add('active');

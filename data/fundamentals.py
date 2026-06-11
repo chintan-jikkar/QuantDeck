@@ -133,8 +133,73 @@ def fetch_key_metrics(ticker: str, limit: int = 5) -> pd.DataFrame:
     return pd.DataFrame([row])
 
 
+# Curated peer sets. yfinance has no reliable peer endpoint, so comparable-company
+# analysis uses a hand-maintained map (same exchange/currency, so multiples compare
+# like-for-like) with a sector-bucket fallback for names not listed explicitly.
+_PEER_MAP: dict[str, list[str]] = {
+    # US mega-cap tech / semis
+    "AAPL": ["MSFT", "GOOGL", "AMZN", "META", "SONY"],
+    "MSFT": ["AAPL", "GOOGL", "AMZN", "ORCL", "CRM"],
+    "GOOGL": ["META", "MSFT", "AMZN", "AAPL", "NFLX"],
+    "GOOG": ["META", "MSFT", "AMZN", "AAPL", "NFLX"],
+    "META": ["GOOGL", "SNAP", "PINS", "MSFT", "NFLX"],
+    "AMZN": ["MSFT", "GOOGL", "WMT", "BABA", "SHOP"],
+    "NVDA": ["AMD", "AVGO", "INTC", "QCOM", "TSM"],
+    "AMD": ["NVDA", "INTC", "AVGO", "QCOM", "TSM"],
+    "AVGO": ["NVDA", "AMD", "QCOM", "TXN", "INTC"],
+    "INTC": ["AMD", "NVDA", "TXN", "MU", "QCOM"],
+    "QCOM": ["AVGO", "NVDA", "TXN", "AMD", "MRVL"],
+    "ASML": ["AMAT", "LRCX", "KLAC", "TSM", "NVDA"],
+    # autos
+    "TSLA": ["F", "GM", "RIVN", "LCID", "TM"],
+    # staples
+    "KO": ["PEP", "KDP", "MNST", "PG", "CL"],
+    # financials / health
+    "JPM": ["BAC", "WFC", "C", "GS", "MS"],
+    "UNH": ["CVS", "CI", "ELV", "HUM", "CNC"],
+    "LLY": ["NVO", "PFE", "MRK", "ABBV", "JNJ"],
+    "NVO": ["LLY", "PFE", "MRK", "ABBV", "AZN"],
+    "SAP": ["ORCL", "CRM", "MSFT", "ADBE", "NOW"],
+    "BABA": ["JD", "PDD", "AMZN", "TCEHY", "BIDU"],
+    # India (.NS) — keep peers on the same exchange
+    "RELIANCE.NS": ["ONGC.NS", "BPCL.NS", "IOC.NS", "GAIL.NS"],
+    "TCS.NS": ["INFY.NS", "WIPRO.NS", "HCLTECH.NS", "TECHM.NS"],
+    "INFY.NS": ["TCS.NS", "WIPRO.NS", "HCLTECH.NS", "TECHM.NS"],
+    "TATASTEEL.NS": ["JSWSTEEL.NS", "HINDALCO.NS", "SAIL.NS", "JINDALSTEL.NS"],
+    "HDFCBANK.NS": ["ICICIBANK.NS", "AXISBANK.NS", "KOTAKBANK.NS", "SBIN.NS"],
+    # Korea (.KS)
+    "005930.KS": ["000660.KS", "066570.KS", "TSM", "NVDA"],
+}
+
+# Fallback: bucket by yfinance `sector` when a ticker isn't in _PEER_MAP.
+_SECTOR_PEERS: dict[str, list[str]] = {
+    "Technology": ["AAPL", "MSFT", "NVDA", "AVGO", "ORCL"],
+    "Communication Services": ["GOOGL", "META", "NFLX", "DIS", "TMUS"],
+    "Consumer Cyclical": ["AMZN", "TSLA", "HD", "NKE", "MCD"],
+    "Consumer Defensive": ["KO", "PEP", "PG", "WMT", "COST"],
+    "Financial Services": ["JPM", "BAC", "WFC", "GS", "MS"],
+    "Healthcare": ["LLY", "UNH", "JNJ", "MRK", "ABBV"],
+    "Energy": ["XOM", "CVX", "COP", "SLB", "EOG"],
+    "Industrials": ["CAT", "GE", "HON", "UNP", "BA"],
+    "Basic Materials": ["LIN", "SHW", "FCX", "NEM", "DOW"],
+    "Utilities": ["NEE", "DUK", "SO", "D", "AEP"],
+    "Real Estate": ["PLD", "AMT", "EQIX", "PSA", "O"],
+}
+
+
 def fetch_peers(ticker: str) -> list[str]:
-    """yfinance has no reliable peer endpoint; comps are unavailable for now."""
+    """Comparable-company peers for valuation comps.
+
+    Uses a curated per-ticker map first, then a sector bucket (via yfinance
+    `info.sector`), excluding the ticker itself. Returns [] if neither resolves.
+    """
+    t = ticker.upper()
+    if t in _PEER_MAP:
+        return [p for p in _PEER_MAP[t] if p != t]
+    info = _cached(t, "info") or {}
+    sector = info.get("sector")
+    if sector and sector in _SECTOR_PEERS:
+        return [p for p in _SECTOR_PEERS[sector] if p != t]
     return []
 
 

@@ -91,5 +91,23 @@ def test_key_metrics_empty_info_returns_empty():
     assert df.empty
 
 
-def test_fetch_peers_returns_empty_list():
-    assert fund.fetch_peers("AAPL") == []
+def test_fetch_peers_curated_map():
+    """Known tickers resolve to a curated peer set; the ticker itself is excluded."""
+    peers = fund.fetch_peers("AAPL")
+    assert isinstance(peers, list) and len(peers) > 0
+    assert "AAPL" not in peers
+
+
+def test_fetch_peers_sector_fallback():
+    """Unlisted tickers fall back to a sector bucket via yfinance info.sector."""
+    fund._CACHE.clear()
+    with patch.object(fund.yf, "Ticker", return_value=_mk(info={"sector": "Healthcare"})):
+        peers = fund.fetch_peers("ZZZZ")
+    assert peers and "ZZZZ" not in peers
+
+
+def test_fetch_peers_unknown_returns_empty():
+    """No curated entry and no usable sector → empty list."""
+    fund._CACHE.clear()
+    with patch.object(fund.yf, "Ticker", return_value=_mk(info={})):
+        assert fund.fetch_peers("ZZZZ") == []
