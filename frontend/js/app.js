@@ -302,6 +302,12 @@ async function loadDeepDive() {
         ${macroRows.length ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:9px;color:var(--txt-d);margin-bottom:4px">MACRO · ${mac.country_key}</div>
         ${macroRows.map(([l, v]) => `<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px"><span style="color:var(--txt-d)">${l}</span><span style="color:var(--amber)">${v}</span></div>`).join("")}` : ""}`;
     }
+    // Watchlist button state
+    try {
+      const wlD = await (await fetch("/api/watchlist")).json();
+      _updateDDWlButton((wlD.tickers || []).some(t => t.symbol === DD_TICKER));
+    } catch (_) {}
+
     // News section
     const newsEl = document.getElementById("dd-news");
     if (newsEl) {
@@ -310,16 +316,46 @@ async function loadDeepDive() {
         newsEl.innerHTML = `<div style="color:var(--txt-d);font-size:10px">No recent news available</div>`;
       } else {
         newsEl.innerHTML = newsList.map(n =>
-          `<div style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border)">
-            <div style="flex:1;min-width:0">
-              ${n.link ? `<a href="${n.link}" target="_blank" rel="noopener" style="color:var(--txt);font-size:11px;font-family:'DM Mono',monospace;text-decoration:none;line-height:1.4;display:block;white-space:normal;word-break:break-word">${n.title || "—"}</a>`
-                       : `<span style="color:var(--txt);font-size:11px;font-family:'DM Mono',monospace;line-height:1.4;display:block">${n.title || "—"}</span>`}
-              <div style="font-size:9px;color:var(--txt-d);margin-top:3px">${n.publisher || ""}${n.date ? " · " + n.date : ""}</div>
-            </div>
+          `<div style="padding:7px 0;border-bottom:1px solid var(--border)">
+            ${n.link ? `<a href="${n.link}" target="_blank" rel="noopener" style="color:var(--txt);font-size:11px;font-family:'DM Mono',monospace;text-decoration:none;line-height:1.4;display:block">${n.title || "—"}</a>`
+                     : `<span style="color:var(--txt);font-size:11px;font-family:'DM Mono',monospace;line-height:1.4;display:block">${n.title || "—"}</span>`}
+            ${n.summary ? `<div style="font-size:10px;color:var(--txt-m);margin-top:3px;line-height:1.5">${n.summary}</div>` : ""}
+            <div style="font-size:9px;color:var(--txt-d);margin-top:3px">${n.publisher || ""}${n.date ? " · " + n.date : ""}</div>
           </div>`
         ).join("");
       }
     }
+
+    // Financial documents section
+    const docsEl = document.getElementById("dd-docs");
+    if (docsEl) {
+      const si = d.sector_info || {};
+      const sym = d.ticker || DD_TICKER;
+      const isIndia = si.country === "India" || (si.exchange || "").includes("NS") || sym.endsWith(".NS");
+      const isKorea = sym.endsWith(".KS") || si.country === "South Korea";
+      const links = [];
+      if (isIndia) {
+        const base = sym.replace(".NS", "");
+        links.push(["NSE Financials", `https://www.nseindia.com/companies-listing/corporate-filings-financial-results?symbol=${base}`]);
+        links.push(["BSE Filing", `https://www.bseindia.com/corporates/ann.html`]);
+        links.push(["Screener.in", `https://www.screener.in/company/${base}/`]);
+        links.push(["Moneycontrol", `https://www.moneycontrol.com/stocks/company_info/stock_news.php`]);
+      } else if (isKorea) {
+        links.push(["DART Filing", `https://dart.fss.or.kr/`]);
+        links.push(["KIND Disclosure", `https://kind.krx.co.kr/`]);
+      } else {
+        links.push(["10-K / 10-Q (EDGAR)", `https://efts.sec.gov/LATEST/search-index?q=%22${sym}%22&forms=10-K,10-Q&dateRange=custom&startdt=2020-01-01`]);
+        links.push(["Annual Reports", `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=${sym}&type=10-K&dateb=&owner=include&count=5`]);
+        links.push(["Earnings Transcripts", `https://seekingalpha.com/symbol/${sym}/earnings`]);
+        links.push(["Proxy / 8-K", `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=${sym}&type=8-K&dateb=&owner=include&count=10`]);
+      }
+      links.push(["Yahoo Finance", `https://finance.yahoo.com/quote/${sym}/financials/`]);
+      links.push(["SEC Filings", `https://finance.yahoo.com/quote/${sym}/sec-filings/`]);
+      docsEl.innerHTML = links.map(([label, url]) =>
+        `<a href="${url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;color:var(--txt-m);font-size:10px;font-family:'DM Mono',monospace;text-decoration:none;transition:color .15s,border-color .15s" onmouseover="this.style.color='var(--blue)';this.style.borderColor='rgba(79,158,255,.3)'" onmouseout="this.style.color='var(--txt-m)';this.style.borderColor='var(--border)'"><i class="ti ti-external-link" style="font-size:11px"></i>${label}</a>`
+      ).join("");
+    }
+
     renderRevPlotly("dd-revchart", d.revenue_series || []);
   } catch (e) {
     if (memo) memo.innerHTML = `<span style="color:var(--pink)">Could not load ${DD_TICKER}: ${e.message}</span>`;
@@ -848,13 +884,14 @@ function renderFrontierPlotly(divId, frontier, maxSharpe, minVol) {
   ];
   const layout = {
     paper_bgcolor: "transparent", plot_bgcolor: "transparent",
-    margin: { l: 40, r: 10, t: 6, b: 30 },
+    margin: { l: 40, r: 10, t: 6, b: 52 },
     xaxis: { gridcolor: "rgba(255,255,255,0.04)", tickfont: { color: "#6b7a99", size: 9, family: "DM Mono" },
              ticksuffix: "%", title: { text: "Volatility", font: { color: "#6b7a99", size: 9 } }, zeroline: false },
     yaxis: { gridcolor: "rgba(255,255,255,0.04)", tickfont: { color: "#6b7a99", size: 9, family: "DM Mono" },
              ticksuffix: "%", title: { text: "Return", font: { color: "#6b7a99", size: 9 } }, zeroline: false },
-    legend: { font: { color: "#b4bdd4", size: 9, family: "DM Mono" }, x: 0.01, y: 0.01,
-               bgcolor: "rgba(8,11,18,0.6)", bordercolor: "rgba(255,255,255,0.06)", borderwidth: 1 },
+    legend: { orientation: "h", font: { color: "#b4bdd4", size: 9, family: "DM Mono" },
+               x: 0.5, xanchor: "center", y: -0.22, yanchor: "top",
+               bgcolor: "transparent", borderwidth: 0 },
     hovermode: "closest",
     hoverlabel: { bgcolor: "#131929", bordercolor: "#243559", font: { color: "#e2e8f7", size: 10, family: "DM Mono" } },
   };
@@ -912,7 +949,7 @@ async function loadPortfolio() {
     if (wts) {
       const cols = ["var(--blue)", "var(--cyan)", "var(--lime)", "var(--amber)", "var(--purple)", "var(--pink)", "var(--blue)", "var(--cyan)"];
       const maxW = Math.max(...d.weights.map(w => w.weight), 0.01);
-      wts.innerHTML = d.weights.map((w, i) => `<div class="port-bar-row"><span class="pb-sym">${w.symbol}</span><div class="pb-track"><div class="pb-fill" style="width:${(w.weight / maxW * 100).toFixed(0)}%;background:${cols[i % cols.length]}"></div></div><span class="pb-pct">${(w.weight * 100).toFixed(1)}%</span><span class="pb-ret ${w.ret >= 0 ? "up2" : "dn2"}">${pctSigned(w.ret)}</span></div>`).join("");
+      wts.innerHTML = d.weights.map((w, i) => `<div class="port-bar-row"><span class="pb-sym" onclick="openPoEdit('${w.symbol}')" title="Log buy date &amp; price">${w.symbol}</span><div class="pb-track"><div class="pb-fill" style="width:${(w.weight / maxW * 100).toFixed(0)}%;background:${cols[i % cols.length]}"></div></div><span class="pb-pct">${(w.weight * 100).toFixed(1)}%</span><span class="pb-ret ${w.ret >= 0 ? "up2" : "dn2"}">${pctSigned(w.ret)}</span></div>`).join("");
     }
     renderFrontierPlotly("po-frontierchart", d.frontier || [], d.max_sharpe || [0, 0], d.min_vol || [0, 0]);
     renderCorrPlotly("po-corr", d.correlation || {});
@@ -924,6 +961,7 @@ async function loadPortfolio() {
       const eqWt = 100 / n;
       const maxW = Math.max(...d.weights.map(w => w.weight));
       const riskCols = { high: "var(--pink)", medium: "var(--amber)", low: "var(--lime)" };
+      const tracking = getPoTracking();
       poSummary.innerHTML = d.weights.map(w => {
         const wPct = (w.weight * 100).toFixed(1);
         const barW = Math.round(w.weight / maxW * 100);
@@ -934,14 +972,21 @@ async function loadPortfolio() {
         const risk = w.risk || "low";
         const riskCol = riskCols[risk] || "var(--txt-d)";
         const riskIcon = risk === "high" ? "⚠" : risk === "medium" ? "◎" : "✓";
-        return `<tr>
-          <td style="font-weight:600;color:var(--txt);font-size:11px;padding-left:4px">${w.symbol}</td>
+        const t = tracking[w.symbol] || {};
+        const buyDateStr = t.buyDate || "—";
+        const buyPriceStr = t.buyPrice ? "$" + Number(t.buyPrice).toFixed(2) : "—";
+        const plStr = "—";
+        return `<tr data-po-sym="${w.symbol}">
+          <td style="font-weight:600;color:var(--blue);font-size:11px;padding-left:4px;cursor:pointer" onclick="openPoEdit('${w.symbol}')" title="Click to log buy price">${w.symbol}</td>
           <td style="text-align:center;color:var(--cyan)">${wPct}%</td>
           <td style="text-align:center;color:${diffCol};font-size:10px">${eqWt.toFixed(1)}% <span style="font-size:9px">(${diffStr})</span></td>
           <td style="text-align:center;color:${retCol}">${pctSigned(w.ret)}</td>
           <td style="text-align:center" title="β ${w.beta != null ? Number(w.beta).toFixed(2) : "—"} · σ ${w.ann_vol != null ? pct(w.ann_vol) : "—"}">
             <span style="color:${riskCol};font-size:10px;font-weight:600">${riskIcon} ${risk}</span>
           </td>
+          <td class="po-td-buydate" style="text-align:center;font-size:10px;color:var(--txt-d)">${buyDateStr}</td>
+          <td class="po-td-buyprice" style="text-align:center;font-size:10px;color:var(--txt-m)">${buyPriceStr}</td>
+          <td class="po-td-pl" style="text-align:center;font-size:10px;color:var(--txt-d)">${plStr}</td>
           <td style="padding-left:12px">
             <div style="height:7px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden">
               <div style="width:${barW}%;height:100%;background:var(--blue);border-radius:4px"></div>
@@ -954,6 +999,85 @@ async function loadPortfolio() {
     if (wts) wts.innerHTML = `<div style="text-align:center;color:var(--pink);padding:14px">Optimization failed: ${e.message}</div>`;
   }
 }
+
+// ── Portfolio position tracking ──────────────────────────────────────
+const PO_TRACKING_KEY = "qd-po-tracking";
+function getPoTracking() {
+  try { return JSON.parse(localStorage.getItem(PO_TRACKING_KEY) || "{}"); } catch (_) { return {}; }
+}
+function openPoEdit(sym) {
+  const panel = document.getElementById("po-edit-panel");
+  if (!panel) return;
+  const tracking = getPoTracking();
+  const t = tracking[sym] || {};
+  document.getElementById("po-edit-sym").textContent = sym;
+  const dateEl = document.getElementById("po-edit-date");
+  const priceEl = document.getElementById("po-edit-price");
+  const qtyEl = document.getElementById("po-edit-qty");
+  const savedEl = document.getElementById("po-edit-saved");
+  if (dateEl) dateEl.value = t.buyDate || "";
+  if (priceEl) priceEl.value = t.buyPrice || "";
+  if (qtyEl) qtyEl.value = t.qty || "";
+  if (savedEl) savedEl.textContent = t.buyDate ? `Last saved: ${t.buyDate} @ $${t.buyPrice}${t.qty ? " · " + t.qty + " units" : ""}` : "Not yet tracked";
+  panel.style.display = "block";
+  panel.dataset.sym = sym;
+  panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+function savePoTracking() {
+  const panel = document.getElementById("po-edit-panel");
+  const sym = panel ? panel.dataset.sym : "";
+  if (!sym) return;
+  const date = (document.getElementById("po-edit-date") || {}).value || "";
+  const price = parseFloat((document.getElementById("po-edit-price") || {}).value) || null;
+  const qty = parseInt((document.getElementById("po-edit-qty") || {}).value) || null;
+  const tracking = getPoTracking();
+  tracking[sym] = { buyDate: date, buyPrice: price, qty };
+  localStorage.setItem(PO_TRACKING_KEY, JSON.stringify(tracking));
+  const savedEl = document.getElementById("po-edit-saved");
+  if (savedEl) savedEl.textContent = `Saved ✓  ${date}${price ? " @ $" + price.toFixed(2) : ""}${qty ? " · " + qty + " units" : ""}`;
+  _refreshPoSummaryTracking();
+}
+function _refreshPoSummaryTracking() {
+  const tracking = getPoTracking();
+  document.querySelectorAll("tr[data-po-sym]").forEach(row => {
+    const sym = row.dataset.poSym;
+    const t = tracking[sym] || {};
+    const dateCell = row.querySelector(".po-td-buydate");
+    const priceCell = row.querySelector(".po-td-buyprice");
+    const plCell = row.querySelector(".po-td-pl");
+    if (dateCell) dateCell.textContent = t.buyDate || "—";
+    if (priceCell) priceCell.textContent = t.buyPrice ? "$" + Number(t.buyPrice).toFixed(2) : "—";
+    if (plCell) plCell.textContent = "—";
+  });
+}
+window.savePoTracking = savePoTracking;
+window.openPoEdit = openPoEdit;
+
+// ── Deep Dive watchlist toggle ────────────────────────────────────────
+async function toggleDDWatchlist() {
+  const btn = document.getElementById("dd-wl-toggle");
+  if (!btn) return;
+  const sym = DD_TICKER;
+  try {
+    const d = await (await fetch("/api/watchlist")).json();
+    const inWl = (d.tickers || []).some(t => t.symbol === sym);
+    if (inWl) {
+      await fetch(`/api/watchlist/${sym}`, { method: "DELETE" });
+    } else {
+      await fetch(`/api/watchlist/${sym}`, { method: "POST" });
+    }
+    _updateDDWlButton(!inWl);
+    loadSidebarWatchlist();
+  } catch (_) {}
+}
+function _updateDDWlButton(inWl) {
+  const btn = document.getElementById("dd-wl-toggle");
+  if (!btn) return;
+  btn.textContent = inWl ? "★ In Watchlist" : "☆ Watchlist";
+  btn.style.color = inWl ? "var(--lime)" : "var(--txt-m)";
+  btn.style.borderColor = inWl ? "var(--lime)" : "var(--border-b)";
+}
+window.toggleDDWatchlist = toggleDDWatchlist;
 
 // ── Module loader wiring + shared ticker flow ────────────────────────
 const loaders = { 0: loadScreener, 1: loadDeepDive, 2: loadValuation, 3: loadBacktester, 4: loadMonteCarlo, 5: loadStrategies, 6: loadPortfolio };

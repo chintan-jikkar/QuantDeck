@@ -152,7 +152,8 @@ svg.mc{width:100%;height:140px;display:block;}
 /* PORTFOLIO bars */
 .port-bar-wrap{display:flex;flex-direction:column;gap:6px;}
 .port-bar-row{display:flex;align-items:center;gap:9px;font-size:11px;}
-.pb-sym{width:44px;color:var(--txt);font-weight:500;}
+.pb-sym{min-width:80px;width:80px;color:var(--txt);font-weight:500;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;}.pb-sym:hover{color:var(--blue);}
+.pb-edit-panel{display:none;padding:10px 12px;margin-top:4px;background:rgba(20,28,46,0.95);border:1px solid var(--border-b);border-radius:8px;font-size:10px;font-family:'DM Mono',monospace;}
 .pb-track{flex:1;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;}
 .pb-fill{height:100%;border-radius:3px;}
 .pb-pct{width:36px;text-align:right;font-size:10px;color:var(--txt-m);}
@@ -263,25 +264,30 @@ svg.mc{width:100%;height:140px;display:block;}
           <div class="fr"><span class="fn">Value</span><div class="ft"><div class="ff" style="width:58%;background:linear-gradient(90deg,var(--amber),var(--pink))"></div></div><span class="fv">0.58</span></div>
           <div class="fr"><span class="fn">Low Vol</span><div class="ft"><div class="ff" style="width:34%;background:#b4bdd4"></div></div><span class="fv">0.34</span></div>
           <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
               <span id="scr-spark-label" style="font-size:10px;color:var(--txt-m)">Top pick — score trend</span><span id="scr-spark-score" style="font-size:10px;color:var(--lime)">—</span>
             </div>
             <svg class="spark" viewBox="0 0 260 68" preserveAspectRatio="none">
               <defs><linearGradient id="sg0" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00e5cc" stop-opacity=".3"/><stop offset="100%" stop-color="#00e5cc" stop-opacity="0"/></linearGradient></defs>
+              <!-- reference lines at score 75 and 50 -->
+              <line x1="0" y1="20" x2="260" y2="20" stroke="rgba(184,242,100,0.2)" stroke-width="1" stroke-dasharray="4,4"/>
+              <line x1="0" y1="36" x2="260" y2="36" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="4,4"/>
+              <text x="2" y="18" fill="rgba(184,242,100,0.45)" font-size="7" font-family="DM Mono,monospace">75</text>
+              <text x="2" y="34" fill="rgba(255,255,255,0.25)" font-size="7" font-family="DM Mono,monospace">50</text>
               <polygon points="0,60 32,55 65,50 97,43 130,34 162,24 195,15 228,9 260,4 260,68 0,68" fill="url(#sg0)"/>
               <polyline points="0,60 32,55 65,50 97,43 130,34 162,24 195,15 228,9 260,4" fill="none" stroke="var(--cyan)" stroke-width="1.8" stroke-linejoin="round"/>
               <circle cx="260" cy="4" r="3.5" fill="var(--cyan)"/>
             </svg>
           </div>
-        </div>
-      </div>
-      <div class="card" style="padding:12px 16px">
-        <div class="ctitle" style="margin-bottom:9px;font-size:10px;display:flex;justify-content:space-between;align-items:center">
-          <span><i class="ti ti-bookmarks"></i> Watchlist — quick pick</span>
-          <span style="font-size:9px;color:var(--txt-d)">click to analyse</span>
-        </div>
-        <div id="scr-watchlist-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:24px">
-          <span style="color:var(--txt-d);font-size:10px">Add tickers to your watchlist →</span>
+          <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+              <span style="font-size:10px;color:var(--txt-m)"><i class="ti ti-bookmarks"></i> Watchlist — quick pick</span>
+              <span style="font-size:9px;color:var(--txt-d)">click to analyse</span>
+            </div>
+            <div id="scr-watchlist-chips" style="display:flex;flex-wrap:wrap;gap:6px;min-height:24px">
+              <span style="color:var(--txt-d);font-size:10px">Add tickers to your watchlist →</span>
+            </div>
+          </div>
         </div>
       </div>
       <div class="card" style="padding:12px 16px">
@@ -308,7 +314,10 @@ svg.mc{width:100%;height:140px;display:block;}
       </div>
       <div class="card tb" style="padding-bottom:8px">
         <div class="ctitle" style="justify-content:space-between">
-          <span id="dd-pricetitle"><i class="ti ti-chart-candle"></i> Price</span>
+          <span style="display:flex;align-items:center;gap:10px">
+            <span id="dd-pricetitle"><i class="ti ti-chart-candle"></i> Price</span>
+            <button id="dd-wl-toggle" onclick="toggleDDWatchlist()" style="background:transparent;border:1px solid var(--border-b);border-radius:5px;color:var(--txt-m);font-family:'DM Mono',monospace;font-size:9px;padding:2px 8px;cursor:pointer;transition:color .2s,border-color .2s">☆ Watchlist</button>
+          </span>
           <span style="display:flex;gap:6px">
             <select id="dd-interval" style="background:var(--bg-card);border:1px solid var(--border-b);border-radius:6px;color:var(--txt);font-family:'DM Mono',monospace;font-size:10px;padding:3px 6px;cursor:pointer"><option value="1m">1m</option><option value="5m">5m</option><option value="15m">15m</option><option value="1h">1h</option><option value="1d" selected>1D</option><option value="1wk">1W</option><option value="1mo">1M</option></select>
             <span id="dd-indicators" style="display:flex;gap:4px;flex-wrap:wrap">
@@ -361,10 +370,18 @@ svg.mc{width:100%;height:140px;display:block;}
           </div>
         </div>
       </div>
-      <div class="card" style="margin-top:0;padding:14px 16px">
-        <div class="ctitle" style="margin-bottom:9px;font-size:10px"><i class="ti ti-news"></i> Recent news &amp; events</div>
-        <div id="dd-news" style="display:flex;flex-direction:column;gap:6px">
-          <div style="color:var(--txt-d);font-size:10px">Loading news…</div>
+      <div class="two-col" style="margin-top:0">
+        <div class="card" style="padding:14px 16px">
+          <div class="ctitle" style="margin-bottom:9px;font-size:10px"><i class="ti ti-news"></i> Recent news &amp; events</div>
+          <div id="dd-news" style="display:flex;flex-direction:column;gap:6px">
+            <div style="color:var(--txt-d);font-size:10px">Loading news…</div>
+          </div>
+        </div>
+        <div class="card" style="padding:14px 16px">
+          <div class="ctitle" style="margin-bottom:9px;font-size:10px"><i class="ti ti-file-description"></i> Financial documents</div>
+          <div id="dd-docs" style="display:flex;flex-direction:column;gap:5px">
+            <div style="color:var(--txt-d);font-size:10px">Loading…</div>
+          </div>
         </div>
       </div>
     </div>
@@ -645,7 +662,8 @@ svg.mc{width:100%;height:140px;display:block;}
       <div class="two-col">
         <div class="card tb">
           <div class="ctitle"><i class="ti ti-chart-pie"></i> Optimal weights — max Sharpe portfolio</div>
-          <div class="port-bar-wrap" id="po-weights" style="margin-bottom:10px">
+          <div style="font-size:9px;color:var(--txt-d);margin-bottom:6px">Click a ticker to log buy date &amp; price</div>
+          <div class="port-bar-wrap" id="po-weights" style="margin-bottom:6px">
             <div class="port-bar-row"><span class="pb-sym">NVDA</span><div class="pb-track"><div class="pb-fill" style="width:28%;background:linear-gradient(90deg,var(--blue),var(--cyan))"></div></div><span class="pb-pct">28.1%</span><span class="pb-ret up2">+61.2%</span></div>
             <div class="port-bar-row"><span class="pb-sym">META</span><div class="pb-track"><div class="pb-fill" style="width:18%;background:linear-gradient(90deg,var(--cyan),var(--lime))"></div></div><span class="pb-pct">18.4%</span><span class="pb-ret up2">+22.1%</span></div>
             <div class="port-bar-row"><span class="pb-sym">LLY</span><div class="pb-track"><div class="pb-fill" style="width:16%;background:linear-gradient(90deg,var(--lime),var(--cyan))"></div></div><span class="pb-pct">15.7%</span><span class="pb-ret up2">+38.4%</span></div>
@@ -654,6 +672,28 @@ svg.mc{width:100%;height:140px;display:block;}
             <div class="port-bar-row"><span class="pb-sym">MSFT</span><div class="pb-track"><div class="pb-fill" style="width:8%;background:rgba(79,158,255,.4)"></div></div><span class="pb-pct">8.1%</span><span class="pb-ret up2">+12.4%</span></div>
             <div class="port-bar-row"><span class="pb-sym">JPM</span><div class="pb-track"><div class="pb-fill" style="width:5%;background:rgba(167,139,250,.5)"></div></div><span class="pb-pct">4.8%</span><span class="pb-ret up2">+18.2%</span></div>
             <div class="port-bar-row"><span class="pb-sym">UNH</span><div class="pb-track"><div class="pb-fill" style="width:3%;background:rgba(255,179,64,.4)"></div></div><span class="pb-pct">1.9%</span><span class="pb-ret dn2">−3.2%</span></div>
+          </div>
+          <div id="po-edit-panel" class="pb-edit-panel">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+              <span style="color:var(--txt);font-weight:600" id="po-edit-sym">—</span>
+              <button onclick="document.getElementById('po-edit-panel').style.display='none'" style="background:transparent;border:none;color:var(--txt-d);cursor:pointer;font-size:12px">✕</button>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <label style="color:var(--txt-d);font-size:9px">Buy Date</label>
+                <input id="po-edit-date" type="date" style="background:var(--bg);border:1px solid var(--border-b);border-radius:5px;color:var(--txt);font-family:'DM Mono',monospace;font-size:10px;padding:3px 7px;outline:none;width:130px"/>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <label style="color:var(--txt-d);font-size:9px">Buy Price ($)</label>
+                <input id="po-edit-price" type="number" step="0.01" placeholder="e.g. 142.50" style="background:var(--bg);border:1px solid var(--border-b);border-radius:5px;color:var(--txt);font-family:'DM Mono',monospace;font-size:10px;padding:3px 7px;outline:none;width:110px"/>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:3px">
+                <label style="color:var(--txt-d);font-size:9px">Qty / Lots</label>
+                <input id="po-edit-qty" type="number" step="1" placeholder="e.g. 10" style="background:var(--bg);border:1px solid var(--border-b);border-radius:5px;color:var(--txt);font-family:'DM Mono',monospace;font-size:10px;padding:3px 7px;outline:none;width:80px"/>
+              </div>
+              <button onclick="savePoTracking()" style="background:var(--blue);border:none;border-radius:5px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;padding:5px 14px;cursor:pointer">Save</button>
+            </div>
+            <div id="po-edit-saved" style="margin-top:6px;font-size:9px;color:var(--txt-d)"></div>
           </div>
           <div style="padding-top:10px;border-top:1px solid var(--border);display:flex;gap:10px;font-size:10px">
             <span style="color:var(--txt-m)">Method: <span style="color:var(--cyan)">Markowitz MVO</span></span>
@@ -679,6 +719,9 @@ svg.mc{width:100%;height:140px;display:block;}
               <th style="text-align:center">Equal Wt.</th>
               <th style="text-align:center">1Y Return</th>
               <th style="text-align:center">Risk</th>
+              <th style="text-align:center">Buy Date</th>
+              <th style="text-align:center">Buy Price</th>
+              <th style="text-align:center">P&amp;L</th>
               <th style="text-align:left;padding-left:12px">Allocation</th>
             </tr>
           </thead>

@@ -154,7 +154,8 @@ def fetch_news(ticker: str, max_items: int = 6) -> list:
             click_url = content.get("clickThroughUrl") or {}
             link = click_url.get("url") or content.get("canonicalUrl", {}).get("url", "")
             publisher = content.get("provider", {}).get("displayName", "") or item.get("publisher", "")
-            result.append({"title": title, "link": link, "publisher": publisher, "date": dt_str})
+            summary = (content.get("summary") or content.get("description") or "").strip()
+            result.append({"title": title, "link": link, "publisher": publisher, "date": dt_str, "summary": summary})
         return result
     except Exception:
         return []
