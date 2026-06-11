@@ -107,7 +107,7 @@ QuantDeck/
 ├── config.py              # universes, COUNTRY_RISK, benchmark map
 ├── tests/                 # 241 pytest functions over the math
 ├── pages/ · app.py        # retired Streamlit UI (kept for reference)
-└── docs/                  # ARCHITECTURE, API_REFERENCE, mockups, plans
+└── docs/                  # ARCHITECTURE, API_REFERENCE, design mockups
 ```
 
 ---
