@@ -1,171 +1,177 @@
+<div align="center">
+
 # QuantDeck
 
-A single, coherent quantitative analysis platform — walk in with a ticker, walk out with a full investment thesis.
+**An institutional-style equity research terminal that runs on your laptop.**
 
-QuantDeck is organized as a sequence of five analytical **layers**. A user enters at the Screener, narrows a universe to a shortlist, drills into one name, values it, simulates its future path, and backtests strategies against it. Each layer feeds the next.
+Walk in with a ticker, walk out with a full investment thesis — screen, dissect, value, simulate, backtest, and optimize, all from one dark-mode dashboard wired to live market data.
 
-> **Built by a finance analyst, not a software engineer** — the complexity lives in the financial logic, not the infrastructure.
+`FastAPI` · `Vanilla JS` · `Plotly.js` · `yfinance` · `NumPy / pandas / SciPy`
 
----
-
-## Features
-
-### Layer 1 — Screener
-Rank and filter a universe down to a shortlist.
-- **Equity universes:** Dow Jones 30, S&P 500, NASDAQ 100, international exchanges (FTSE, DAX, Nikkei, Nifty 50, and more), custom paste-your-own, **watchlist**
-- **FX screener:** G10 Majors, Crosses, Emerging Markets — ranked by momentum, RSI, realized vol
-- **Commodity screener:** Precious Metals, Energy, Base Metals, Agricultural — same ranking
-- **Smart Suggestions panel:** live headlines → themed chips (AI & Tech, Energy & Oil, Rates…) → pre-populate the Custom universe
-- **Composite score:** weighted percentile rank, color-coded green/amber/red
-- **Scatter plot:** P/E vs Revenue Growth, bubble = market cap, color = composite score
-
-### Layer 2 — Deep Dive
-A complete, interpreted picture of one name.
-- **Live price chart:** candlestick with 50/200 SMA and Bollinger Bands overlays; **1D mode auto-refreshes every 60s** with "🔴 Live" badge
-- **Asset-class routing:** equity → full fundamental analysis; FX/commodity → Market Drivers panel
-- **Macro Context tab:** yield curve shape, credit spreads, policy rate, inflation — live FRED data
-- **Micro Fundamentals tab (equity):** revenue & margins combo chart, capital allocation stacked bar, balance sheet health, earnings quality (Beneish M-Score)
-- **Market Drivers tab (FX/commodity):** momentum (12-1), realized vol, RSI, price vs 5Y mean
-- **Investment Memo:** auto-populated bull/bear case from quantitative signals
-
-### Layer 3 — Valuation Engine
-Equity only; FX/commodity shows a clean not-applicable state.
-- **DCF:** Damodaran WACC (Rf + β×ERP + CRP, country-correct for 12 markets), FCF projection, 5×5 sensitivity heatmap
-- **Comparable Company Analysis:** FMP peer set, bubble chart, multiple range bars, implied price
-- **Dividend Discount Model:** two-stage DDM, gated on ≥3 years of dividends
-- **Football Field Chart:** DCF bear/base/bull + comps + DDM as horizontal ranges vs current price
-
-### Layer 4 — Monte Carlo Simulation
-Applies to all asset classes.
-- **Three models:** GBM (bootstrap), GARCH(1,1) with Student-t innovations, Ornstein-Uhlenbeck (mean reversion for commodities)
-- **Simulation Cone:** P10/P25/P50/P75/P90 bands + 50 individual paths
-- **Risk Metrics:** VaR 95%, CVaR 95%, probability of profit, expected return
-- **Cross-Layer Decision Signal:** fundamental health (Deep Dive) + valuation (Layer 3) + simulation odds → combined signal with reward/risk ratio
-
-### Layer 5 — Backtester
-Full strategy tearsheet against historical data.
-- **Strategy library (3 tiers):** MA Crossover, RSI Mean Reversion, 12-1 Momentum
-- **Benchmark auto-selection:** SPY for US equity, EWU/EWG/EWJ/etc. for international, UUP for FX, DJP for commodities — buy-and-hold curve overlaid on equity curve
-- **Tearsheet:** CAGR, Sharpe, Sortino, Max Drawdown, Win Rate, Profit Factor, Calmar
-- **Drawdown chart** synced to equity curve
+</div>
 
 ---
 
-## Asset Universe
+## What it is
 
-| Class | Examples | yfinance format |
-|-------|----------|-----------------|
-| US Equities | S&P 500, NASDAQ 100, Dow 30 | `AAPL`, `MSFT` |
-| International Equities | FTSE 100, DAX 40, Nikkei 225, Nifty 50, and 8 more | `BP.L`, `SIE.DE`, `7203.T`, `RELIANCE.NS` |
-| FX Pairs | G10 Majors, Crosses, EM | `EURUSD=X`, `USDINR=X` |
-| Commodities | Precious Metals, Energy, Base Metals, Agricultural | `GC=F`, `CL=F`, `HG=F` |
+QuantDeck is a single-page research workstation backed by a thin Python API. The browser renders a seven-module "terminal" (DM Mono + Syne, blue/cyan/lime on near-black); the backend turns each module into one JSON endpoint that reuses a set of pure-Python quant **layers**. There is no database, no build step, and no paid API key — every number is pulled live from Yahoo Finance at request time and cached in-process for an hour.
+
+It is built by a finance analyst, for analysts: the complexity lives in the financial logic (Damodaran WACC, Beneish M-Score, GARCH paths, Markowitz frontiers), not in the infrastructure.
+
+> **Not financial advice.** Every signal, valuation, and backtest is a model output. See [Disclaimers](#disclaimers).
 
 ---
 
-## Setup
+## The seven modules
 
-### 1. Clone and install
+| # | Module | What it answers | Endpoint |
+|---|--------|-----------------|----------|
+| 01 | **Screener** | "Which names in my universe rank best right now?" | `GET /api/screener` |
+| 02 | **Deep Dive** | "Is this one company healthy?" | `GET /api/deep-dive/{ticker}` + `GET /api/prices/{ticker}` |
+| 03 | **Valuation** | "What is it worth?" | `GET /api/valuation/{ticker}` |
+| 04 | **Backtester** | "Would this strategy have worked?" | `GET /api/backtest` |
+| 05 | **Monte Carlo** | "What's the range of outcomes?" | `GET /api/simulation/{ticker}` |
+| 06 | **Strategy Library** | "Which strategy fits this name?" | `GET /api/strategies` |
+| 07 | **Portfolio Optimizer** | "How should I weight a basket?" | `GET /api/portfolio` |
 
-```bash
-git clone https://github.com/<your-username>/QuantDeck.git
-cd QuantDeck
-pip install -r requirements.txt
-```
+A **shared ticker flow** stitches them together: pick a name in the Screener (or the top-bar search), and it carries through Deep Dive → Valuation → Backtester → Monte Carlo automatically.
 
-### 2. API keys
+### 01 · Screener
+Composite-score ranking of a global basket (US mega-caps, India `.NS`, EU, Korea `.KS`). Each row is colour-coded Buy / Watch / Avoid. A **daily Top Pick** rotates without repeating (persisted in `localStorage`), with factor-weight bars and a watchlist quick-pick strip.
 
-Copy `.env.example` to `.env` and fill in your keys:
+### 02 · Deep Dive
+Interactive **Plotly candlestick** (Chinese convention: red = up, green = down) with 1m→1M timeframes and SMA/EMA/Bollinger/trend overlays. Alongside it: KPI cards, a fundamentals snapshot, a dual-axis revenue & margin chart, an auto-generated bull/bear **investment memo** (gross margin, revenue trend, Beneish M-Score, yield-curve shape), sector & macro context, live analyst consensus, **recent news with article summaries**, a **financial-documents panel** (EDGAR 10-K/10-Q, transcripts, or NSE/BSE/Screener.in for Indian names), and a one-click **watchlist toggle**.
 
-```bash
-cp .env.example .env
-```
+### 03 · Valuation
+Country-correct **DCF** (`Ke = Rf + β·ERP + CRP` across 12 markets), a WACC-components breakdown, a bear/base/bull football-field, and a multi-method summary (DCF, comps-implied P/E & EV/EBITDA, DDM) each shown versus the current price.
 
-| Key | Where to get it | Required? |
-|-----|-----------------|-----------|
-| `FMP_API_KEY` | [financialmodelingprep.com](https://financialmodelingprep.com/) — free tier | Yes (fundamentals, valuation) |
-| `NEWSAPI_KEY` | [newsapi.org](https://newsapi.org/) — free tier | Optional (Smart Suggestions) |
+### 04 · Backtester
+Full tearsheet (Total Return, Sharpe, Sortino, Max Drawdown, Win Rate, CAGR) with a **Plotly equity curve** — lime ▲ entries, pink ▼ exits, dashed benchmark overlay — a trade log, and a monthly-returns heatmap.
 
-The app degrades gracefully without `NEWSAPI_KEY` — the Smart Suggestions panel shows a "no headlines" message; everything else works.
+### 05 · Monte Carlo
+Animated percentile cone (P10–P90 fan + sample paths drawn progressively) under **GBM**, **GARCH-t**, or **Ornstein-Uhlenbeck** models, a return-distribution histogram, VaR/CVaR risk metrics, and an **MC-derived trade setup** (entry / stop / 90-day target / risk-reward).
 
-### 3. Run
+### 06 · Strategy Library
+Every registered strategy back-tested live on the active ticker, ranked by Sharpe, each card carrying a BUY / HOLD / AVOID verdict. Click a card to load it straight into the Backtester.
 
-```bash
-streamlit run app.py
-```
-
-The app opens at `http://localhost:8501`.
+### 07 · Portfolio Optimizer
+Markowitz max-Sharpe optimization over a **persistent basket** (saved in `localStorage`). Optimal-weight bars, an efficient-frontier scatter with min-vol/max-Sharpe markers, a correlation heatmap, a per-position risk label (β/σ/weight), and an inline **buy-date/price/qty tracker** per holding.
 
 ---
 
 ## Architecture
 
 ```
+Browser (frontend/)                         Python (api/ + layers/)
+┌───────────────────────────┐               ┌──────────────────────────────┐
+│ index.html  — all markup  │   fetch()     │ api/main.py   — FastAPI       │
+│ js/app.js   — all wiring  │ ───────────▶  │   /api/* JSON endpoints       │
+│ Plotly.js   — all charts  │ ◀───────────  │   serves frontend/ statically │
+│ localStorage — UI state   │   JSON        │ api/serialize.py — JSON-safe  │
+└───────────────────────────┘               └──────────────┬───────────────┘
+                                                            │ imports
+                                             ┌──────────────▼───────────────┐
+                                             │ layers/   pure quant logic    │
+                                             │  screener · deep_dive ·       │
+                                             │  valuation · simulation ·     │
+                                             │  backtester · decision        │
+                                             ├───────────────────────────────┤
+                                             │ data/     yfinance · FRED      │
+                                             │ strategies/  pluggable signals │
+                                             │ config.py  universes + risk    │
+                                             └───────────────────────────────┘
+```
+
+**Core design rule:** `layers/` and `strategies/` import zero web/UI code. They take parameters and return DataFrames and numbers, so each is independently readable and unit-tested. `api/main.py` is a thin translation layer; `frontend/` is pure display.
+
+For the full request lifecycle, module internals, and the financial math, see **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**. For every endpoint's parameters and response shape, see **[docs/API_REFERENCE.md](docs/API_REFERENCE.md)**.
+
+```
 QuantDeck/
-├── app.py                  # Entry point — landing page
-├── config.py               # Universes, COUNTRY_RISK, benchmark map
-├── pages/                  # DISPLAY ONLY — Streamlit + Plotly, no business logic
-│   ├── 1_Screener.py
-│   ├── 2_Deep_Dive.py
-│   ├── 3_Valuation.py
-│   ├── 4_Simulation.py
-│   └── 5_Backtester.py
-├── layers/                 # Pure-Python quant logic — no Streamlit imports
-│   ├── screener.py
-│   ├── deep_dive.py
-│   ├── valuation.py
-│   ├── simulation.py
-│   └── backtester.py
-├── strategies/             # Pluggable strategy system
-│   ├── base.py             # Abstract Strategy interface
-│   └── signal/             # MA Crossover, RSI, Momentum
-├── data/                   # Data fetching (yfinance, FMP, FRED, NewsAPI)
-│   ├── prices.py           # All price data + asset-type detection
-│   ├── fundamentals.py     # FMP financial statements
-│   ├── macro.py            # FRED — yields, policy rates, credit spreads
-│   └── news.py             # Headlines, theme extraction, ticker suggestions
-├── utils/
-│   ├── charts.py           # Reusable Plotly builders
-│   ├── formatting.py       # Number/currency/percent formatters
-│   └── watchlist.py        # JSON-backed watchlist persistence
-└── tests/                  # pytest — math that must be correct
+├── api/
+│   ├── main.py            # FastAPI app: all /api/* endpoints + static mount
+│   └── serialize.py       # to_jsonable(): DataFrame/ndarray/NaN → JSON-safe
+├── frontend/
+│   ├── index.html         # the entire UI (markup + CSS, single file)
+│   └── js/app.js          # all wiring: loaders, charts, shared-ticker flow
+├── layers/                # pure-Python quant logic (no web imports)
+│   ├── screener.py        # composite scoring + filters
+│   ├── deep_dive.py       # margins, earnings quality, Beneish M-Score
+│   ├── valuation.py       # DCF, WACC, DDM, comps
+│   ├── simulation.py      # GBM / GARCH-t / OU Monte Carlo
+│   ├── backtester.py      # engine + tearsheet metrics
+│   └── decision.py        # cross-layer reward/risk signal (library-only)
+├── strategies/            # pluggable Strategy subclasses (signal/factor/arb)
+├── data/                  # fetch layer: prices, fundamentals, macro, fx, news
+├── utils/                 # watchlist, formatting, charts, calendar
+├── config.py              # universes, COUNTRY_RISK, benchmark map
+├── tests/                 # 241 pytest functions over the math
+├── pages/ · app.py        # retired Streamlit UI (kept for reference)
+└── docs/                  # ARCHITECTURE, API_REFERENCE, mockups, plans
 ```
 
-**Core design rule:** `layers/` and `strategies/` contain zero Streamlit imports. They are plain Python that accept parameters and return DataFrames and numbers. `pages/` is display-only — it calls the layers and renders results with Plotly. This makes every layer independently readable and testable.
+---
 
-### Country-correct valuation (Damodaran)
+## Quick start
 
-For non-US equities, valuation uses the **local** risk-free rate (FRED), **local** market index for beta, and country risk premium:
+```bash
+git clone https://github.com/<your-username>/QuantDeck.git
+cd QuantDeck
+pip install -r requirements.txt
 
+uvicorn api.main:app --port 8000
+# open http://localhost:8000  (hard-refresh once: Cmd/Ctrl + Shift + R)
 ```
-Ke = Rf_local + β_local × ERP + CRP
-```
 
-Covered: US, UK, Germany, France, Japan, India, Australia, Canada, Hong Kong.
+On macOS you can also double-click **`start_quantdeck.command`** to launch and **`stop_quantdeck.command`** to stop.
+
+**No API keys required.** Fundamentals, prices, news, and analyst data all come from yfinance (Yahoo Finance) — no key, no rate-limit tier, global coverage. The risk-free rate used in valuation is a per-country proxy because live FRED calls are slow; everything else is fetched live.
+
+### Asset universe
+
+| Class | Examples | yfinance format |
+|-------|----------|-----------------|
+| US equities | `AAPL`, `MSFT`, `NVDA` | bare symbol |
+| International equities | `RELIANCE.NS`, `005930.KS`, `SAP`, `ASML` | suffix per exchange |
+| FX pairs | `EURUSD=X`, `USDINR=X` | `=X` |
+| Commodities | `GC=F`, `CL=F`, `HG=F` | `=F` |
+
+Prices, candles, and Monte Carlo work for every class. Deep Dive and Valuation are equity-only and show a clean not-applicable state otherwise.
 
 ---
 
 ## Tests
 
 ```bash
-pytest
+pytest -q --ignore=tests/test_news.py
 ```
 
-235+ tests covering: WACC/DCF/DDM math, backtester P&L accounting, Monte Carlo path generation, screener filters, asset-type detection, country helpers, watchlist persistence.
+241 test functions cover the parts that must be correct: WACC/DCF/DDM math, backtester P&L accounting and tearsheet metrics, Monte Carlo path generation and risk metrics, screener filters and scoring, asset-type detection, country helpers, and watchlist persistence. (`test_news.py` hits a live endpoint and is excluded from CI runs.)
 
 ---
 
-## Contributing
+## Extending it
 
-The architecture is designed for easy extension:
+- **Add a strategy** — subclass `strategies/base.py`, implement `generate_signals(prices_df, **params) -> pd.Series`, register it in `strategies/__init__.py`. The Backtester and Strategy Library pick it up automatically.
+- **Add a universe** — add an entry to `config.EQUITY_UNIVERSES` (or `FX_PAIRS` / `COMMODITIES`) with `suffix`, `benchmark`, `market_index`, `country`.
+- **Add a country** — add an entry to `config.COUNTRY_RISK` with `rf_ticker`, `erp`, `crp`. Valuation inherits it via `_derive_wacc_inputs`.
 
-**Adding a strategy:** subclass `strategies/base.py` → implement `generate_signals(prices_df, **params) -> pd.Series` → register in `strategies/__init__.py`. The backtester picks it up automatically.
+---
 
-**Adding a universe:** add an entry to `config.EQUITY_UNIVERSES` (or `FX_PAIRS` / `COMMODITIES`) with `suffix`, `benchmark`, `market_index`, `country`. The screener and backtester inherit it.
+## Known limitations
 
-**Adding a country:** add an entry to `config.COUNTRY_RISK` with `rf_ticker` (FRED series), `erp`, `crp`. Valuation inherits it via `_derive_wacc_inputs`.
+These are deliberate scope choices, documented so they don't surprise you:
+
+- **Comparable-company valuation is unavailable.** yfinance has no reliable peer endpoint, so `fetch_peers()` returns `[]`; the comps table and comps-implied prices show a not-available state. DCF and DDM are unaffected.
+- **Portfolio P&L is not yet computed.** You can log a buy date/price/qty per holding, but the P&L column currently shows `—` (no live mark-to-market against the stored cost basis yet).
+- **The risk-free rate is a proxy, not live FRED.** A recent per-country 10Y yield is substituted to keep valuation fast; WACC stays sensible but isn't to-the-basis-point.
+- **The cross-layer Decision signal (`layers/decision.py`) is not surfaced** through the API yet, though the math is implemented and tested.
+- **First paint shows mockup numbers** for a fraction of a second before live data replaces them.
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#blindspots--roadmap) for the full blindspot register and roadmap.
 
 ---
 
 ## Disclaimers
 
-QuantDeck is a quantitative analysis and educational tool. Every signal, valuation, and backtest is a model output, **not financial advice**. Models do not account for gap risk from earnings events, regulatory changes, or macro regime shifts. Backtested performance is not indicative of future results. These disclaimers appear in-app at every decision surface.
+QuantDeck is a quantitative-analysis and educational tool. Every signal, valuation, and backtest is a model output, **not financial advice**. Models do not account for gap risk from earnings, regulatory changes, or macro regime shifts. **Backtested performance is not indicative of future results.** Data is sourced from Yahoo Finance on a best-effort basis and may be delayed, incomplete, or revised.
