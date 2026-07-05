@@ -141,6 +141,7 @@ def _derive_wacc_inputs(
     balance: pd.DataFrame,
     country: str,
     market_equity: float | None = None,
+    rf_override: float | None = None,
 ) -> dict:
     """Derive WACC inputs from FMP statements + FRED/yfinance risk-free + config risk premia.
 
@@ -151,22 +152,29 @@ def _derive_wacc_inputs(
     Equity weight in WACC uses ``market_equity`` (market cap = shares × price) when
     provided — the Damodaran-correct convention — and falls back to book equity
     (balance-sheet totalEquity) only when a market value is unavailable.
+
+    ``rf_override`` (a fraction, e.g. 0.042) skips the live FRED fetch entirely
+    and feeds straight into Ke/WACC — the caller-supplied rate, not a cosmetic
+    swap of the output dict after the fact.
     """
     cr = COUNTRY_RISK.get(country, COUNTRY_RISK["US"])
     erp = cr["erp"]
     crp = cr["crp"]
     rf_ticker = cr["rf_ticker"]
 
-    # Risk-free rate: US uses DGS10 (preserves existing test mocking);
-    # non-US uses the country's FRED series from COUNTRY_RISK.
-    try:
-        if country == "US":
-            rf_series = fetch_fred_series("DGS10", years=1)
-        else:
-            rf_series = fetch_fred_series(rf_ticker, years=1)
-        rf = float(rf_series.iloc[-1]) / 100
-    except Exception:
-        rf = 0.04
+    if rf_override is not None:
+        rf = rf_override
+    else:
+        # Risk-free rate: US uses DGS10 (preserves existing test mocking);
+        # non-US uses the country's FRED series from COUNTRY_RISK.
+        try:
+            if country == "US":
+                rf_series = fetch_fred_series("DGS10", years=1)
+            else:
+                rf_series = fetch_fred_series(rf_ticker, years=1)
+            rf = float(rf_series.iloc[-1]) / 100
+        except Exception:
+            rf = 0.04
 
     # Beta vs local market index (country-correct for non-US equities)
     local_index = market_index_for_country(country)
@@ -267,8 +275,11 @@ def run_valuation(ticker: str, country: str = "US", overrides: dict | None = Non
         else None
     )
 
-    wacc_inputs = _derive_wacc_inputs(ticker, income, balance, country, market_equity=market_equity)
-    for k in ("rf", "beta", "erp", "crp", "ke", "kd", "tax_rate", "wacc"):
+    wacc_inputs = _derive_wacc_inputs(
+        ticker, income, balance, country,
+        market_equity=market_equity, rf_override=ov.get("rf"),
+    )
+    for k in ("beta", "erp", "crp", "ke", "kd", "tax_rate", "wacc"):
         if k in ov:
             wacc_inputs[k] = ov[k]
     result["wacc_inputs"] = wacc_inputs

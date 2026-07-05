@@ -206,14 +206,10 @@ def valuation(ticker: str):
 
     country = country_from_ticker(ticker)
     rf_pct = _RF_PROXY.get(country, 4.2)
-    orig = val.fetch_fred_series
-    val.fetch_fred_series = lambda *a, **k: pd.Series([rf_pct])
     try:
-        v = val.run_valuation(ticker, country=country)
+        v = val.run_valuation(ticker, country=country, overrides={"rf": rf_pct / 100})
     except Exception as e:
         return JSONResponse({"ticker": ticker, "error": str(e)}, status_code=502)
-    finally:
-        val.fetch_fred_series = orig
 
     if not v.get("applicable"):
         return JSONResponse({"ticker": ticker, "error": v.get("reason", "not applicable")})
@@ -419,10 +415,8 @@ def decision(ticker: str):
     val_summary: dict = {}
     country = country_from_ticker(ticker)
     rf_pct = _RF_PROXY.get(country, 4.2)
-    orig = val.fetch_fred_series
-    val.fetch_fred_series = lambda *a, **k: pd.Series([rf_pct])
     try:
-        v = val.run_valuation(ticker, country=country)
+        v = val.run_valuation(ticker, country=country, overrides={"rf": rf_pct / 100})
         if v.get("applicable"):
             cur = v.get("current_price")
             dcf = v.get("dcf_base") or {}
@@ -431,8 +425,6 @@ def decision(ticker: str):
                            "fair_high": dcf.get("price_bull") or cur}
     except Exception:
         pass
-    finally:
-        val.fetch_fred_series = orig
 
     # 3) Simulation odds (lighter run — we only need prob_profit + P50/P10)
     sim_summary: dict = {}
