@@ -8,6 +8,8 @@ Walk in with a ticker, walk out with a full investment thesis — screen, dissec
 
 `FastAPI` · `Vanilla JS` · `Plotly.js` · `yfinance` · `NumPy / pandas / SciPy`
 
+[![tests](https://github.com/chintan-jikkar/QuantDeck/actions/workflows/tests.yml/badge.svg)](https://github.com/chintan-jikkar/QuantDeck/actions/workflows/tests.yml)
+
 </div>
 
 ---
@@ -19,6 +21,8 @@ QuantDeck is a single-page research workstation backed by a thin Python API. The
 It is built by a finance analyst, for analysts: the complexity lives in the financial logic (Damodaran WACC, Beneish M-Score, GARCH paths, Markowitz frontiers), not in the infrastructure.
 
 > **Not financial advice.** Every signal, valuation, and backtest is a model output. See [Disclaimers](#disclaimers).
+
+![QuantDeck Screener — composite factor scoring across a live universe](docs/assets/screenshot.png)
 
 ---
 
@@ -105,7 +109,7 @@ QuantDeck/
 ├── data/                  # fetch layer: prices, fundamentals, macro, fx, news
 ├── utils/                 # watchlist, formatting, charts, calendar
 ├── config.py              # universes, COUNTRY_RISK, benchmark map
-├── tests/                 # 241 pytest functions over the math
+├── tests/                 # 235 pytest functions over the math
 ├── pages/ · app.py        # retired Streamlit UI (kept for reference)
 └── docs/                  # ARCHITECTURE, API_REFERENCE, design mockups
 ```
@@ -115,7 +119,7 @@ QuantDeck/
 ## Quick start
 
 ```bash
-git clone https://github.com/<your-username>/QuantDeck.git
+git clone https://github.com/chintan-jikkar/QuantDeck.git
 cd QuantDeck
 pip install -r requirements.txt
 
@@ -146,7 +150,7 @@ Prices, candles, and Monte Carlo work for every class. Deep Dive and Valuation a
 pytest -q --ignore=tests/test_news.py
 ```
 
-241 test functions cover the parts that must be correct: WACC/DCF/DDM math, backtester P&L accounting and tearsheet metrics, Monte Carlo path generation and risk metrics, screener filters and scoring, asset-type detection, country helpers, and watchlist persistence. (`test_news.py` hits a live endpoint and is excluded from CI runs.)
+235 test functions cover the parts that must be correct: WACC/DCF/DDM math, backtester P&L accounting and tearsheet metrics, Monte Carlo path generation and risk metrics, screener filters and scoring, asset-type detection, country helpers, and watchlist persistence. (`test_news.py` hits a live endpoint and is excluded from CI runs.)
 
 ---
 
@@ -162,10 +166,10 @@ pytest -q --ignore=tests/test_news.py
 
 These are deliberate scope choices, documented so they don't surprise you:
 
-- **Comparable-company valuation is unavailable.** yfinance has no reliable peer endpoint, so `fetch_peers()` returns `[]`; the comps table and comps-implied prices show a not-available state. DCF and DDM are unaffected.
-- **Portfolio P&L is not yet computed.** You can log a buy date/price/qty per holding, but the P&L column currently shows `—` (no live mark-to-market against the stored cost basis yet).
-- **The risk-free rate is a proxy, not live FRED.** A recent per-country 10Y yield is substituted to keep valuation fast; WACC stays sensible but isn't to-the-basis-point.
-- **The cross-layer Decision signal (`layers/decision.py`) is not surfaced** through the API yet, though the math is implemented and tested.
+- **Comparable-company peers are curated, not fetched live.** yfinance has no reliable peer endpoint, so `fetch_peers()` uses a hand-maintained per-ticker map with a sector-bucket fallback. Coverage is good for large-caps but thin for smaller or less common names.
+- **The risk-free rate is a proxy, not live FRED.** A recent per-country 10Y yield is substituted to keep Valuation and the Decision signal fast; WACC stays sensible but isn't to-the-basis-point, and the proxy needs periodic manual updates as rates move.
+- **The DCF excludes changes in net working capital.** Free cash flow is `NOPAT + D&A − Capex`; for working-capital-heavy sectors (retail, industrials) this can overstate FCF slightly.
+- **The Portfolio Optimizer's "max-Sharpe" is approximate.** Weights are found by sampling 5,000 random long-only portfolios rather than solving the tangency portfolio directly, so the reported optimum is close to, but not exactly, the true efficient frontier.
 - **First paint shows mockup numbers** for a fraction of a second before live data replaces them.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#blindspots--roadmap) for the full blindspot register and roadmap.

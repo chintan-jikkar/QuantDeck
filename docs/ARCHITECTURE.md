@@ -85,7 +85,7 @@ Ke   = Rf + β·ERP + CRP            (Damodaran cost of equity, country-correct)
 WACC = (E/V)·Ke + (D/V)·Kd·(1−tax)
 DCF  = Σ FCFₜ/(1+WACC)ᵗ + TV/(1+WACC)ⁿ ,  TV = FCF·(1+g)/(WACC−g)
 ```
-`COUNTRY_RISK` (config.py) supplies `erp`/`crp`/`rf_ticker` for 12 markets. The API swaps the slow live FRED call for `_RF_PROXY` (a recent per-country 10Y yield) so the endpoint returns in seconds. DDM is gated on a positive, sane dividend. Comps are currently unavailable (see Blindspots).
+`COUNTRY_RISK` (config.py) supplies `erp`/`crp`/`rf_ticker` for 12 markets. The API swaps the slow live FRED call for `_RF_PROXY` (a recent per-country 10Y yield) so the endpoint returns in seconds — see Blindspots for the thread-safety cost of that swap. DDM is gated on a positive, sane dividend. Comps use a curated peer map with a sector-bucket fallback (see Blindspots for coverage limits).
 
 ### 04 Backtester — `layers/backtester.py`
 `run_engine(prices, signals)` applies position signals with commission (10 bps) and slippage (0.1%), producing an equity curve, returns, and a trade ledger. `compute_tearsheet` derives CAGR, Sharpe, Sortino, Max Drawdown, Win Rate, Profit Factor, Calmar. The API normalises curves to 100, downsamples to ~110 points, snaps trade markers onto the curve with `bisect`, and resamples monthly returns.
@@ -103,24 +103,23 @@ Markowitz via 5,000 random long-only portfolios: tracks max-Sharpe and min-vol, 
 
 ## 4. Layer boundary (the one rule)
 
-`layers/` and `strategies/` contain **no** FastAPI, Streamlit, or Plotly imports. They accept parameters and return pandas/NumPy objects. This is what lets `tests/` (241 functions) verify the math directly, and what let the project swap its entire UI from Streamlit to FastAPI+JS without touching the quant code. `api/main.py` is the only place that knows about HTTP; `frontend/` is the only place that knows about pixels.
+`layers/` and `strategies/` contain **no** FastAPI, Streamlit, or Plotly imports. They accept parameters and return pandas/NumPy objects. This is what lets `tests/` (235 functions) verify the math directly, and what let the project swap its entire UI from Streamlit to FastAPI+JS without touching the quant code. `api/main.py` is the only place that knows about HTTP; `frontend/` is the only place that knows about pixels.
 
 ---
 
 ## 5. Blindspots & roadmap
 
-An honest register from the latest X-ray. None block daily use; all are scoped, not accidental.
+An honest register, current as of this revision. None block daily use; all are scoped, not accidental.
 
 | Area | Blindspot | Severity | Note |
 |------|-----------|----------|------|
-| Valuation | Comps always "unavailable" (`fetch_peers()` → `[]`) | Medium | Needs a peer source (e.g. sector ETF holdings or a static map). |
-| Portfolio | P&L column always `—` despite stored cost basis | Medium | Mark-to-market the buy price against the live quote. |
-| Decision | `layers/decision.py` implemented + tested but **not exposed** by any endpoint | Low | One `/api/decision/{ticker}` would light up the cross-layer signal. |
-| UI copy | Module sub-titles hardcode `· NVDA` regardless of active ticker | Low | Cosmetic; update `mod-sub` per `selectTicker`. |
-| UI copy | Top-bar `S&P 500` pill is decorative, never reflects the ticker's exchange | Low | Cosmetic. |
-| First paint | Mockup numbers (e.g. "Strategies saved 12") flash before live data | Low | Replace static cells with neutral skeletons. |
-| Valuation | Risk-free is a proxy, not live FRED | Low | Deliberate, for latency. |
-| Tooling | `requirements.txt` still pins the retired Streamlit stack; `fastapi`/`uvicorn` unpinned | Low | Trim to the live stack and pin versions. |
+| Valuation | `/api/valuation` and `/api/decision` monkeypatch the module-level `val.fetch_fred_series` to inject the risk-free proxy, then restore it in `finally` | Medium | Not thread-safe: concurrent requests racing on the same global can read the wrong rf. Should pass `rf` as a parameter into `run_valuation` instead. |
+| Portfolio | "Max-Sharpe" is found via 5,000 random long-only weight draws, not a solver | Medium | `w = rng.random(n); w /= w.sum()` biases the cloud toward equal-weight and never reaches concentrated/corner portfolios; the true tangency portfolio is close but not exact. Swap in `scipy.optimize.minimize` or Dirichlet sampling. |
+| Valuation | DCF excludes changes in net working capital | Low | `FCF = NOPAT + D&A − Capex`; overstates FCF slightly for working-capital-heavy sectors. |
+| Valuation | Risk-free is a hardcoded per-country proxy, not live FRED | Low | Deliberate, for latency — but the constants are dated at write-time and duplicated in `api/main.py` and `data/fundamentals.py`. |
+| Valuation | Comps peers come from a curated map + sector fallback, not a live peer endpoint | Low | yfinance has no reliable peer source; coverage is best for large/mega-caps. |
+| Tooling | No CI runs the test suite | Low | See `.github/workflows/tests.yml`. |
+| Tooling | `requirements.txt` still pins the retired Streamlit stack | Low | `app.py` / `pages/` are kept for reference; trim both once no longer needed. |
 | Edge case | `/api/portfolio` assumes ≥2 valid tickers; a single-symbol `yf.download` returns a different shape | Low | Guarded by the UI (basket always ≥2). |
 
 ### Naming note
@@ -135,7 +134,7 @@ The lowercase sub-labels ("base case", "bull scenario", "most recent") and upper
 
 ```bash
 uvicorn api.main:app --port 8000          # serve
-pytest -q --ignore=tests/test_news.py     # 241 tests
+pytest -q --ignore=tests/test_news.py     # 235 tests
 ```
 
 The frontend is best viewed at a 16:9 / laptop-or-wider aspect ratio — the seven modules are laid out as a full-screen `100vw × 100vh` terminal, so narrow windows leave the two-column cards cramped.
