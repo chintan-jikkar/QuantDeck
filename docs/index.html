@@ -8,43 +8,68 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
   :root{
     --bg:#080b12; --surface:#0d1220; --card:rgba(255,255,255,0.035);
     --border:rgba(255,255,255,0.08); --border-b:rgba(255,255,255,0.14);
     --txt:#f0f4ff; --txt-m:#8c97b0; --txt-d:#b4bdd4;
     --blue:#4f9eff; --cyan:#00e5cc; --lime:#b8f264; --amber:#ffb340; --pink:#ff5fa0; --purple:#a78bfa;
+    --blur:14px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth}
-  body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--txt);line-height:1.6;
+  body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--txt);line-height:1.6;overflow-x:hidden;
     background-image:
       radial-gradient(ellipse 800px 500px at 12% 0%,rgba(79,158,255,0.10),transparent 70%),
       radial-gradient(ellipse 600px 500px at 90% 12%,rgba(0,229,204,0.07),transparent 70%),
       radial-gradient(ellipse 500px 400px at 60% 100%,rgba(167,139,250,0.06),transparent 70%);}
-  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
   .syne{font-family:'Syne',sans-serif}
+  img{max-width:100%;display:block}
+
+  /* ── glassmorphism (Kairos-style glass card: gradient fill, backdrop blur,
+       bright top edge, lift + radial mouse-glow on hover) ────────────────── */
+  .glass{
+    background:linear-gradient(180deg,rgba(255,255,255,0.09),rgba(255,255,255,0.025));
+    backdrop-filter:blur(var(--blur)); -webkit-backdrop-filter:blur(var(--blur));
+    border:1px solid var(--border); border-top-color:rgba(255,255,255,0.22);
+    border-radius:14px; position:relative; overflow:hidden;
+    transition:border-color .3s ease, box-shadow .3s ease, transform .3s ease;
+  }
+  .glass:hover{border-color:rgba(255,255,255,0.26);
+    box-shadow:0 18px 34px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.12);
+    transform:translateY(-3px);}
+  .glass::after{content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:radial-gradient(circle 220px at var(--mx,50%) var(--my,30%),rgba(255,255,255,0.14),transparent 72%);
+    opacity:0;transition:opacity .3s ease;}
+  .glass:hover::after{opacity:1}
+  .glass.static:hover{transform:none;box-shadow:none;border-color:var(--border)}
+  .glass.static::after{display:none}
 
   /* nav */
-  nav{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;max-width:1080px;margin:0 auto}
+  nav.glass{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;
+    max-width:1120px;margin:16px auto 0;border-radius:16px}
+  nav.glass:hover{transform:none;box-shadow:none}
   .brand{display:flex;align-items:center;gap:11px}
   .mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--blue),var(--cyan));
     display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;color:#080b12;font-size:17px;box-shadow:0 0 22px rgba(79,158,255,0.35)}
   .brand b{font-family:'Syne',sans-serif;font-size:17px;font-weight:700}
   .brand span{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--txt-d);display:block;margin-top:-2px}
-  nav a.gh{font-size:12px;color:var(--txt-d);text-decoration:none;border:1px solid var(--border-b);border-radius:8px;padding:8px 14px;transition:.2s}
+  nav a.gh{font-size:12px;color:var(--txt-d);text-decoration:none;border:1px solid var(--border-b);border-radius:8px;padding:8px 14px;transition:.2s;display:inline-flex;align-items:center;gap:6px}
   nav a.gh:hover{color:var(--txt);border-color:var(--blue)}
 
   /* hero */
   .hero{text-align:center;padding:70px 0 50px}
   .pill{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--lime);
     border:1px solid rgba(184,242,100,0.3);background:rgba(184,242,100,0.07);border-radius:30px;padding:6px 14px;margin-bottom:26px}
-  .pill::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 8px var(--lime)}
+  .pill::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 8px var(--lime);animation:pulse 1.8s ease-out infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(184,242,100,.6)}70%{box-shadow:0 0 0 8px rgba(184,242,100,0)}100%{box-shadow:0 0 0 0 rgba(184,242,100,0)}}
   h1{font-family:'Syne',sans-serif;font-size:clamp(40px,7vw,76px);font-weight:800;line-height:1.02;letter-spacing:-.02em;
     background:linear-gradient(120deg,#f0f4ff 20%,var(--cyan) 55%,var(--blue) 90%);-webkit-background-clip:text;background-clip:text;color:transparent}
   .tag{font-size:clamp(15px,2.2vw,19px);color:var(--txt-d);max-width:640px;margin:22px auto 0}
   .cta{display:flex;gap:13px;justify-content:center;flex-wrap:wrap;margin-top:34px}
-  .btn{font-size:13px;text-decoration:none;border-radius:10px;padding:13px 22px;transition:.2s;font-weight:500}
+  .btn{font-size:13px;text-decoration:none;border-radius:10px;padding:13px 22px;transition:.2s;font-weight:500;display:inline-flex;align-items:center;gap:7px}
   .btn.primary{background:linear-gradient(120deg,var(--blue),var(--cyan));color:#06101e;box-shadow:0 8px 30px rgba(79,158,255,0.25)}
   .btn.primary:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(79,158,255,0.4)}
   .btn.ghost{border:1px solid var(--border-b);color:var(--txt)}
@@ -52,19 +77,14 @@
   .badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:30px}
   .badge{font-size:11px;color:var(--txt-m);border:1px solid var(--border);border-radius:7px;padding:6px 12px;background:var(--card)}
   .badge b{color:var(--cyan);font-weight:500}
+  .badge img{height:16px;display:inline-block;vertical-align:middle}
 
-  /* terminal preview (abstract, no external image needed) */
-  .screen{margin:48px auto 0;max-width:920px;border:1px solid var(--border-b);border-radius:16px;overflow:hidden;
-    background:linear-gradient(180deg,rgba(13,18,32,0.9),rgba(8,11,18,0.95));box-shadow:0 30px 80px rgba(0,0,0,0.5)}
-  .screen-bar{display:flex;align-items:center;gap:7px;padding:11px 15px;border-bottom:1px solid var(--border)}
+  /* hero screenshot frame */
+  .frame{margin:48px auto 0;max-width:960px;border-radius:16px;padding:0}
+  .frame-bar{display:flex;align-items:center;gap:7px;padding:12px 16px;border-bottom:1px solid var(--border)}
   .dot{width:11px;height:11px;border-radius:50%}
-  .screen-bar small{margin-left:10px;font-size:11px;color:var(--txt-d)}
-  .screen-body{padding:22px;display:grid;grid-template-columns:1.5fr 1fr;gap:16px}
-  .mini-card{border:1px solid var(--border);border-radius:11px;padding:15px;background:var(--card)}
-  .mini-card .lbl{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:var(--txt-d)}
-  .mini-card .val{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;margin-top:4px}
-  .spark{margin-top:14px;height:90px;width:100%}
-  .kpi-mini{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .frame-bar small{margin-left:10px;font-size:11px;color:var(--txt-d)}
+  .frame img{width:100%;display:block}
 
   /* sections */
   section{padding:64px 0}
@@ -73,9 +93,8 @@
   .sub{text-align:center;color:var(--txt-m);max-width:600px;margin:0 auto 40px}
 
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
-  .mod{border:1px solid var(--border);border-radius:14px;padding:22px;background:var(--card);transition:.2s;position:relative;overflow:hidden}
-  .mod:hover{border-color:var(--border-b);transform:translateY(-3px)}
-  .mod::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:.8}
+  .mod{padding:22px}
+  .mod::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:.8;z-index:1}
   .mod.c1::before{background:linear-gradient(90deg,var(--blue),transparent)}
   .mod.c2::before{background:linear-gradient(90deg,var(--cyan),transparent)}
   .mod.c3::before{background:linear-gradient(90deg,var(--lime),transparent)}
@@ -83,40 +102,62 @@
   .mod.c5::before{background:linear-gradient(90deg,var(--purple),transparent)}
   .mod.c6::before{background:linear-gradient(90deg,var(--pink),transparent)}
   .mod.c7::before{background:linear-gradient(90deg,var(--blue),var(--cyan))}
-  .mod .num{font-size:11px;color:var(--txt-d);font-family:'Syne',sans-serif}
-  .mod h3{font-family:'Syne',sans-serif;font-size:17px;font-weight:600;margin:6px 0 8px}
-  .mod p{font-size:12.5px;color:var(--txt-m)}
+  .mod .num{font-size:11px;color:var(--txt-d);font-family:'Syne',sans-serif;position:relative;z-index:1}
+  .mod h3{font-family:'Syne',sans-serif;font-size:17px;font-weight:600;margin:6px 0 8px;position:relative;z-index:1}
+  .mod p{font-size:12.5px;color:var(--txt-m);position:relative;z-index:1}
 
   .stack{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
-  .chip{font-size:12px;color:var(--txt-d);border:1px solid var(--border-b);border-radius:30px;padding:9px 16px;background:var(--card)}
+  .chip{font-size:12px;color:var(--txt-d);border-radius:30px;padding:9px 16px}
   .chip b{color:var(--txt)}
 
   .flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:8px}
-  .step{border:1px solid var(--border);border-radius:14px;padding:22px;background:var(--card)}
+  .step{padding:22px}
   .step .n{width:30px;height:30px;border-radius:8px;background:rgba(79,158,255,0.15);color:var(--blue);
-    display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:12px}
-  .step h4{font-family:'Syne',sans-serif;font-size:14px;margin-bottom:6px}
-  .step p{font-size:12px;color:var(--txt-m)}
+    display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;margin-bottom:12px;position:relative;z-index:1}
+  .step h4{font-family:'Syne',sans-serif;font-size:14px;margin-bottom:6px;position:relative;z-index:1}
+  .step p{font-size:12px;color:var(--txt-m);position:relative;z-index:1}
 
-  pre{background:#0a0e18;border:1px solid var(--border-b);border-radius:12px;padding:20px 22px;overflow-x:auto;
-    font-size:13px;color:var(--txt);max-width:680px;margin:0 auto;line-height:1.8}
+  pre{background:#0a0e18;border:1px solid var(--border-b);border-radius:12px;padding:18px 20px;overflow-x:auto;
+    font-size:12.5px;color:var(--txt);line-height:1.75}
   pre .c{color:var(--txt-d)}
   pre .g{color:var(--lime)}
+  pre .k{color:var(--blue)}
+  pre .s{color:var(--amber)}
 
-  footer{border-top:1px solid var(--border);padding:40px 0;text-align:center;color:var(--txt-d);font-size:12px;margin-top:30px}
+  /* screenshot showcase */
+  .shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:22px}
+  .shot{padding:0}
+  .shot-img-wrap{overflow:hidden;border-bottom:1px solid var(--border);position:relative;z-index:1}
+  .shot img{transition:transform .4s ease}
+  .shot:hover img{transform:scale(1.03)}
+  .shot-cap{padding:16px 18px;position:relative;z-index:1}
+  .shot-cap .num{font-size:10px;color:var(--txt-d);font-family:'Syne',sans-serif;letter-spacing:.08em}
+  .shot-cap h4{font-family:'Syne',sans-serif;font-size:15px;font-weight:600;margin:4px 0 6px}
+  .shot-cap p{font-size:12px;color:var(--txt-m)}
+
+  /* extend cards */
+  .extend{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+  .ext-card{padding:22px}
+  .ext-card .ico{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;font-size:17px;position:relative;z-index:1}
+  .ext-card h4{font-family:'Syne',sans-serif;font-size:15px;margin-bottom:8px;position:relative;z-index:1}
+  .ext-card p{font-size:12px;color:var(--txt-m);margin-bottom:14px;position:relative;z-index:1}
+  .ext-card pre{margin:0;font-size:11px;position:relative;z-index:1}
+
+  footer{padding:40px 0;text-align:center;color:var(--txt-d);font-size:12px;margin:30px auto 24px;max-width:1120px}
+  footer.glass{padding:36px 24px}
   footer a{color:var(--cyan);text-decoration:none}
   .disc{max-width:640px;margin:0 auto 16px;font-size:11px;color:var(--txt-m);line-height:1.7}
-  @media(max-width:680px){.screen-body{grid-template-columns:1fr}}
+  @media(max-width:680px){.mod, .step, .ext-card{padding:18px}}
 </style>
 </head>
 <body>
 
-<nav>
+<nav class="glass">
   <div class="brand">
     <div class="mark">Q</div>
     <div><b>QuantDeck</b><span>Equity Research</span></div>
   </div>
-  <a class="gh" href="https://github.com/chintan-jikkar/QuantDeck" target="_blank" rel="noopener">View on GitHub →</a>
+  <a class="gh" href="https://github.com/chintan-jikkar/QuantDeck" target="_blank" rel="noopener"><i class="ti ti-brand-github"></i> View on GitHub</a>
 </nav>
 
 <header class="hero wrap">
@@ -124,55 +165,77 @@
   <h1>Walk in with a ticker,<br>walk out with a thesis.</h1>
   <p class="tag">An institutional-style equity research terminal — screen, dissect, value, simulate, backtest, and optimize, all from one dark-mode dashboard wired to live data. <b style="color:var(--lime)">No API keys. No database. No build step.</b></p>
   <div class="cta">
-    <a class="btn primary" href="https://github.com/chintan-jikkar/QuantDeck" target="_blank" rel="noopener">Get the code</a>
-    <a class="btn ghost" href="#start">Quick start</a>
+    <a class="btn primary" href="https://github.com/chintan-jikkar/QuantDeck" target="_blank" rel="noopener"><i class="ti ti-download"></i> Get the code</a>
+    <a class="btn ghost" href="#showcase"><i class="ti ti-photo"></i> See it in action</a>
+    <a class="btn ghost" href="#start"><i class="ti ti-terminal-2"></i> Quick start</a>
   </div>
   <div class="badges">
     <div class="badge"><b>7</b> analysis modules</div>
     <div class="badge"><b>yfinance</b> · zero keys</div>
-    <div class="badge"><b>235</b> tests passing</div>
+    <div class="badge"><b>195</b> tests passing</div>
     <div class="badge"><b>MIT</b> licensed</div>
+    <a class="badge" href="https://github.com/chintan-jikkar/QuantDeck/actions/workflows/tests.yml" target="_blank" rel="noopener" style="text-decoration:none">
+      <img src="https://github.com/chintan-jikkar/QuantDeck/actions/workflows/tests.yml/badge.svg" alt="tests status">
+    </a>
   </div>
 
-  <!--  TIP: drop a real screenshot here for max impact, e.g.:
-        <img src="screenshot.png" alt="QuantDeck dashboard" style="width:100%;border-radius:16px;margin-top:48px;border:1px solid var(--border-b)">
-        (save a PNG of the running app into docs/ and swap the abstract preview below)  -->
-  <div class="screen">
-    <div class="screen-bar">
+  <div class="frame glass static">
+    <div class="frame-bar">
       <span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span>
-      <small>QuantDeck — Deep Dive · AAPL</small>
+      <small>quantdeck — localhost:8000 · Deep Dive · AAPL</small>
     </div>
-    <div class="screen-body">
-      <div class="mini-card">
-        <div class="lbl">AAPL — Price</div>
-        <svg class="spark" viewBox="0 0 400 90" preserveAspectRatio="none">
-          <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#00e5cc" stop-opacity=".35"/><stop offset="100%" stop-color="#00e5cc" stop-opacity="0"/></linearGradient></defs>
-          <polygon points="0,72 40,66 80,70 120,55 160,58 200,42 240,46 280,30 320,34 360,18 400,12 400,90 0,90" fill="url(#g)"/>
-          <polyline points="0,72 40,66 80,70 120,55 160,58 200,42 240,46 280,30 320,34 360,18 400,12" fill="none" stroke="#00e5cc" stroke-width="2"/>
-        </svg>
-      </div>
-      <div class="kpi-mini">
-        <div class="mini-card"><div class="lbl">Market Cap</div><div class="val" style="color:var(--blue);font-size:20px">$4.28T</div></div>
-        <div class="mini-card"><div class="lbl">Net Margin</div><div class="val" style="color:var(--lime);font-size:20px">26.9%</div></div>
-        <div class="mini-card"><div class="lbl">DCF Fair Value</div><div class="val" style="color:var(--cyan);font-size:20px">$153</div></div>
-        <div class="mini-card"><div class="lbl">Signal</div><div class="val" style="color:var(--amber);font-size:20px">Watch</div></div>
-      </div>
-    </div>
+    <img src="assets/shots/deep-dive.png" alt="QuantDeck Deep Dive — interactive candlestick, fundamentals, and bull/bear memo for AAPL" loading="eager">
   </div>
 </header>
+
+<section id="showcase" class="wrap">
+  <div class="eyebrow">See it in action</div>
+  <h2>Every module, wired to live data</h2>
+  <p class="sub">Real screenshots of the running app — not mockups. Every number on this page was fetched live from Yahoo Finance.</p>
+  <div class="shots">
+    <div class="shot glass">
+      <div class="shot-img-wrap"><img src="assets/shots/screener.png" alt="Screener — composite factor scoring across a live universe" loading="lazy"></div>
+      <div class="shot-cap"><div class="num">01 · SCREENER</div><h4>Composite factor scoring</h4><p>Rank a global basket by value, quality, growth, and momentum. Buy / Watch / Avoid, with a rotating daily Top Pick.</p></div>
+    </div>
+    <div class="shot glass">
+      <div class="shot-img-wrap"><img src="assets/shots/deep-dive.png" alt="Deep Dive — candlestick, fundamentals, and macro-aware bull/bear memo" loading="lazy"></div>
+      <div class="shot-cap"><div class="num">02 · DEEP DIVE</div><h4>Candlestick + auto memo</h4><p>Interactive OHLC with SMA/EMA/Bollinger overlays, an auto-generated bull/bear memo, and live macro-regime context.</p></div>
+    </div>
+    <div class="shot glass">
+      <div class="shot-img-wrap"><img src="assets/shots/valuation.png" alt="Valuation — DCF, comps, and a bear/base/bull football field" loading="lazy"></div>
+      <div class="shot-cap"><div class="num">03 · VALUATION</div><h4>Country-correct DCF</h4><p>Damodaran WACC across 12 markets, comps-implied pricing, and a bear/base/bull football-field vs. the live price.</p></div>
+    </div>
+    <div class="shot glass">
+      <div class="shot-img-wrap"><img src="assets/shots/backtester.png" alt="Backtester — equity curve, trade log, and monthly returns heatmap" loading="lazy"></div>
+      <div class="shot-cap"><div class="num">04 · BACKTESTER</div><h4>Full tearsheet</h4><p>Sharpe, Sortino, max drawdown, and CAGR with a benchmark-relative equity curve and a monthly-returns heatmap.</p></div>
+    </div>
+    <div class="shot glass">
+      <div class="shot-img-wrap"><img src="assets/shots/monte-carlo.png" alt="Monte Carlo — percentile cone, return distribution, and a derived trade setup" loading="lazy"></div>
+      <div class="shot-cap"><div class="num">05 · MONTE CARLO</div><h4>GBM / GARCH / OU paths</h4><p>2,000-path percentile cone, VaR/CVaR, and an entry/stop/target trade setup derived straight from the simulation.</p></div>
+    </div>
+    <div class="shot glass">
+      <div class="shot-img-wrap"><img src="assets/shots/strategy-lib.png" alt="Strategy Library — every strategy back-tested live, ranked by Sharpe" loading="lazy"></div>
+      <div class="shot-cap"><div class="num">06 · STRATEGY LIBRARY</div><h4>Ranked by Sharpe</h4><p>Every registered strategy back-tested live on the active ticker with a BUY / HOLD / AVOID verdict. One click loads it into the Backtester.</p></div>
+    </div>
+    <div class="shot glass">
+      <div class="shot-img-wrap"><img src="assets/shots/portfolio.png" alt="Portfolio Optimizer — true max-Sharpe frontier and correlation heatmap" loading="lazy"></div>
+      <div class="shot-cap"><div class="num">07 · PORTFOLIO OPTIMIZER</div><h4>True max-Sharpe frontier</h4><p>Tangency and min-variance portfolios solved directly (SciPy SLSQP) — not approximated — plus a live correlation heatmap.</p></div>
+    </div>
+  </div>
+</section>
 
 <section id="modules" class="wrap">
   <div class="eyebrow">The workflow</div>
   <h2>Seven modules, one ticker flow</h2>
   <p class="sub">Pick a name in the Screener or the search bar and it carries through every module automatically.</p>
   <div class="grid">
-    <div class="mod c1"><div class="num">01</div><h3>Screener</h3><p>Composite-score ranking across a global basket (US, India, EU, Korea). Buy / Watch / Avoid, with a rotating daily Top Pick.</p></div>
-    <div class="mod c2"><div class="num">02</div><h3>Deep Dive</h3><p>Interactive candlestick + indicators, fundamentals, an auto bull/bear memo, sector & macro context, live news with summaries, and analyst consensus.</p></div>
-    <div class="mod c3"><div class="num">03</div><h3>Valuation</h3><p>Country-correct DCF (Damodaran WACC across 12 markets), comps, DDM, and a bear/base/bull football-field vs the current price.</p></div>
-    <div class="mod c4"><div class="num">04</div><h3>Backtester</h3><p>Full tearsheet with a Plotly equity curve — entry/exit markers, benchmark overlay, trade log, monthly-returns heatmap.</p></div>
-    <div class="mod c5"><div class="num">05</div><h3>Monte Carlo</h3><p>Animated percentile cone under GBM, GARCH-t, or Ornstein-Uhlenbeck, VaR/CVaR, plus an MC-derived trade setup and cross-layer decision signal.</p></div>
-    <div class="mod c6"><div class="num">06</div><h3>Strategy Library</h3><p>Every strategy back-tested live on the active ticker, ranked by Sharpe, each with a BUY / HOLD / AVOID verdict. One click loads it into the Backtester.</p></div>
-    <div class="mod c7"><div class="num">07</div><h3>Portfolio Optimizer</h3><p>Markowitz max-Sharpe over a persistent basket — efficient frontier, correlation heatmap, per-position risk, and live P&amp;L on your logged buys.</p></div>
+    <div class="mod glass c1"><div class="num">01</div><h3>Screener</h3><p>Composite-score ranking across a global basket (US, India, EU, Korea). Buy / Watch / Avoid, with a rotating daily Top Pick.</p></div>
+    <div class="mod glass c2"><div class="num">02</div><h3>Deep Dive</h3><p>Interactive candlestick + indicators, fundamentals, an auto bull/bear memo, live macro regime, news with summaries, and analyst consensus. FX/commodities get momentum, vol &amp; RSI.</p></div>
+    <div class="mod glass c3"><div class="num">03</div><h3>Valuation</h3><p>Country-correct DCF (Damodaran WACC across 12 markets), comps, DDM, and a bear/base/bull football-field vs the current price.</p></div>
+    <div class="mod glass c4"><div class="num">04</div><h3>Backtester</h3><p>Full tearsheet with a Plotly equity curve — entry/exit markers, benchmark overlay, trade log, monthly-returns heatmap.</p></div>
+    <div class="mod glass c5"><div class="num">05</div><h3>Monte Carlo</h3><p>Animated percentile cone under GBM, GARCH-t, or Ornstein-Uhlenbeck, VaR/CVaR, plus an MC-derived trade setup and cross-layer decision signal.</p></div>
+    <div class="mod glass c6"><div class="num">06</div><h3>Strategy Library</h3><p>Every strategy back-tested live on the active ticker, ranked by Sharpe, each with a BUY / HOLD / AVOID verdict. One click loads it into the Backtester.</p></div>
+    <div class="mod glass c7"><div class="num">07</div><h3>Portfolio Optimizer</h3><p>True Markowitz max-Sharpe (solved, not sampled) over a persistent basket — efficient frontier, correlation heatmap, per-position risk, live P&amp;L.</p></div>
   </div>
 </section>
 
@@ -181,12 +244,54 @@
   <h2>Built on a clean, testable core</h2>
   <p class="sub">A thin FastAPI backend turns pure-Python quant layers into JSON; a single vanilla-JS frontend renders them with Plotly. The financial logic has zero web imports — so it's all unit-tested.</p>
   <div class="stack">
-    <div class="chip"><b>FastAPI</b> backend</div>
-    <div class="chip"><b>Vanilla JS</b> + Plotly.js</div>
-    <div class="chip"><b>yfinance</b> data</div>
-    <div class="chip"><b>NumPy / pandas / SciPy</b></div>
-    <div class="chip"><b>arch</b> (GARCH)</div>
-    <div class="chip"><b>pytest</b> · 235 tests</div>
+    <div class="chip glass"><b>FastAPI</b> backend</div>
+    <div class="chip glass"><b>Vanilla JS</b> + Plotly.js</div>
+    <div class="chip glass"><b>yfinance</b> data</div>
+    <div class="chip glass"><b>NumPy / pandas / SciPy</b></div>
+    <div class="chip glass"><b>arch</b> (GARCH)</div>
+    <div class="chip glass"><b>pytest</b> · 195 tests · CI on every push</div>
+  </div>
+</section>
+
+<section id="extend" class="wrap">
+  <div class="eyebrow">Make it your own</div>
+  <h2>Three ways to extend it</h2>
+  <p class="sub">The layer boundary is the whole point — <code style="color:var(--txt)">layers/</code> and <code style="color:var(--txt)">strategies/</code> never import web code, so adding to them never touches the API or the UI.</p>
+  <div class="extend">
+    <div class="ext-card glass">
+      <div class="ico" style="background:rgba(79,158,255,0.15);color:var(--blue)"><i class="ti ti-chart-line"></i></div>
+      <h4>Add a strategy</h4>
+      <p>Subclass <code>Strategy</code>, implement one method, register it — the Backtester and Strategy Library pick it up automatically.</p>
+<pre><span class="c"># strategies/my_strategy.py</span>
+<span class="k">class</span> MyStrategy(Strategy):
+    <span class="k">def</span> generate_signals(self, prices_df, **params):
+        <span class="c"># 1 long, -1 short, 0 flat</span>
+        ...
+
+<span class="c"># strategies/__init__.py</span>
+register(MyStrategy())</pre>
+    </div>
+    <div class="ext-card glass">
+      <div class="ico" style="background:rgba(0,229,204,0.15);color:var(--cyan)"><i class="ti ti-world"></i></div>
+      <h4>Add a universe</h4>
+      <p>One entry in <code>config.py</code> — ticker suffix, benchmark ETF, local index for beta, and country for WACC.</p>
+<pre><span class="c"># config.py</span>
+EQUITY_UNIVERSES[<span class="s">"ASX 200"</span>] = {
+    <span class="s">"suffix"</span>: <span class="s">".AX"</span>, <span class="s">"benchmark"</span>: <span class="s">"EWA"</span>,
+    <span class="s">"market_index"</span>: <span class="s">"^AXJO"</span>,
+    <span class="s">"country"</span>: <span class="s">"Australia"</span>,
+}</pre>
+    </div>
+    <div class="ext-card glass">
+      <div class="ico" style="background:rgba(184,242,100,0.15);color:var(--lime)"><i class="ti ti-scale"></i></div>
+      <h4>Add a country</h4>
+      <p>Valuation inherits it instantly — Damodaran risk-free ticker, equity risk premium, and country risk premium.</p>
+<pre><span class="c"># config.py</span>
+COUNTRY_RISK[<span class="s">"Brazil"</span>] = {
+    <span class="s">"rf_ticker"</span>: <span class="s">"IRLTLT01BRM156N"</span>,
+    <span class="s">"erp"</span>: <span class="g">0.0472</span>, <span class="s">"crp"</span>: <span class="g">0.021</span>,
+}</pre>
+    </div>
   </div>
 </section>
 
@@ -195,12 +300,12 @@
   <h2>Run it in three commands</h2>
   <p class="sub">Clone it, install the deps, start the server. No keys, no signup — it fetches live data from Yahoo Finance at request time.</p>
   <div class="flow">
-    <div class="step"><div class="n">1</div><h4>Clone &amp; install</h4><p>Grab the repo and install the Python dependencies into your environment.</p></div>
-    <div class="step"><div class="n">2</div><h4>Start the server</h4><p>One <code>uvicorn</code> command serves the API and the frontend together.</p></div>
-    <div class="step"><div class="n">3</div><h4>Open the deck</h4><p>Visit <code>localhost:8000</code> and start with any ticker — that's it.</p></div>
+    <div class="step glass"><div class="n">1</div><h4>Clone &amp; install</h4><p>Grab the repo and install the Python dependencies into your environment.</p></div>
+    <div class="step glass"><div class="n">2</div><h4>Start the server</h4><p>One <code>uvicorn</code> command serves the API and the frontend together.</p></div>
+    <div class="step glass"><div class="n">3</div><h4>Open the deck</h4><p>Visit <code>localhost:8000</code> and start with any ticker — that's it.</p></div>
   </div>
-  <div style="margin-top:28px">
-<pre><span class="c"># 1 — clone &amp; install</span>
+  <div style="margin-top:28px;max-width:680px;margin-left:auto;margin-right:auto">
+<pre class="glass static"><span class="c"># 1 — clone &amp; install</span>
 git clone https://github.com/chintan-jikkar/QuantDeck.git
 cd QuantDeck
 pip install -r requirements.txt
@@ -213,10 +318,23 @@ uvicorn api.main:app --port 8000
   </div>
 </section>
 
-<footer>
-  <p class="disc"><b>Not financial advice.</b> QuantDeck is a quantitative-analysis and educational tool. Every signal, valuation, and backtest is a model output. Market data is sourced from Yahoo Finance on a best-effort basis and may be delayed, incomplete, or revised. Backtested performance is not indicative of future results.</p>
-  <p>Built by Chintan Jikkar · <a href="https://github.com/chintan-jikkar/QuantDeck">github.com/chintan-jikkar/QuantDeck</a> · MIT</p>
+<footer class="wrap">
+  <div class="glass static" style="padding:36px 30px">
+    <p class="disc"><b>Not financial advice.</b> QuantDeck is a quantitative-analysis and educational tool. Every signal, valuation, and backtest is a model output. Market data is sourced from Yahoo Finance on a best-effort basis and may be delayed, incomplete, or revised. Backtested performance is not indicative of future results.</p>
+    <p>Built by Chintan Jikkar · <a href="https://github.com/chintan-jikkar/QuantDeck">github.com/chintan-jikkar/QuantDeck</a> · MIT</p>
+  </div>
 </footer>
 
+<script>
+  // Mouse-tracking glow on .glass cards — the highlight follows the cursor
+  // instead of sitting at a fixed point (same technique used across the app).
+  document.addEventListener('mousemove', function(e){
+    var card = e.target.closest('.glass');
+    if(!card) return;
+    var r = card.getBoundingClientRect();
+    card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+    card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
+  });
+</script>
 </body>
 </html>

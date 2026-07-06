@@ -10,6 +10,8 @@ Walk in with a ticker, walk out with a full investment thesis — screen, dissec
 
 [![tests](https://github.com/chintan-jikkar/QuantDeck/actions/workflows/tests.yml/badge.svg)](https://github.com/chintan-jikkar/QuantDeck/actions/workflows/tests.yml)
 
+**[→ Live showcase page](https://chintan-jikkar.github.io/QuantDeck/)** — screenshots of every module, quick start, and how to extend it.
+
 </div>
 
 ---
