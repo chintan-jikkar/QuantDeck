@@ -107,7 +107,7 @@ COMMODITY_BENCHMARK = "DJP"
 # ERP values updated annually; these are the 2024 Damodaran estimates.
 # ---------------------------------------------------------------------------
 COUNTRY_RISK: dict[str, dict] = {
-    "US":        {"rf_ticker": "^TNX",            "erp": 0.0472, "crp": 0.0000},
+    "US":        {"rf_ticker": "DGS10",           "erp": 0.0472, "crp": 0.0000},
     "UK":        {"rf_ticker": "IRLTLT01GBM156N", "erp": 0.0472, "crp": 0.0051},
     "Germany":   {"rf_ticker": "IRLTLT01DEM156N", "erp": 0.0472, "crp": 0.0051},
     "France":    {"rf_ticker": "IRLTLT01FRM156N", "erp": 0.0472, "crp": 0.0051},

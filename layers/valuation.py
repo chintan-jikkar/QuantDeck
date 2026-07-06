@@ -145,9 +145,8 @@ def _derive_wacc_inputs(
 ) -> dict:
     """Derive WACC inputs from yfinance-derived statements + FRED/yfinance risk-free + config risk premia.
 
-    For US, uses DGS10 (FRED) for Rf and ^GSPC for beta — preserving test compatibility.
-    For non-US, uses the country's rf_ticker from COUNTRY_RISK (FRED series) and
-    the country's local market index for beta calculation.
+    Rf comes from the country's rf_ticker in COUNTRY_RISK (a FRED series — DGS10
+    for US); beta is computed against the country's local market index.
 
     Equity weight in WACC uses ``market_equity`` (market cap = shares × price) when
     provided — the Damodaran-correct convention — and falls back to book equity
@@ -165,13 +164,8 @@ def _derive_wacc_inputs(
     if rf_override is not None:
         rf = rf_override
     else:
-        # Risk-free rate: US uses DGS10 (preserves existing test mocking);
-        # non-US uses the country's FRED series from COUNTRY_RISK.
         try:
-            if country == "US":
-                rf_series = fetch_fred_series("DGS10", years=1)
-            else:
-                rf_series = fetch_fred_series(rf_ticker, years=1)
+            rf_series = fetch_fred_series(rf_ticker, years=1)
             rf = float(rf_series.iloc[-1]) / 100
         except Exception:
             rf = 0.04
