@@ -480,9 +480,11 @@ def strategies(ticker: str = "AAPL"):
 
 @app.get("/api/portfolio")
 def portfolio(tickers: str = "NVDA,META,LLY,AVGO,AAPL,MSFT,JPM,UNH"):
-    """Markowitz mean-variance optimization via random portfolios: max-Sharpe
-    weights, efficient-frontier cloud, and the correlation matrix."""
+    """Markowitz mean-variance optimization: max-Sharpe (tangency) and
+    min-variance portfolios solved via SLSQP, plus a Dirichlet-sampled
+    feasible-region cloud for the frontier scatter and the correlation matrix."""
     import numpy as np
+    from scipy.optimize import minimize
     import yfinance as yf
 
     syms = [t.strip().upper() for t in tickers.split(",") if t.strip()]
@@ -504,18 +506,50 @@ def portfolio(tickers: str = "NVDA,META,LLY,AVGO,AAPL,MSFT,JPM,UNH"):
 
     mu = rets.mean().values * 252.0
     cov = rets.cov().values * 252.0
+
+    def _port_ret(w):
+        return float(w @ mu)
+
+    def _port_vol(w):
+        return float(np.sqrt(max(w @ cov @ w, 0.0)))
+
+    def _neg_sharpe(w):
+        v = _port_vol(w)
+        return -_port_ret(w) / v if v > 0 else 1e6
+
+    # Long-only, fully-invested tangency (max-Sharpe) and global-min-variance
+    # portfolios, solved directly rather than approximated from a random
+    # sample — naive uniform weight draws (w = rng.random(n); w /= w.sum())
+    # concentrate near equal-weight and rarely reach concentrated/corner
+    # portfolios, biasing the reported optimum toward diversification.
+    bounds = [(0.0, 1.0)] * n
+    unit_sum = {"type": "eq", "fun": lambda w: w.sum() - 1.0}
+    x0 = np.ones(n) / n
+
+    res_sharpe = minimize(_neg_sharpe, x0, method="SLSQP", bounds=bounds, constraints=[unit_sum])
+    res_minvol = minimize(lambda w: w @ cov @ w, x0, method="SLSQP", bounds=bounds, constraints=[unit_sum])
+
+    def _solved_weights(res):
+        w = res.x if res.success else x0
+        w = np.clip(w, 0.0, None)
+        return w / w.sum()
+
+    w_sharpe = _solved_weights(res_sharpe)
+    w_minvol = _solved_weights(res_minvol)
+    r_sharpe, v_sharpe = _port_ret(w_sharpe), _port_vol(w_sharpe)
+    r_minvol, v_minvol = _port_ret(w_minvol), _port_vol(w_minvol)
+
+    best = {"sharpe": r_sharpe / v_sharpe if v_sharpe > 0 else 0.0,
+            "ret": r_sharpe, "vol": v_sharpe, "weights": w_sharpe.tolist()}
+    minvol = {"vol": v_minvol, "ret": r_minvol}
+
+    # Feasible-region cloud for the frontier scatter only (not used to pick the
+    # optimum above). Dirichlet(1,...,1) samples the weight simplex uniformly,
+    # so the cloud's spread — including concentrated portfolios near the
+    # corners — is representative, unlike naive w/sum() normalization.
     rng = np.random.default_rng(42)
-    best = {"sharpe": -1e9, "weights": None, "ret": 0.0, "vol": 0.0}
-    minvol = {"vol": 1e9, "ret": 0.0}
-    cloud = []
-    for _ in range(5000):
-        w = rng.random(n); w /= w.sum()
-        r = float(w @ mu); v = float(np.sqrt(w @ cov @ w)); s = r / v if v > 0 else 0.0
-        cloud.append([round(v, 4), round(r, 4)])
-        if s > best["sharpe"]:
-            best = {"sharpe": s, "ret": r, "vol": v, "weights": w.tolist()}
-        if v < minvol["vol"]:
-            minvol = {"vol": v, "ret": r}
+    cloud = [[round(_port_vol(w), 4), round(_port_ret(w), 4)]
+             for w in rng.dirichlet(np.ones(n), size=5000)]
 
     ann_vol = rets.std().values * (252 ** 0.5)
     # per-position beta vs equal-weight portfolio proxy

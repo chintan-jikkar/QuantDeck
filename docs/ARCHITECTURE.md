@@ -97,7 +97,7 @@ Three calibrated models on log returns: **GBM** (bootstrap), **GARCH(1,1)** with
 Pluggable `Strategy` subclasses across `signal/` (MA crossover, RSI mean-reversion, 12-1 momentum), `factor/` (value, quality), and `arbitrage/` (pairs trading). `GET /api/strategies` fetches prices once and back-tests each on the active ticker for Sharpe/return; cards carry a BUY/HOLD/AVOID verdict and deep-link into the Backtester.
 
 ### 07 Portfolio Optimizer — `api/main.py::portfolio`
-Markowitz via 5,000 random long-only portfolios: tracks max-Sharpe and min-vol, returns the frontier cloud, per-position annualised return, β (vs an equal-weight proxy), annualised σ, a heuristic risk label, and the correlation matrix.
+Markowitz max-Sharpe (tangency) and min-variance portfolios are solved directly via `scipy.optimize.minimize` (SLSQP, long-only, fully invested). A separate 5,000-point Dirichlet-sampled cloud (uniform over the weight simplex) renders the frontier scatter; it plays no part in picking the optimum. Also returns per-position annualised return, β (vs an equal-weight proxy), annualised σ, a heuristic risk label, and the correlation matrix.
 
 ---
 
@@ -114,7 +114,6 @@ An honest register, current as of this revision. None block daily use; all are s
 | Area | Blindspot | Severity | Note |
 |------|-----------|----------|------|
 | Valuation | `/api/valuation` and `/api/decision` monkeypatch the module-level `val.fetch_fred_series` to inject the risk-free proxy, then restore it in `finally` | Medium | Not thread-safe: concurrent requests racing on the same global can read the wrong rf. Should pass `rf` as a parameter into `run_valuation` instead. |
-| Portfolio | "Max-Sharpe" is found via 5,000 random long-only weight draws, not a solver | Medium | `w = rng.random(n); w /= w.sum()` biases the cloud toward equal-weight and never reaches concentrated/corner portfolios; the true tangency portfolio is close but not exact. Swap in `scipy.optimize.minimize` or Dirichlet sampling. |
 | Valuation | DCF excludes changes in net working capital | Low | `FCF = NOPAT + D&A − Capex`; overstates FCF slightly for working-capital-heavy sectors. |
 | Valuation | Risk-free is a hardcoded per-country proxy, not live FRED | Low | Deliberate, for latency — but the constants are dated at write-time and duplicated in `api/main.py` and `data/fundamentals.py`. |
 | Valuation | Comps peers come from a curated map + sector fallback, not a live peer endpoint | Low | yfinance has no reliable peer source; coverage is best for large/mega-caps. |

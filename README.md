@@ -169,7 +169,6 @@ These are deliberate scope choices, documented so they don't surprise you:
 - **Comparable-company peers are curated, not fetched live.** yfinance has no reliable peer endpoint, so `fetch_peers()` uses a hand-maintained per-ticker map with a sector-bucket fallback. Coverage is good for large-caps but thin for smaller or less common names.
 - **The risk-free rate is a proxy, not live FRED.** A recent per-country 10Y yield is substituted to keep Valuation and the Decision signal fast; WACC stays sensible but isn't to-the-basis-point, and the proxy needs periodic manual updates as rates move.
 - **The DCF excludes changes in net working capital.** Free cash flow is `NOPAT + D&A − Capex`; for working-capital-heavy sectors (retail, industrials) this can overstate FCF slightly.
-- **The Portfolio Optimizer's "max-Sharpe" is approximate.** Weights are found by sampling 5,000 random long-only portfolios rather than solving the tangency portfolio directly, so the reported optimum is close to, but not exactly, the true efficient frontier.
 - **First paint shows mockup numbers** for a fraction of a second before live data replaces them.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#blindspots--roadmap) for the full blindspot register and roadmap.
