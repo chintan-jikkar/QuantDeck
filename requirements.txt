@@ -1,4 +1,4 @@
-# ── Core: FastAPI backend + quant stack (the live app) ──────────────
+# ── Core: FastAPI backend + quant stack ──────────────────────────────
 fastapi>=0.110,<1.0
 uvicorn[standard]>=0.29,<1.0
 pandas>=2.2.0,<3.0
@@ -7,16 +7,9 @@ scipy>=1.13.0
 yfinance>=0.2.40
 pandas-datareader>=0.10.0
 arch>=6.3.0
-pandas-market-calendars>=4.4.0
 requests>=2.32.0
 python-dotenv>=1.0.0
-plotly>=5.22.0          # used by the retired Streamlit pages; the live app
-                        # renders charts client-side with Plotly.js via CDN
 
 # ── Testing ─────────────────────────────────────────────────────────
 pytest>=8.0.0
 pytest-mock>=3.14.0
-
-# ── Legacy: retired Streamlit UI under pages/ + app.py (kept for ref) ─
-streamlit>=1.35.0
-streamlit-autorefresh>=1.0.1

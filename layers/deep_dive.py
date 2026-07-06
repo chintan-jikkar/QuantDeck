@@ -22,8 +22,9 @@ def compute_margins(income: pd.DataFrame) -> pd.DataFrame:
     df["gross_margin"]     = df["grossProfit"]      / df["revenue"]
     df["operating_margin"] = df["operatingIncome"]  / df["revenue"]
     df["net_margin"]       = df["netIncome"]        / df["revenue"]
-    # FMP returns most-recent-first; pct_change(-1) compares each row to the row below
-    # it (the prior year), giving year-over-year revenue growth for the recent row.
+    # Statements are most-recent-first; pct_change(-1) compares each row to the
+    # row below it (the prior year), giving year-over-year revenue growth for
+    # the recent row.
     df["revenue_yoy"] = df["revenue"].pct_change(-1)
     return df
 
@@ -37,9 +38,9 @@ def compute_balance_sheet_ratios(
     """Return DataFrame with debt_equity, current_ratio, interest_coverage per year.
 
     Interest coverage joins income to balance on the shared `date` key so that a
-    mismatch in row counts between the two statements (FMP can return different
-    history depth per statement) degrades to NaN for unmatched years rather than
-    raising a length-mismatch error.
+    mismatch in row counts between the two statements (a data source can return
+    different history depth per statement) degrades to NaN for unmatched years
+    rather than raising a length-mismatch error.
     """
     df = balance.copy()
     df["debt_equity"] = df["totalDebt"] / df["totalEquity"]

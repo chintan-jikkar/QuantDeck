@@ -218,7 +218,7 @@ def test_capital_allocation_retained_clips_at_zero():
 
 
 def test_balance_sheet_ratios_mismatched_row_counts():
-    """FMP can return a different number of years per statement.
+    """A statement source can return a different number of years per statement.
 
     Interest coverage should join on date and degrade to NaN for unmatched
     years rather than raising a length-mismatch error.

@@ -107,10 +107,9 @@ QuantDeck/
 │   └── decision.py        # cross-layer reward/risk signal (library-only)
 ├── strategies/            # pluggable Strategy subclasses (signal/factor/arb)
 ├── data/                  # fetch layer: prices, fundamentals, macro, fx, news
-├── utils/                 # watchlist, formatting, charts, calendar
-├── config.py              # universes, COUNTRY_RISK, benchmark map
-├── tests/                 # 235 pytest functions over the math
-├── pages/ · app.py        # retired Streamlit UI (kept for reference)
+├── utils/                 # watchlist persistence
+├── config.py              # universes, COUNTRY_RISK, RF_PROXY, benchmark map
+├── tests/                 # 195 pytest functions over the math
 └── docs/                  # ARCHITECTURE, API_REFERENCE, design mockups
 ```
 
@@ -150,7 +149,7 @@ Prices, candles, and Monte Carlo work for every class. Deep Dive and Valuation a
 pytest -q --ignore=tests/test_news.py
 ```
 
-235 test functions cover the parts that must be correct: WACC/DCF/DDM math, backtester P&L accounting and tearsheet metrics, Monte Carlo path generation and risk metrics, screener filters and scoring, asset-type detection, country helpers, and watchlist persistence. (`test_news.py` hits a live endpoint and is excluded from CI runs.)
+195 test functions cover the parts that must be correct: WACC/DCF/DDM math, backtester P&L accounting and tearsheet metrics, Monte Carlo path generation and risk metrics, screener filters and scoring, asset-type detection, country helpers, and watchlist persistence. (`test_news.py` hits a live endpoint and is excluded from CI runs.)
 
 ---
 

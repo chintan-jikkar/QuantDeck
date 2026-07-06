@@ -1,14 +1,14 @@
 # data/universe.py — no Streamlit imports
 """Free index-constituent lists for the Screener.
 
-FMP gated its constituent endpoints behind a paid plan (HTTP 402), so S&P 500
-and NASDAQ 100 membership is scraped from Wikipedia and cached for the life of
-the process. A small mega-cap fallback keeps the Screener usable if Wikipedia
-is unreachable or restructures its tables.
+No free live API returns S&P 500 / NASDAQ 100 membership, so it's scraped
+from Wikipedia and cached for the life of the process. A small mega-cap
+fallback keeps the Screener usable if Wikipedia is unreachable or
+restructures its tables.
 
-Symbols are returned in Wikipedia's form (e.g. "BRK.B"), which matches FMP's
-fundamentals symbology. The handful of dotted tickers will not resolve on
-yfinance for the technical overlay and are skipped there gracefully.
+Symbols are returned in Wikipedia's form (e.g. "BRK.B"). The handful of
+dotted tickers will not resolve on yfinance for the technical overlay and
+are skipped there gracefully.
 """
 from io import StringIO
 import functools

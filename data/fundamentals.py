@@ -235,11 +235,9 @@ def fetch_sector_info(ticker: str) -> dict:
         "France": "France", "Japan": "Japan", "India": "India",
         "Australia": "Australia", "Canada": "Canada", "Hong Kong": "HongKong",
     }
-    from config import COUNTRY_RISK
+    from config import COUNTRY_RISK, RF_PROXY
     cr_key = country_map.get(country, "US")
     cr = COUNTRY_RISK.get(cr_key, COUNTRY_RISK["US"])
-    rf_proxy = {"US": 4.2, "UK": 4.5, "India": 7.0, "Canada": 3.4,
-                "Germany": 2.5, "Japan": 1.1, "Australia": 4.3, "France": 3.1}
     return {
         "sector": info.get("sector", ""),
         "industry": info.get("industry", ""),
@@ -253,7 +251,7 @@ def fetch_sector_info(ticker: str) -> dict:
         "macro": {
             "erp": cr["erp"],
             "crp": cr["crp"],
-            "rf_pct": rf_proxy.get(cr_key, 4.2),
+            "rf_pct": RF_PROXY.get(cr_key, 4.2),
             "country_key": cr_key,
         },
     }

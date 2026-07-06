@@ -66,7 +66,7 @@ def _g0(df, col):
 
 
 def _build_memo(margins, mscore, macro):
-    """Bull/bear bullets, ported from the Streamlit Deep Dive memo logic."""
+    """Auto-generated bull/bear investment-memo bullets."""
     bull, bear = [], []
     gm = _g0(margins, "gross_margin")
     if gm is not None:
@@ -95,11 +95,10 @@ def _build_memo(margins, mscore, macro):
 
 @app.get("/api/deep-dive/{ticker}")
 def deep_dive(ticker: str):
-    """Single-name analysis: KPIs, fundamentals, margins series, memo.
-
-    Uses only fast/reliable sources (FMP fundamentals + FRED macro) so the panel
-    loads quickly; skips the heavier 5y price history, intraday and news that the
-    Streamlit Deep Dive also pulls.
+    """Single-name analysis: KPIs, fundamentals, margins series, bull/bear memo,
+    sector/macro context, analyst consensus, and recent news — all from yfinance.
+    Skips the 5y price/candlestick history, which is its own endpoint
+    (GET /api/prices/{ticker}) so this panel loads quickly.
     """
     from data.prices import detect_asset_type
     from data.fundamentals import (fetch_income_statement, fetch_balance_sheet,
@@ -151,7 +150,7 @@ def deep_dive(ticker: str):
                            ("peRatio", "evToEbitda", "pbRatio", "roe",
                             "debtToEquity", "netProfitMargin", "currentRatio", "revenueGrowth")}
 
-    # Revenue + margins series, oldest -> newest (FMP returns newest-first).
+    # Revenue + margins series, oldest -> newest (fetch_income_statement returns newest-first).
     series = []
     for i in range(len(income) - 1, -1, -1):
         row = {
@@ -186,26 +185,20 @@ def deep_dive(ticker: str):
     return JSONResponse(to_jsonable(out))
 
 
-# Recent 10Y government-bond yields (%) used as a risk-free proxy, because the
-# live FRED fetch frequently stalls ~30s. The valuation layer's own fallback is
-# ~4%; these keep WACC sensible per country without the stall.
-_RF_PROXY = {"US": 4.2, "UK": 4.5, "India": 7.0, "Canada": 3.4,
-             "Germany": 2.5, "Japan": 1.1, "Australia": 4.3, "France": 3.1}
-
-
 @app.get("/api/valuation/{ticker}")
 def valuation(ticker: str):
     """DCF + comps + DDM. Substitutes a recent risk-free proxy for the slow FRED
     fetch so the endpoint returns in a few seconds."""
     import layers.valuation as val
     from data.prices import detect_asset_type, country_from_ticker
+    from config import RF_PROXY
 
     ticker = ticker.upper()
     if detect_asset_type(ticker) != "equity":
         return JSONResponse({"ticker": ticker, "error": "Valuation applies to equities only"})
 
     country = country_from_ticker(ticker)
-    rf_pct = _RF_PROXY.get(country, 4.2)
+    rf_pct = RF_PROXY.get(country, 4.2)
     try:
         v = val.run_valuation(ticker, country=country, overrides={"rf": rf_pct / 100})
     except Exception as e:
@@ -389,6 +382,7 @@ def decision(ticker: str):
     from layers.deep_dive import compute_margins, compute_beneish_mscore
     from layers.simulation import run_simulation
     from layers.decision import build_decision_signal
+    from config import RF_PROXY
 
     ticker = ticker.upper()
     if detect_asset_type(ticker) != "equity":
@@ -414,7 +408,7 @@ def decision(ticker: str):
     # 2) Valuation summary (DCF bear/bull as the fair-value range)
     val_summary: dict = {}
     country = country_from_ticker(ticker)
-    rf_pct = _RF_PROXY.get(country, 4.2)
+    rf_pct = RF_PROXY.get(country, 4.2)
     try:
         v = val.run_valuation(ticker, country=country, overrides={"rf": rf_pct / 100})
         if v.get("applicable"):

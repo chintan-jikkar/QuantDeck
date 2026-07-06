@@ -143,7 +143,7 @@ def _derive_wacc_inputs(
     market_equity: float | None = None,
     rf_override: float | None = None,
 ) -> dict:
-    """Derive WACC inputs from FMP statements + FRED/yfinance risk-free + config risk premia.
+    """Derive WACC inputs from yfinance-derived statements + FRED/yfinance risk-free + config risk premia.
 
     For US, uses DGS10 (FRED) for Rf and ^GSPC for beta — preserving test compatibility.
     For non-US, uses the country's rf_ticker from COUNTRY_RISK (FRED series) and

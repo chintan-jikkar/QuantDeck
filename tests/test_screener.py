@@ -76,8 +76,7 @@ def test_apply_technical_filters_rsi():
     assert "C" not in result.index
 
 
-def test_run_screener_returns_dataframe_with_required_columns(monkeypatch):
-    monkeypatch.setenv("FMP_API_KEY", "test_key")
+def test_run_screener_returns_dataframe_with_required_columns():
     tickers = ["AAPL", "MSFT"]
     with patch("layers.screener._fetch_universe_tickers") as mock_univ, \
          patch("layers.screener._fetch_key_metrics_batch") as mock_km, \

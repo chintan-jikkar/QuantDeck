@@ -30,8 +30,8 @@ def _fetch_universe_tickers(universe: str) -> list[str]:
     if universe == "Dow Jones 30":
         return _DOW30
     # S&P 500 / NASDAQ 100 constituents are scraped from Wikipedia and cached
-    # (FMP gated its constituent endpoints behind a paid plan). Capped at 100
-    # tickers to keep a screen responsive on the free fundamentals tier.
+    # (no free live constituents API exists for these indices). Capped at 100
+    # tickers to keep a screen responsive.
     from data.universe import fetch_constituents
     return fetch_constituents(universe)[:100]
 

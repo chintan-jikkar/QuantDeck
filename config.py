@@ -119,6 +119,17 @@ COUNTRY_RISK: dict[str, dict] = {
 }
 
 # ---------------------------------------------------------------------------
+# Risk-free rate proxy (recent 10Y government-bond yields, %). Live FRED
+# fetches can stall ~30s, so Valuation and the Decision signal substitute
+# these instead. Single source of truth — do not duplicate elsewhere.
+# Last set: 2026-06-09. Refresh periodically as rates move; not to-the-basis-point.
+# ---------------------------------------------------------------------------
+RF_PROXY: dict[str, float] = {
+    "US": 4.2, "UK": 4.5, "India": 7.0, "Canada": 3.4,
+    "Germany": 2.5, "Japan": 1.1, "Australia": 4.3, "France": 3.1,
+}
+
+# ---------------------------------------------------------------------------
 # FRED series IDs for yield curve construction (US only in Phase 1).
 # ---------------------------------------------------------------------------
 YIELD_CURVE_TICKERS: dict[str, dict[str, str]] = {

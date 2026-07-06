@@ -85,7 +85,7 @@ Ke   = Rf + β·ERP + CRP            (Damodaran cost of equity, country-correct)
 WACC = (E/V)·Ke + (D/V)·Kd·(1−tax)
 DCF  = Σ FCFₜ/(1+WACC)ᵗ + TV/(1+WACC)ⁿ ,  TV = FCF·(1+g)/(WACC−g)
 ```
-`COUNTRY_RISK` (config.py) supplies `erp`/`crp`/`rf_ticker` for 12 markets. The API swaps the slow live FRED call for `_RF_PROXY` (a recent per-country 10Y yield) so the endpoint returns in seconds — see Blindspots for the thread-safety cost of that swap. DDM is gated on a positive, sane dividend. Comps use a curated peer map with a sector-bucket fallback (see Blindspots for coverage limits).
+`COUNTRY_RISK` (config.py) supplies `erp`/`crp`/`rf_ticker` for 12 markets. The API passes `config.RF_PROXY` (a recent per-country 10Y yield) into `run_valuation(..., overrides={"rf": ...})` in place of the slow live FRED call, so the endpoint returns in seconds. DDM is gated on a positive, sane dividend. Comps use a curated peer map with a sector-bucket fallback (see Blindspots for coverage limits).
 
 ### 04 Backtester — `layers/backtester.py`
 `run_engine(prices, signals)` applies position signals with commission (10 bps) and slippage (0.1%), producing an equity curve, returns, and a trade ledger. `compute_tearsheet` derives CAGR, Sharpe, Sortino, Max Drawdown, Win Rate, Profit Factor, Calmar. The API normalises curves to 100, downsamples to ~110 points, snaps trade markers onto the curve with `bisect`, and resamples monthly returns.
@@ -103,7 +103,7 @@ Markowitz max-Sharpe (tangency) and min-variance portfolios are solved directly 
 
 ## 4. Layer boundary (the one rule)
 
-`layers/` and `strategies/` contain **no** FastAPI, Streamlit, or Plotly imports. They accept parameters and return pandas/NumPy objects. This is what lets `tests/` (235 functions) verify the math directly, and what let the project swap its entire UI from Streamlit to FastAPI+JS without touching the quant code. `api/main.py` is the only place that knows about HTTP; `frontend/` is the only place that knows about pixels.
+`layers/` and `strategies/` contain **no** FastAPI, Streamlit, or Plotly imports. They accept parameters and return pandas/NumPy objects. This is what lets `tests/` (195 functions) verify the math directly, and what let the project swap its entire UI from Streamlit to FastAPI+JS without touching the quant code. `api/main.py` is the only place that knows about HTTP; `frontend/` is the only place that knows about pixels.
 
 ---
 
@@ -113,12 +113,9 @@ An honest register, current as of this revision. None block daily use; all are s
 
 | Area | Blindspot | Severity | Note |
 |------|-----------|----------|------|
-| Valuation | `/api/valuation` and `/api/decision` monkeypatch the module-level `val.fetch_fred_series` to inject the risk-free proxy, then restore it in `finally` | Medium | Not thread-safe: concurrent requests racing on the same global can read the wrong rf. Should pass `rf` as a parameter into `run_valuation` instead. |
 | Valuation | DCF excludes changes in net working capital | Low | `FCF = NOPAT + D&A − Capex`; overstates FCF slightly for working-capital-heavy sectors. |
-| Valuation | Risk-free is a hardcoded per-country proxy, not live FRED | Low | Deliberate, for latency — but the constants are dated at write-time and duplicated in `api/main.py` and `data/fundamentals.py`. |
+| Valuation | Risk-free is a hardcoded per-country proxy, not live FRED | Low | Deliberate, for latency. `config.RF_PROXY` is the single source of truth; refresh periodically as rates move. |
 | Valuation | Comps peers come from a curated map + sector fallback, not a live peer endpoint | Low | yfinance has no reliable peer source; coverage is best for large/mega-caps. |
-| Tooling | No CI runs the test suite | Low | See `.github/workflows/tests.yml`. |
-| Tooling | `requirements.txt` still pins the retired Streamlit stack | Low | `app.py` / `pages/` are kept for reference; trim both once no longer needed. |
 | Edge case | `/api/portfolio` assumes ≥2 valid tickers; a single-symbol `yf.download` returns a different shape | Low | Guarded by the UI (basket always ≥2). |
 
 ### Naming note
@@ -133,7 +130,7 @@ The lowercase sub-labels ("base case", "bull scenario", "most recent") and upper
 
 ```bash
 uvicorn api.main:app --port 8000          # serve
-pytest -q --ignore=tests/test_news.py     # 235 tests
+pytest -q --ignore=tests/test_news.py     # 195 tests
 ```
 
 The frontend is best viewed at a 16:9 / laptop-or-wider aspect ratio — the seven modules are laid out as a full-screen `100vw × 100vh` terminal, so narrow windows leave the two-column cards cramped.
