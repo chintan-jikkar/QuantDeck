@@ -106,12 +106,27 @@ def deep_dive(ticker: str):
                                     fetch_news, fetch_sector_info)
     from layers.deep_dive import (compute_margins, compute_earnings_quality,
                                    compute_beneish_mscore)
+    from data.macro import fetch_macro_regime
 
     ticker = ticker.upper()
     asset_type = detect_asset_type(ticker)
-    if asset_type != "equity":
-        return JSONResponse({"ticker": ticker, "asset_type": asset_type,
-                             "error": "Deep Dive is currently wired for equities"})
+    if asset_type in ("fx", "commodity"):
+        from layers.deep_dive import run_fx_market_drivers, run_commodity_market_drivers
+        try:
+            drivers = (run_fx_market_drivers(ticker) if asset_type == "fx"
+                       else run_commodity_market_drivers(ticker))
+        except Exception as e:
+            return JSONResponse({"ticker": ticker, "asset_type": asset_type,
+                                 "error": str(e)}, status_code=502)
+        drivers.pop("prices", None)  # candlestick data has its own endpoint
+        try:
+            macro = fetch_macro_regime()
+        except Exception:
+            macro = {}
+        return JSONResponse(to_jsonable({
+            "ticker": ticker, "asset_type": asset_type,
+            "market_drivers": drivers, "macro_regime": macro,
+        }))
 
     try:
         income = fetch_income_statement(ticker, limit=5)
@@ -169,7 +184,12 @@ def deep_dive(ticker: str):
         "accruals_ratio": _g0(eq, "accruals_ratio"),
         "beneish_mscore": float(mscore) if (mscore is not None and mscore == mscore) else None,
     }
-    out["memo"] = _build_memo(margins, mscore, {})
+    try:
+        macro = fetch_macro_regime()
+    except Exception:
+        macro = {}
+    out["macro_regime"] = macro
+    out["memo"] = _build_memo(margins, mscore, macro)
     try:
         out["analyst"] = fetch_analyst_info(ticker)
     except Exception:

@@ -2,6 +2,7 @@
 from unittest.mock import patch, MagicMock
 import pandas as pd
 import pytest
+from data import macro as mac
 
 
 def _make_fred_df(series_id: str, values: list[float]) -> pd.DataFrame:
@@ -20,6 +21,7 @@ def test_fetch_fred_series_returns_series(mock_dr):
 
 @patch("data.macro.web.DataReader")
 def test_fetch_yield_curve_returns_series_with_maturities(mock_dr):
+    mac._CACHE.clear()
     mock_dr.return_value = _make_fred_df("ANY", [4.5])
     from data.macro import fetch_yield_curve
     curve = fetch_yield_curve("US")
@@ -29,6 +31,7 @@ def test_fetch_yield_curve_returns_series_with_maturities(mock_dr):
 
 @patch("data.macro.web.DataReader")
 def test_fetch_macro_regime_returns_required_keys(mock_dr):
+    mac._CACHE.clear()
     def side_effect(series_id, *args, **kwargs):
         values_map = {
             "DTB3":         [5.3],
@@ -49,6 +52,7 @@ def test_fetch_macro_regime_returns_required_keys(mock_dr):
 
 @patch("data.macro.web.DataReader")
 def test_fetch_macro_regime_inverted_yield_curve(mock_dr):
+    mac._CACHE.clear()
     # 3M (5.3%) > 10Y (4.2%) → inverted
     def side_effect(series_id, *args, **kwargs):
         values_map = {
@@ -67,6 +71,7 @@ def test_fetch_macro_regime_inverted_yield_curve(mock_dr):
 
 @patch("data.macro.web.DataReader")
 def test_fetch_macro_regime_normal_yield_curve(mock_dr):
+    mac._CACHE.clear()
     # 3M (4.2%) < 10Y (5.3%) → normal
     def side_effect(series_id, *args, **kwargs):
         values_map = {
@@ -85,6 +90,7 @@ def test_fetch_macro_regime_normal_yield_curve(mock_dr):
 
 @patch("data.macro.web.DataReader")
 def test_fetch_macro_regime_cpi_yoy_computed_over_12_months(mock_dr):
+    mac._CACHE.clear()
     # 13 monthly CPI points: index -13 = 300.0, index -1 = 309.0 → YoY = +3.0%.
     # The intermediate months are filled so iloc[-13] and iloc[-1] are the load-bearing values.
     cpi_series = [300.0, 301.0, 302.0, 303.0, 304.0, 305.0, 306.0,

@@ -1,8 +1,16 @@
 # data/macro.py
+import time
 import pandas as pd
 import pandas_datareader.data as web
 from datetime import datetime, timedelta
 from config import YIELD_CURVE_TICKERS, MACRO_REGIME_SERIES
+
+# Macro conditions (yield curve, credit spreads, policy rate, CPI) are
+# market-wide, not per-ticker, and don't move intraday — so every Deep Dive
+# load can share one cached snapshot instead of re-hitting FRED (which can
+# stall ~30s) on every request.
+_CACHE: dict = {}
+_CACHE_TTL = 3600
 
 
 def fetch_fred_series(series_id: str, years: int = 5) -> pd.Series:
@@ -18,19 +26,30 @@ def fetch_yield_curve(country: str = "US") -> pd.Series:
 
     Uses config.YIELD_CURVE_TICKERS. Returns NaN for any maturity that fails.
     Phase 1 supports US only; other countries return NaN across all maturities.
+    Cached for 1 hour (see module docstring above).
     """
+    key = ("yield_curve", country)
+    now = time.time()
+    hit = _CACHE.get(key)
+    if hit is not None and now - hit[0] < _CACHE_TTL:
+        return hit[1]
+
     tickers = YIELD_CURVE_TICKERS.get(country)
     if tickers is None:
         maturities = list(YIELD_CURVE_TICKERS["US"].keys())
-        return pd.Series({m: float("nan") for m in maturities})
-    rates = {}
-    for maturity, series_id in tickers.items():
-        try:
-            s = fetch_fred_series(series_id, years=1)
-            rates[maturity] = float(s.iloc[-1])
-        except Exception:
-            rates[maturity] = float("nan")
-    return pd.Series(rates)
+        result = pd.Series({m: float("nan") for m in maturities})
+    else:
+        rates = {}
+        for maturity, series_id in tickers.items():
+            try:
+                s = fetch_fred_series(series_id, years=1)
+                rates[maturity] = float(s.iloc[-1])
+            except Exception:
+                rates[maturity] = float("nan")
+        result = pd.Series(rates)
+
+    _CACHE[key] = (now, result)
+    return result
 
 
 def fetch_macro_regime(country: str = "US") -> dict:
@@ -44,7 +63,14 @@ def fetch_macro_regime(country: str = "US") -> dict:
 
     Non-US countries return partial data (policy_rate sourced from COUNTRY_RISK
     rf_ticker; credit spread and inflation are US proxies in Phase 1).
+    Cached for 1 hour (see module docstring above).
     """
+    key = ("macro_regime", country)
+    now = time.time()
+    hit = _CACHE.get(key)
+    if hit is not None and now - hit[0] < _CACHE_TTL:
+        return hit[1]
+
     series = MACRO_REGIME_SERIES
     result: dict = {}
 
@@ -86,4 +112,5 @@ def fetch_macro_regime(country: str = "US") -> dict:
     except Exception:
         result["inflation_yoy"] = float("nan")
 
+    _CACHE[key] = (now, result)
     return result

@@ -124,9 +124,12 @@ function renderRevPlotly(divId, series) {
   const div = document.getElementById(divId);
   if (!div) return;
   if (!series || !series.length) {
+    Plotly.purge(div);
     div.innerHTML = `<div style="height:230px;display:flex;align-items:center;justify-content:center;color:#b4bdd4;font-family:'DM Mono',monospace;font-size:11px">No revenue data</div>`;
     return;
   }
+  Plotly.purge(div);
+  div.innerHTML = "";
   const labels = series.map(s => (s.date || "").slice(0, 4));
   const revs = series.map(s => +((s.revenue || 0) / 1e9).toFixed(2));
   const margins = series.map(s => s.net_margin != null ? +((s.net_margin) * 100).toFixed(1) : null);
@@ -152,7 +155,7 @@ function renderRevPlotly(divId, series) {
     bargap: 0.38, hovermode: "x unified",
     hoverlabel: { bgcolor: "#131929", bordercolor: "#243559", font: { color: "#e2e8f7", size: 10, family: "DM Mono" } },
   };
-  Plotly.react(div, traces, layout, { responsive: true, displayModeBar: false });
+  Plotly.newPlot(div, traces, layout, { responsive: true, displayModeBar: false });
 }
 function _sma(a, n) { const o = a.map(() => null); let s = 0; for (let i = 0; i < a.length; i++) { s += a[i]; if (i >= n) s -= a[i - n]; if (i >= n - 1) o[i] = s / n; } return o; }
 function _ema(a, n) { const o = a.map(() => null); const k = 2 / (n + 1); let e = a[0]; for (let i = 0; i < a.length; i++) { e = (i === 0) ? a[0] : a[i] * k + e * (1 - k); if (i >= n - 1) o[i] = e; } return o; }
@@ -222,6 +225,10 @@ async function loadDeepDive() {
     const res = await fetch(`/api/deep-dive/${DD_TICKER}`);
     const d = await res.json();
     if (!res.ok || d.error) throw new Error(d.error || `API ${res.status}`);
+    if (d.asset_type === "fx" || d.asset_type === "commodity") {
+      renderNonEquityDeepDive(d);
+      return;
+    }
     if (title) title.innerHTML = `<i class="ti ti-chart-area"></i> Revenue &amp; margins — ${d.ticker}`;
     const an = d.analyst || {};
     if (kp) {
@@ -360,6 +367,58 @@ async function loadDeepDive() {
     renderRevPlotly("dd-revchart", d.revenue_series || []);
   } catch (e) {
     if (memo) memo.innerHTML = `<span style="color:var(--pink)">Could not load ${DD_TICKER}: ${e.message}</span>`;
+  }
+}
+
+// FX/commodity Deep Dive: no fundamentals, analyst coverage, or filings exist
+// for these asset classes, so this reuses the same panels with market-driver
+// stats (momentum/vol/RSI) and macro regime in place of equity-only content.
+function renderNonEquityDeepDive(d) {
+  const kp = document.getElementById("dd-kpis");
+  const fund = document.getElementById("dd-fundamentals");
+  const memo = document.getElementById("dd-memo");
+  const title = document.getElementById("dd-revtitle");
+  const analystEl = document.getElementById("dd-analyst");
+  const sectorEl = document.getElementById("dd-sector");
+  const newsEl = document.getElementById("dd-news");
+  const docsEl = document.getElementById("dd-docs");
+  const revEl = document.getElementById("dd-revchart");
+
+  const md = d.market_drivers || {};
+  const isFx = d.asset_type === "fx";
+  const kind = isFx ? "FX pairs" : "commodities";
+  const label = isFx ? (md.pair || d.ticker) : d.ticker;
+  const rsiTag = md.rsi >= 70 ? "overbought" : md.rsi <= 30 ? "oversold" : "neutral";
+
+  if (title) title.innerHTML = `<i class="ti ti-chart-area"></i> Market drivers — ${label}`;
+  if (kp) {
+    const fourth = isFx
+      ? `<div class="kpi a"><div class="kpi-lbl">Asset Class</div><div class="kpi-val a">FX Spot</div><div class="kpi-sub">${label}</div></div>`
+      : `<div class="kpi a"><div class="kpi-lbl">vs 5Y Mean</div><div class="kpi-val a">${pctSigned(md.price_vs_5y_mean_pct)}</div><div class="kpi-sub ${md.price_vs_5y_mean_pct >= 0 ? "up" : "dn"}">${md.price_vs_5y_mean_pct >= 0 ? "historically rich" : "historically cheap"}</div></div>`;
+    kp.innerHTML = `
+      <div class="kpi b"><div class="kpi-lbl">12-1 Momentum</div><div class="kpi-val b">${pctSigned(md.momentum_12_1)}</div><div class="kpi-sub">${d.ticker}</div></div>
+      <div class="kpi c"><div class="kpi-lbl">Realized Vol (30d)</div><div class="kpi-val c">${pct(md.realized_vol_30d)}</div><div class="kpi-sub">annualized</div></div>
+      <div class="kpi l"><div class="kpi-lbl">RSI (14)</div><div class="kpi-val l">${fmt(md.rsi, 1)}</div><div class="kpi-sub">${rsiTag}</div></div>
+      ${fourth}`;
+  }
+  if (fund) fund.innerHTML = `<tr><td colspan="2" style="text-align:center;color:var(--txt-d);font-size:10px;padding:12px 0">Fundamentals (P/E, ROE, etc.) don't apply to ${kind}.</td></tr>`;
+  if (memo) memo.innerHTML = `<span style="color:var(--txt-d)">Bull/bear investment memo is equity-only. See market drivers and macro regime for ${kind}.</span>`;
+  if (analystEl) analystEl.innerHTML = `<div class="ctitle" style="font-size:10px;margin-bottom:8px"><i class="ti ti-users"></i> Analyst consensus</div><div style="font-size:10px;color:var(--txt-d)">Not applicable for ${kind}.</div>`;
+  if (docsEl) docsEl.innerHTML = `<div style="font-size:10px;color:var(--txt-d);padding:6px 0">No filings apply to ${kind}.</div>`;
+  if (newsEl) newsEl.innerHTML = `<div style="font-size:10px;color:var(--txt-d)">No company news for ${kind}.</div>`;
+  if (revEl) revEl.innerHTML = `<div style="height:230px;display:flex;align-items:center;justify-content:center;color:var(--txt-d);font-family:'DM Mono',monospace;font-size:11px">No revenue data — ${kind} don't report financials</div>`;
+
+  if (sectorEl) {
+    const mr = d.macro_regime || {};
+    const rows = [
+      ["Yield Curve", mr.yield_curve_shape || "—"],
+      ["Credit Spread (OAS)", mr.credit_spread_level != null ? mr.credit_spread_level.toFixed(2) + "%" : "—"],
+      ["Fed Funds Rate", mr.policy_rate != null ? mr.policy_rate.toFixed(2) + "%" : "—"],
+      ["CPI YoY", mr.inflation_yoy != null ? mr.inflation_yoy.toFixed(1) + "%" : "—"],
+    ];
+    sectorEl.innerHTML = `
+      <div class="ctitle" style="font-size:10px;margin-bottom:7px"><i class="ti ti-building-skyscraper"></i> Macro regime (US)</div>
+      ${rows.map(([l, v]) => `<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px"><span style="color:var(--txt-d)">${l}</span><span style="color:var(--txt)">${v}</span></div>`).join("")}`;
   }
 }
 

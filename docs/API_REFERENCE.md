@@ -39,7 +39,7 @@ Filters are intentionally wide (`_WIDE_FILTERS`); the UI does any narrowing. Row
 ## 02 · Deep Dive
 
 ### `GET /api/deep-dive/{ticker}`
-Equity only — non-equities return `{ "ticker", "asset_type", "error" }`.
+Equity response:
 
 ```json
 {
@@ -49,7 +49,9 @@ Equity only — non-equities return `{ "ticker", "asset_type", "error" }`.
                     "debtToEquity": 0.8, "netProfitMargin": 0.27, "currentRatio": 1.1, "revenueGrowth": 0.166 },
   "revenue_series": [ { "date": "2021-09-25", "revenue": 3.65e11, "gross_margin": 0.41, "net_margin": 0.25 } ],
   "earnings_quality": { "ccr": 1.08, "accruals_ratio": -0.03, "beneish_mscore": -2.71 },
-  "memo": { "bull": ["High gross margin (47%) ..."], "bear": [] },
+  "macro_regime": { "yield_curve_shape": "normal", "credit_spread_level": 0.75,
+                     "policy_rate": 3.63, "inflation_yoy": 4.27 },
+  "memo": { "bull": ["High gross margin (47%) ...", "Normal yield curve - constructive macro backdrop"], "bear": [] },
   "analyst": { "target": 312, "target_high": 400, "rec_key": "buy", "n_analysts": 43,
                "upside": 7.2, "buy_pct": 62, "hold_pct": 31, "sell_pct": 6 },
   "news":   [ { "title": "...", "link": "https://...", "publisher": "Reuters",
@@ -59,6 +61,21 @@ Equity only — non-equities return `{ "ticker", "asset_type", "error" }`.
                    "macro": { "erp": 0.0472, "crp": 0.0, "rf_pct": 4.2, "country_key": "US" } }
 }
 ```
+
+FX/commodity response (leaner — no fundamentals, analyst coverage, or filings apply):
+
+```json
+{
+  "ticker": "EURUSD=X", "asset_type": "fx",
+  "market_drivers": { "asset_type": "fx", "pair": "EURUSD",
+                       "momentum_12_1": -0.0046, "realized_vol_30d": 0.047, "rsi": 41.1 },
+  "macro_regime": { "yield_curve_shape": "normal", "credit_spread_level": 0.75,
+                     "policy_rate": 3.63, "inflation_yoy": 4.27 }
+}
+```
+Commodities (`asset_type: "commodity"`) additionally return `price_vs_5y_mean_pct` in `market_drivers`.
+
+`macro_regime` is US-only market-wide context (shared across every ticker), cached in-process for 1 hour since it costs 5 FRED calls — see `data/macro.py`.
 
 ### `GET /api/prices/{ticker}`
 | Param | Type | Default | Notes |
@@ -86,12 +103,13 @@ Equity only. Substitutes a per-country risk-free proxy for live FRED.
   "dcf":  { "price_base": 305.0, "price_bull": 360.0, "price_bear": 250.0,
             "fcf_series": [1.0e11, "..."], "disc_fcf": ["..."],
             "terminal_value": 5.0e12, "equity_value": 4.5e12 },
-  "comps": null,
+  "comps": { "AAPL": { "peRatio": 35.3, "evToEbitda": 26.9, "netProfitMargin": 0.27, "revenueGrowth": 0.166 },
+             "MSFT": { "...": "..." } },
   "comps_implied": { "price_from_pe": 280.0, "price_from_ev_ebitda": 295.0 },
   "ddm": { "applicable": true, "price": 240.0 }
 }
 ```
-`comps` is currently `null` (no yfinance peer source).
+`comps` peers come from a curated map with a sector-bucket fallback (`data/fundamentals.py::fetch_peers`) — yfinance has no live peer endpoint. Coverage is best for large/mega-caps.
 
 ---
 
@@ -212,4 +230,4 @@ Resolves a company name or partial ticker to symbols via Yahoo Finance search.
 
 ## Error shape
 
-Endpoints return a `200` with an `error` field for soft failures (e.g. non-equity sent to Deep Dive) and a `502`/`404` with `{ "error": "..." }` for upstream/data failures. The frontend checks `res.ok` and the presence of the primary data key before treating a response as an error.
+Endpoints return a `200` with an `error` field for soft failures (e.g. non-equity sent to Valuation) and a `502`/`404` with `{ "error": "..." }` for upstream/data failures. The frontend checks `res.ok` and the presence of the primary data key before treating a response as an error.

@@ -44,7 +44,7 @@ A **shared ticker flow** stitches them together: pick a name in the Screener (or
 Composite-score ranking of a global basket (US mega-caps, India `.NS`, EU, Korea `.KS`). Each row is colour-coded Buy / Watch / Avoid. A **daily Top Pick** rotates without repeating (persisted in `localStorage`), with factor-weight bars and a watchlist quick-pick strip.
 
 ### 02 · Deep Dive
-Interactive **Plotly candlestick** (Chinese convention: red = up, green = down) with 1m→1M timeframes and SMA/EMA/Bollinger/trend overlays. Alongside it: KPI cards, a fundamentals snapshot, a dual-axis revenue & margin chart, an auto-generated bull/bear **investment memo** (gross margin, revenue trend, Beneish M-Score, yield-curve shape), sector & macro context, live analyst consensus, **recent news with article summaries**, a **financial-documents panel** (EDGAR 10-K/10-Q, transcripts, or NSE/BSE/Screener.in for Indian names), and a one-click **watchlist toggle**.
+Interactive **Plotly candlestick** (Chinese convention: red = up, green = down) with 1m→1M timeframes and SMA/EMA/Bollinger/trend overlays. For equities: KPI cards, a fundamentals snapshot, a dual-axis revenue & margin chart, an auto-generated bull/bear **investment memo** (gross margin, revenue trend, Beneish M-Score, yield-curve shape), sector & macro context, live analyst consensus, **recent news with article summaries**, a **financial-documents panel** (EDGAR 10-K/10-Q, transcripts, or NSE/BSE/Screener.in for Indian names), and a one-click **watchlist toggle**. For FX pairs and commodities: momentum (12-1), realized volatility, RSI, and (commodities only) price-vs-5-year-mean, alongside the same shared US macro-regime snapshot (yield curve shape, credit spread, policy rate, CPI).
 
 ### 03 · Valuation
 Country-correct **DCF** (`Ke = Rf + β·ERP + CRP` across 12 markets), a WACC-components breakdown, a bear/base/bull football-field, and a multi-method summary (DCF, comps-implied P/E & EV/EBITDA, DDM) each shown versus the current price.
@@ -139,7 +139,7 @@ On macOS you can also double-click **`start_quantdeck.command`** to launch and *
 | FX pairs | `EURUSD=X`, `USDINR=X` | `=X` |
 | Commodities | `GC=F`, `CL=F`, `HG=F` | `=F` |
 
-Prices, candles, and Monte Carlo work for every class. Deep Dive and Valuation are equity-only and show a clean not-applicable state otherwise.
+Prices, candles, and Monte Carlo work for every class. Deep Dive shows fundamentals/memo/analyst coverage for equities, and momentum/RSI/realized-vol market drivers (plus shared macro-regime context) for FX and commodities. Valuation (DCF/DDM/comps) is equity-only and shows a clean not-applicable state otherwise.
 
 ---
 

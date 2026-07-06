@@ -71,11 +71,17 @@ The watchlist is the one piece of cross-device state that lives **server-side** 
 Fetches key metrics + technicals for the basket, applies (wide, UI-narrowed) fundamental/technical filters, and computes a **composite percentile score** across factors. The API default filters are deliberately permissive (`_WIDE_FILTERS`) so the endpoint returns the full ranked universe and the UI does any narrowing. The daily Top Pick rotation is purely front-end.
 
 ### 02 Deep Dive — `layers/deep_dive.py`
+Equities:
 - **Margins:** gross/operating/net per period.
 - **Earnings quality:** cash-conversion ratio, accruals ratio.
 - **Beneish M-Score:** eight-variable earnings-manipulation detector; `< -2.22` reads as "clean".
 - **Memo:** `_build_memo()` in `main.py` turns margin level, revenue trend, M-Score, and yield-curve shape into bull/bear bullets.
 - **Sector/news/analyst:** `fetch_sector_info`, `fetch_news` (with article summaries), `fetch_analyst_info` from yfinance `info` + `recommendations_summary`.
+
+FX and commodities (`run_fx_market_drivers` / `run_commodity_market_drivers`, both yfinance-only — fast):
+- **Market drivers:** 12-1 momentum, 30-day annualized realized vol, RSI(14); commodities add price-vs-5-year-mean.
+
+All asset classes share `data.macro.fetch_macro_regime()` — yield curve shape, credit spread (OAS), Fed funds rate, CPI YoY. This makes 5 FRED calls, so it's cached in-process for 1 hour (`data/macro.py::_CACHE`, market-wide not per-ticker) — the first Deep Dive load after cache expiry pays the FRED latency, every other request within the hour is instant.
 
 > **yfinance dividend gotcha:** `info["dividendYield"]` returns the **dollar** dividend per share, not the yield fraction. QuantDeck uses `trailingAnnualDividendYield` (e.g. `0.0036` → `0.4%`).
 
